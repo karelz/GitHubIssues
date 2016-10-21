@@ -57,6 +57,12 @@
     <Compile Include="DataModel\Extensions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="DataModel\LabelGroup.cs" />
+    <Compile Include="Query\Expressions.cs" />
+    <Compile Include="Query\Parser.cs" />
+    <Compile Include="Query\SyntaxParser.cs" />
+    <Compile Include="Query\Token.cs" />
+    <Compile Include="Query\Tokenizer.cs" />
+    <Compile Include="Reports\AreaLabels.cs" />
     <Compile Include="Reports\DiffReport.cs" />
     <Compile Include="Reports\HtmlReport.cs" />
     <Compile Include="Reports\Util.cs" />

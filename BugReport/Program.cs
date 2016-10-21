@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using BugReport;
+using BugReport.DataModel;
 using BugReport.Reports;
 
 class Program
@@ -50,25 +50,25 @@ class Program
     static void DiffReport(string input1Json, string input2Json, string configJson, string outputHtml)
     {
         DiffReport report = new DiffReport(
-            Issue.LoadFrom(input1Json, Issue.IssueKindFlags.Issue),
-            Issue.LoadFrom(input2Json, Issue.IssueKindFlags.Issue));
+            IssueCollection.LoadFrom(input1Json, IssueKindFlags.Issue),
+            IssueCollection.LoadFrom(input2Json, IssueKindFlags.Issue));
         report.Report(configJson, outputHtml);
     }
 
     static void HtmlReport(string inputJson, string outputHtml)
     {
         HtmlReport report = new HtmlReport();
-        report.Write(Issue.LoadFrom(inputJson), outputHtml);
+        report.Write(IssueCollection.LoadFrom(inputJson), outputHtml);
     }
 
     static void Report1(string inputJson, string outputHtml)
     {
-        IssueCollection issues = Issue.LoadFrom(inputJson, Issue.IssueKindFlags.Issue);
+        IssueCollection issues = IssueCollection.LoadFrom(inputJson, IssueKindFlags.Issue);
 
         Console.WriteLine("Stats:");
         Console.WriteLine("All Issues: {0}", issues.Issues.Count());
-        Console.WriteLine("Issues: {0}", issues.Issues.Where(i => i.IssueKind == Issue.IssueKindFlags.Issue).Count());
-        Console.WriteLine("PullRequests: {0}", issues.Issues.Where(i => i.IssueKind == Issue.IssueKindFlags.PullRequest).Count());
+        Console.WriteLine("Issues: {0}", issues.Issues.Where(i => i.IsIssue).Count());
+        Console.WriteLine("PullRequests: {0}", issues.Issues.Where(i => i.IsPullRequest).Count());
         Console.WriteLine();
 
         List<Label> ignoredLabels = issues.Labels.Where(l => l.Name.StartsWith("dev/api-")).ToList();
@@ -201,7 +201,7 @@ class Program
 
     static void DeserializeTest(string fileName)
     {
-        IEnumerable<Issue> issues = Issue.LoadFrom(fileName).Issues;
+        IEnumerable<Issue> issues = IssueCollection.LoadFrom(fileName).Issues;
 
         Console.WriteLine("Stats:");
         Console.WriteLine("All Issues: {0}", issues.Count());
@@ -211,7 +211,7 @@ class Program
 
         foreach (Issue issue in issues)
         {
-            issue.Print();
+            Console.WriteLine(issue.ToString());
             Console.WriteLine();
         }
     }

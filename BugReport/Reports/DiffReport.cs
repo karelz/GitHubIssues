@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using BugReport;
+using BugReport.DataModel;
 
 namespace BugReport.Reports
 {
@@ -60,7 +60,7 @@ namespace BugReport.Reports
 
                 if ((issue1 != null) && (issue2 != null))
                 {
-                    ReportIssue_LabelsDiff(issue1, Issues1.AreaLabels, issue2, Issues2.AreaLabels);
+                    ReportIssue_LabelsDiff(issue1, Issues1.GetAreaLabels(), issue2, Issues2.GetAreaLabels());
                 }
                 else if (issue1 == null)
                 {

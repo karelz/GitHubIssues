@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using BugReport;
+using BugReport.DataModel;
 
 namespace BugReport.Reports
 {
@@ -27,7 +27,7 @@ namespace BugReport.Reports
 
         public void Write(IssueCollection issuesCollection, string outputHtmlFile)
         {
-            List<LabelGroup> areaLabelGroups = issuesCollection.AreaLabels.OrderBy(l => l.Name).Select(l => new LabelGroup(l)).ToList();
+            List<LabelGroup> areaLabelGroups = issuesCollection.GetAreaLabels().OrderBy(l => l.Name).Select(l => new LabelGroup(l)).ToList();
 
             List<LabelGroup> issueTypeLabelGroups = new List<LabelGroup>();
             LabelGroup.Add(issueTypeLabelGroups, issuesCollection.GetLabel("bug"));
@@ -49,8 +49,8 @@ namespace BugReport.Reports
             LabelGroup.Add(ignoredIssueTypeLabelGroups, issuesCollection.GetLabel("netstandard2.0"));
             LabelGroup.Add(ignoredIssueTypeLabelGroups, issuesCollection.GetLabel("os-windows-uwp"));
 
-            Issues = issuesCollection.Issues.Where(i => i.IsIssueKind(Issue.IssueKindFlags.Issue));
-            PullRequests = issuesCollection.Issues.Where(i => i.IsIssueKind(Issue.IssueKindFlags.PullRequest));
+            Issues = issuesCollection.Issues.Where(i => i.IsIssue);
+            PullRequests = issuesCollection.Issues.Where(i => i.IsPullRequest);
             using (File = new StreamWriter(outputHtmlFile))
             {
                 File.WriteLine("<html><body>");

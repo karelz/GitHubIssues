@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BugReport
+namespace BugReport.DataModel
 {
     public static class Extensions
     {

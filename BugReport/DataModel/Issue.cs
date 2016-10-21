@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace BugReport
+namespace BugReport.DataModel
 {
     public class Issue
     {
@@ -27,56 +27,92 @@ namespace BugReport
         public PullRequest PullRequest;
         public Milestone Milestone;
 
-        public IssueKindFlags IssueKind
+        public bool IsIssue
         {
-            get { return (PullRequest == null) ? IssueKindFlags.Issue : IssueKindFlags.PullRequest; }
+            get { return (PullRequest == null); }
         }
-        public bool IsIssueKind(IssueKindFlags issueKindFlags)
+        public bool IsPullRequest
         {
-            return (IssueKind & issueKindFlags) != 0;
+            get { return (PullRequest != null); }
         }
-
-        [FlagsAttribute]
-        public enum IssueKindFlags
+        public bool IsIssueKind(IssueKindFlags flags)
         {
-            Issue = 1,
-            PullRequest = 2,
-            All = Issue | PullRequest
-        }
-
-        public static IssueCollection LoadFrom(string fileName, IssueKindFlags issueKind = IssueKindFlags.All)
-        {
-            JsonSerializer serializer = new JsonSerializer();
-            using (StreamReader sr = new StreamReader(fileName))
-            using (JsonReader reader = new JsonTextReader(sr))
+            if (IsIssue)
             {
-                return new IssueCollection(serializer.Deserialize<List<Issue>>(reader).Where(i => i.IsIssueKind(issueKind)));
+                return ((flags & IssueKindFlags.Issue) != 0);
             }
+            // IsPullRequest
+            return ((flags & IssueKindFlags.PullRequest) != 0);
         }
 
-        public void Print()
+        public bool IsOpen
         {
-            Console.WriteLine("Number: {0}", Number);
-            Console.WriteLine("Type: {0}", (PullRequest == null) ? "Issue" : "PullRequest");
-            Console.WriteLine("URL: {0}", HtmlUrl);
-            Console.WriteLine("State: {0}", State);
-            Console.WriteLine("Assignee.Name:  {0}", (Assignee == null) ? "<null>" : Assignee.Name);
-            Console.WriteLine("        .Login: {0}", (Assignee == null) ? "<null>" : Assignee.Login);
-            Console.WriteLine("Labels.Name:");
+            get { return (State == Octokit.ItemState.Open); }
+        }
+        public bool IsClosed
+        {
+            get { return (State == Octokit.ItemState.Closed); }
+        }
+
+        public bool HasLabel(string labelName)
+        {
+            return Labels.ContainsLabel(labelName);
+        }
+
+        public bool IsMilestone(string milestoneName)
+        {
+            if (Milestone == null)
+            {
+                return (milestoneName == null);
+            }
+            return (Milestone.Title == milestoneName);
+        }
+
+        public bool HasAssignee(string assigneeName)
+        {
+            if (Assignee == null)
+            {
+                return (assigneeName == null);
+            }
+            return (Assignee.Name == assigneeName);
+        }
+
+        public override string ToString()
+        {
+            StringWriter sw = new StringWriter();
+            sw.WriteLine("Number: {0}", Number);
+            sw.WriteLine("Type: {0}", (PullRequest == null) ? "Issue" : "PullRequest");
+            sw.WriteLine("URL: {0}", HtmlUrl);
+            sw.WriteLine("State: {0}", State);
+            sw.WriteLine("Assignee.Name:  {0}", (Assignee == null) ? "<null>" : Assignee.Name);
+            sw.WriteLine("        .Login: {0}", (Assignee == null) ? "<null>" : Assignee.Login);
+            sw.WriteLine("Labels.Name:");
             foreach (Label label in Labels)
             {
-                Console.WriteLine("    {0}", label.Name);
+                sw.WriteLine("    {0}", label.Name);
             }
-            Console.WriteLine("Title: {0}", Title);
-            //Console.WriteLine("Milestone.Title: {0}", (issue.Milestone == null) ? "<null>" : issue.Milestone.Title);
-            Console.WriteLine("User.Name:  {0}", (User == null) ? "<null>" : User.Name);
-            Console.WriteLine("    .Login: {0}", (User == null) ? "<null>" : User.Login);
-            Console.WriteLine("CreatedAt: {0}", CreatedAt);
-            Console.WriteLine("UpdatedAt: {0}", UpdatedAt);
-            Console.WriteLine("ClosedAt:  {0}", ClosedAt);
-            Console.WriteLine("ClosedBy.Name:  {0}", (ClosedBy == null) ? "<null>" : ClosedBy.Name);
-            Console.WriteLine("        .Login: {0}", (ClosedBy == null) ? "<null>" : ClosedBy.Login);
+            sw.WriteLine("Title: {0}", Title);
+            //sw.WriteLine("Milestone.Title: {0}", (issue.Milestone == null) ? "<null>" : issue.Milestone.Title);
+            sw.WriteLine("User.Name:  {0}", (User == null) ? "<null>" : User.Name);
+            sw.WriteLine("    .Login: {0}", (User == null) ? "<null>" : User.Login);
+            sw.WriteLine("CreatedAt: {0}", CreatedAt);
+            sw.WriteLine("UpdatedAt: {0}", UpdatedAt);
+            sw.WriteLine("ClosedAt:  {0}", ClosedAt);
+            sw.WriteLine("ClosedBy.Name:  {0}", (ClosedBy == null) ? "<null>" : ClosedBy.Name);
+            sw.Write("        .Login: {0}", (ClosedBy == null) ? "<null>" : ClosedBy.Login);
+
+            string text = sw.ToString();
+            sw.Close();
+            return text;
         }
+    }
+
+    [FlagsAttribute]
+    public enum IssueKindFlags
+    {
+        Issue = 1,
+        PullRequest = 2,
+        All = Issue | PullRequest
     }
 
     public class Label

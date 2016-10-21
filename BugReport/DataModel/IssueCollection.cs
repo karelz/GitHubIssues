@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace BugReport
+namespace BugReport.DataModel
 {
     public class IssueCollection
     {
@@ -44,34 +44,29 @@ namespace BugReport
             }
             return null;
         }
-
-        public IEnumerable<Label> AreaLabels
+        public bool HasLabel(string labelName)
         {
-            get
-            {
-                foreach (Label label in Labels)
-                {
-                    if (label.Name.StartsWith("area-") || (label.Name == "Infrastructure"))
-                    {
-                        yield return label;
-                    }
-                }
-            }
+            return LabelsMap.ContainsKey(labelName);
         }
 
-        public IEnumerable<Milestone> Milestones
+        public bool HasUser(string userName)
         {
-            get { return MilestonesMap.Values; }
+            // TODO
+            return true;
         }
 
-        Dictionary<int, Milestone> MilestonesMap;
+        Dictionary<string, Milestone> MilestonesMap;
+        public bool HasMilestone(string milestoneName)
+        {
+            return MilestonesMap.ContainsKey(milestoneName);
+        }
 
         public IssueCollection(IEnumerable<Issue> issues)
         {
             Issues = issues;
 
             LabelsMap = new Dictionary<string, Label>();
-            MilestonesMap = new Dictionary<int, Milestone>();
+            MilestonesMap = new Dictionary<string, Milestone>();
 
             foreach (Issue issue in issues)
             {
@@ -93,14 +88,16 @@ namespace BugReport
 
                 if (issue.Milestone != null)
                 {
-                    int milestoneNumber = issue.Milestone.Number;
-                    if (MilestonesMap.ContainsKey(milestoneNumber))
+                    string milestoneName = issue.Milestone.Title;
+                    if (MilestonesMap.ContainsKey(milestoneName))
                     {
-                        issue.Milestone = MilestonesMap[milestoneNumber];
+                        // Milestone names should be unique - if not, we need to use Number as unique identifier
+                        Debug.Assert(issue.Milestone.Number == MilestonesMap[milestoneName].Number);
+                        issue.Milestone = MilestonesMap[milestoneName];
                     }
                     else
                     {
-                        MilestonesMap[milestoneNumber] = issue.Milestone;
+                        MilestonesMap[milestoneName] = issue.Milestone;
                     }
                 }
             }
@@ -135,6 +132,16 @@ namespace BugReport
             }
 
             return map.Values;
+        }
+
+        public static IssueCollection LoadFrom(string fileName, IssueKindFlags issueKind = IssueKindFlags.All)
+        {
+            JsonSerializer serializer = new JsonSerializer();
+            using (StreamReader sr = new StreamReader(fileName))
+            using (JsonReader reader = new JsonTextReader(sr))
+            {
+                return new IssueCollection(serializer.Deserialize<List<Issue>>(reader).Where(i => i.IsIssueKind(issueKind)));
+            }
         }
     }
 }
