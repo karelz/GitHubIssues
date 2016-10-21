@@ -118,8 +118,6 @@ namespace BugReport.DataModel
     public class Label
     {
         public string Name;
-
-        public List<Issue> Issues;
     }
 
     public class User

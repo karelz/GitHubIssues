@@ -80,10 +80,7 @@ namespace BugReport.DataModel
                     else
                     {
                         LabelsMap[labelName] = issue.Labels[i];
-                        Debug.Assert(issue.Labels[i].Issues == null);
-                        LabelsMap[labelName].Issues = new List<Issue>();
                     }
-                    issue.Labels[i].Issues.Add(issue);
                 }
 
                 if (issue.Milestone != null)
@@ -101,37 +98,6 @@ namespace BugReport.DataModel
                     }
                 }
             }
-        }
-
-        public class FilteredLabel
-        {
-            public Label Label { get; private set; }
-            public List<Issue> Issues { get; private set; }
-
-            public FilteredLabel(Label label)
-            {
-                Label = label;
-                Issues = new List<Issue>();
-            }
-        }
-
-        public static IEnumerable<FilteredLabel> FilterLabels(IEnumerable<Issue> issues)
-        {
-            Dictionary<Label, FilteredLabel> map = new Dictionary<Label, FilteredLabel>();
-
-            foreach (Issue issue in issues)
-            {
-                foreach (Label label in issue.Labels)
-                {
-                    if (!map.ContainsKey(label))
-                    {
-                        map[label] = new FilteredLabel(label);
-                    }
-                    map[label].Issues.Add(issue);
-                }
-            }
-
-            return map.Values;
         }
 
         public static IssueCollection LoadFrom(string fileName, IssueKindFlags issueKind = IssueKindFlags.All)
