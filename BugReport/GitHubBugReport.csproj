@@ -56,7 +56,6 @@
     <Compile Include="DataModel\Issue.cs" />
     <Compile Include="DataModel\Extensions.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="DataModel\LabelGroup.cs" />
     <Compile Include="Query\Expressions.cs" />
     <Compile Include="Query\Parser.cs" />
     <Compile Include="Query\SyntaxParser.cs" />
@@ -65,6 +64,7 @@
     <Compile Include="Reports\AreaLabels.cs" />
     <Compile Include="Reports\DiffReport.cs" />
     <Compile Include="Reports\HtmlReport.cs" />
+    <Compile Include="Reports\LabelGroup.cs" />
     <Compile Include="Reports\Util.cs" />
     <Compile Include="Repository.cs" />
   </ItemGroup>
