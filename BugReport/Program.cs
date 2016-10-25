@@ -15,7 +15,7 @@ class Program
         Console.WriteLine("  cache - will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json");
         Console.WriteLine("  report <input.json> <output.html> - Creates report of GitHub issues from cached .json file");
         Console.WriteLine("  diff <input1.json> <input2.json> <config.json> <out.html> - Creates diff report of GitHub issues between 2 cached .json files");
-        Console.WriteLine("  query <input.json> <query.xml> <out.html> - Creates diff report of GitHub issues between 2 cached .json files");
+        Console.WriteLine("  alerts <input1.json> <input2.json> <alerts.xml> - Sends alert emails based on .xml config");
     }
 
     static void Main(string[] args)
@@ -27,11 +27,6 @@ class Program
                 CacheGitHubIssues();
                 return;
             }
-            if (args[0].Equals("query", StringComparison.OrdinalIgnoreCase) && (args.Length == 4))
-            {
-                QueryReport(args[1], args[2], args[3]);
-                return;
-            }
             if (args[0].Equals("report", StringComparison.OrdinalIgnoreCase) && (args.Length == 3))
             {
                 HtmlReport(args[1], args[2]);
@@ -40,6 +35,11 @@ class Program
             if (args[0].Equals("diff", StringComparison.OrdinalIgnoreCase) && (args.Length == 5))
             {
                 DiffReport(args[1], args[2], args[3], args[4]);
+                return;
+            }
+            if (args[0].Equals("alerts", StringComparison.OrdinalIgnoreCase) && (args.Length == 4))
+            {
+                SendAlerts(args[1], args[2], args[3]);
                 return;
             }
         }
@@ -55,10 +55,10 @@ class Program
         repo.SerializeIssues(string.Format("Issues_{0:yyyy-MM-dd@HH-mm}.json", DateTime.Now));
     }
 
-    static void DiffReport(string input1JsonName, string input2JsonFileName, string configJsonFileName, string outputHtmlFileName)
+    static void DiffReport(string input1JsonFileName, string input2JsonFileName, string configJsonFileName, string outputHtmlFileName)
     {
         DiffReport report = new DiffReport(
-            IssueCollection.LoadFrom(input1JsonName, IssueKindFlags.Issue),
+            IssueCollection.LoadFrom(input1JsonFileName, IssueKindFlags.Issue),
             IssueCollection.LoadFrom(input2JsonFileName, IssueKindFlags.Issue));
         report.Report(configJsonFileName, outputHtmlFileName);
     }
@@ -67,6 +67,14 @@ class Program
     {
         HtmlReport report = new HtmlReport();
         report.Write(IssueCollection.LoadFrom(inputJsonFileName), outputHtmlFileName);
+    }
+
+    static void SendAlerts(string input1JsonFileName, string input2JsonFileName, string alertsXmlFileName)
+    {
+        AlertsReport report = new AlertsReport(alertsXmlFileName);
+        report.SendEmails(
+            IssueCollection.LoadFrom(input1JsonFileName),
+            IssueCollection.LoadFrom(input2JsonFileName));
     }
 
     static void QueryReport(string inputJsonFileName, string congifgXmlFileName, string outputHtmlFileName)

@@ -13,6 +13,15 @@ namespace BugReport.Query
         public abstract bool Evaluate(Issue issue);
         public abstract void Validate(IssueCollection collection);
 
+        public IEnumerable<Issue> Evaluate(IEnumerable<Issue> issues)
+        {
+            return issues.Where(i => Evaluate(i));
+        }
+        public IEnumerable<Issue> Evaluate(IssueCollection issues)
+        {
+            return Evaluate(issues.Issues);
+        }
+
         protected class Indentation
         {
             public static string Indent(string value)

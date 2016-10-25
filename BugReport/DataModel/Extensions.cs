@@ -29,6 +29,10 @@ namespace BugReport.DataModel
         {
             return issues.Where(i => !exceptIssues.HasIssue(i.Number));
         }
+        public static IEnumerable<Issue> Except(this IEnumerable<Issue> issues, IEnumerable<Issue> exceptIssues)
+        {
+            return issues.Where(i => !exceptIssues.Where(i2 => (i2.Number == i.Number)).Any());
+        }
         public static IEnumerable<Issue> ExceptByNumber(this IEnumerable<Issue> issues, IEnumerable<Issue> exceptIssues)
         {
             return issues.Where(i => !exceptIssues.ContainsIssue(i.Number));

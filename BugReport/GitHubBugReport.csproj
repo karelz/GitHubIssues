@@ -61,6 +61,8 @@
     <Compile Include="Query\SyntaxParser.cs" />
     <Compile Include="Query\Token.cs" />
     <Compile Include="Query\Tokenizer.cs" />
+    <Compile Include="Reports\Alert.cs" />
+    <Compile Include="Reports\AlertsReport.cs" />
     <Compile Include="Reports\AreaLabels.cs" />
     <Compile Include="Reports\DiffReport.cs" />
     <Compile Include="Reports\HtmlReport.cs" />
