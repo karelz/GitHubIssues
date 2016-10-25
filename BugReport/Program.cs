@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Xml.Linq;
+using BugReport.Query;
 using BugReport.DataModel;
 using BugReport.Reports;
 
@@ -13,6 +15,7 @@ class Program
         Console.WriteLine("  cache - will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json");
         Console.WriteLine("  report <input.json> <output.html> - Creates report of GitHub issues from cached .json file");
         Console.WriteLine("  diff <input1.json> <input2.json> <config.json> <out.html> - Creates diff report of GitHub issues between 2 cached .json files");
+        Console.WriteLine("  query <input.json> <query.xml> <out.html> - Creates diff report of GitHub issues between 2 cached .json files");
     }
 
     static void Main(string[] args)
@@ -22,6 +25,11 @@ class Program
             if (args[0].Equals("cache", StringComparison.OrdinalIgnoreCase) && (args.Length == 1))
             {
                 CacheGitHubIssues();
+                return;
+            }
+            if (args[0].Equals("query", StringComparison.OrdinalIgnoreCase) && (args.Length == 4))
+            {
+                QueryReport(args[1], args[2], args[3]);
                 return;
             }
             if (args[0].Equals("report", StringComparison.OrdinalIgnoreCase) && (args.Length == 3))
@@ -47,172 +55,63 @@ class Program
         repo.SerializeIssues(string.Format("Issues_{0:yyyy-MM-dd@HH-mm}.json", DateTime.Now));
     }
 
-    static void DiffReport(string input1Json, string input2Json, string configJson, string outputHtml)
+    static void DiffReport(string input1JsonName, string input2JsonFileName, string configJsonFileName, string outputHtmlFileName)
     {
         DiffReport report = new DiffReport(
-            IssueCollection.LoadFrom(input1Json, IssueKindFlags.Issue),
-            IssueCollection.LoadFrom(input2Json, IssueKindFlags.Issue));
-        report.Report(configJson, outputHtml);
+            IssueCollection.LoadFrom(input1JsonName, IssueKindFlags.Issue),
+            IssueCollection.LoadFrom(input2JsonFileName, IssueKindFlags.Issue));
+        report.Report(configJsonFileName, outputHtmlFileName);
     }
 
-    static void HtmlReport(string inputJson, string outputHtml)
+    static void HtmlReport(string inputJsonFileName, string outputHtmlFileName)
     {
         HtmlReport report = new HtmlReport();
-        report.Write(IssueCollection.LoadFrom(inputJson), outputHtml);
+        report.Write(IssueCollection.LoadFrom(inputJsonFileName), outputHtmlFileName);
     }
 
-    static void Report1(string inputJson, string outputHtml)
+    static void QueryReport(string inputJsonFileName, string congifgXmlFileName, string outputHtmlFileName)
     {
-        IssueCollection issues = IssueCollection.LoadFrom(inputJson, IssueKindFlags.Issue);
+        IssueCollection issues = IssueCollection.LoadFrom(inputJsonFileName);
 
-        Console.WriteLine("Stats:");
-        Console.WriteLine("All Issues: {0}", issues.Issues.Count());
-        Console.WriteLine("Issues: {0}", issues.Issues.Where(i => i.IsIssue).Count());
-        Console.WriteLine("PullRequests: {0}", issues.Issues.Where(i => i.IsPullRequest).Count());
-        Console.WriteLine();
-
-        List<Label> ignoredLabels = issues.Labels.Where(l => l.Name.StartsWith("dev/api-")).ToList();
-
-        IEnumerable<Issue> filteredIssues = issues.Issues.Where(i => !i.Labels.Where(l => ignoredLabels.Contains(l)).Any());
-
-        List<Label> systemAreaLabels = issues.Labels.Where(l => l.Name.StartsWith("System") || l.Name.StartsWith("Microsoft.")).ToList();
-        systemAreaLabels.Add(issues.GetLabel("Serialization"));
-        systemAreaLabels.Add(issues.GetLabel("Meta"));
-        systemAreaLabels.Add(issues.GetLabel("tracking-external-issue"));
-        List<Label> areaLabels = new List<Label>(systemAreaLabels);
-        areaLabels.Add(issues.GetLabel("Infrastructure"));
-
+        using (StreamWriter output = new StreamWriter(outputHtmlFileName))
         {
-            // At least 1 area label
-            //IEnumerable<Issue> issuesWithAreaLabel = filteredIssues.Where(i => i.Labels.Where(l => areaLabels.Contains(l)).Any());
-            //IEnumerable<Issue> issuesWithoutAreaLabel = filteredIssues.Where(i => !i.Labels.Where(l => areaLabels.Contains(l)).Any());
-            IEnumerable<Issue> issuesWithMultipleAreaLabels = filteredIssues.Where(i => i.Labels.Where(l => areaLabels.Contains(l)).Count() >= 2);
-            IEnumerable<Issue> issuesWithMultipleSystemAreaLabels = filteredIssues.Where(i => i.Labels.Where(l => systemAreaLabels.Contains(l)).Count() >= 2);
-
-            //Console.WriteLine("Issues with 1+ area label: {0}", issuesWithAreaLabel.Count());
-            //Console.WriteLine("Issues with 0 area labels: {0}", issuesWithoutAreaLabel.Count());
-            Console.WriteLine("Issues with multiple area labels: {0}", issuesWithMultipleAreaLabels.Count());
-            Console.WriteLine("Issues with multiple System area labels: {0}", issuesWithMultipleSystemAreaLabels.Count());
-            Console.WriteLine();
-
-            /*
-            Console.WriteLine("==============================================");
-            Console.WriteLine("Lables in issues without area labels");
-            Console.WriteLine("==============================================");
-            IEnumerable<IssueCollection.FilteredLabel> labelCountsInIssuesWithoutAreaLabel = IssueCollection.FilterLabels(issuesWithoutAreaLabel);
-            foreach (IssueCollection.FilteredLabel label in labelCountsInIssuesWithoutAreaLabel.OrderByDescending(l => l.Issues.Count))
+            output.WriteLine("<html><body>");
+            XElement rootElement = XElement.Load(congifgXmlFileName);
+            foreach (XElement queryElement in rootElement.Descendants("query"))
             {
-                Console.WriteLine("{0} ({2}) - {1}", label.Issues.Count, label.Label.Name, label.Label.Issues.Count);
-            }
-            */
-            /*
-            string queryText = "is:issue is:open" + areaLabels.Select(l => " -label:" + l.Name).Aggregate((a, b) => string.Concat(a, b));
-            string queryWithoutAreaLabel = string.Format("https://github.com/dotnet/corefx/issues?utf8=%E2%9C%93&q={0}", System.Web.HttpUtility.UrlEncode(queryText));
+                string queryText = queryElement.Value;
+                QueryParser queryParser = new QueryParser(queryText);
+                Expression queryExpression = queryParser.Parse();
 
-            using (StreamWriter file = new StreamWriter(outputHtml))
-            {
-                file.WriteLine("<html><body>");
-                file.WriteLine("<p>");
-                file.WriteLine("<b>Issues:</b>");
-                file.WriteLine("<a href=\"{0}\">GitHub query</a>", queryWithoutAreaLabel);
-                file.WriteLine("<br/>");
-                //file.WriteLine("<b>Query text:</b>");
-                //file.WriteLine("{0}", queryText);
-                file.WriteLine("<br/>");
-                ReportIssues(issuesWithoutAreaLabel, file);
-                file.WriteLine("</body></html>");
-            }
-            */
-            /*
-            Console.WriteLine("==============================================");
-            Console.WriteLine("Multiple area labels");
-            Console.WriteLine("==============================================");
-            ReportIssues(issuesWithMultipleAreaLabels);
+                queryExpression.Validate(issues);
+                IEnumerable<Issue> queryIssues = issues.Issues.Where(i => queryExpression.Evaluate(i));
 
-            Console.WriteLine("==============================================");
-            Console.WriteLine("Multiple System area labels");
-            Console.WriteLine("==============================================");
-            ReportIssues(issuesWithMultipleSystemAreaLabels);
-            */
-        }
+                output.WriteLine("<p>");
+                output.WriteLine("Query: {0}", queryText);
+                output.WriteLine("<br/>");
+                output.WriteLine("Issues: <a href=\"{1}\">{0}</a>", queryIssues.Count(), GitHubQuery.GetHyperLink(queryIssues));
+                output.WriteLine("</p>");
 
-        List<Label> issueTypeLabels = new List<Label>();
-        issueTypeLabels.Add(issues.GetLabel("documentation"));
-        issueTypeLabels.Add(issues.GetLabel("test bug"));
-        issueTypeLabels.Add(issues.GetLabel("question"));
-        issueTypeLabels.Add(issues.GetLabel(""));
-        issueTypeLabels.Add(issues.GetLabel(""));
-    }
-    static void ReportIssues(IEnumerable<Issue> issues, StreamWriter file)
-    {
-        file.WriteLine("<table border=\"1\">");
-        foreach (Issue issue in issues)
-        {
-            file.WriteLine("  <tr>");
-            file.WriteLine("    <td><a href=\"{0}\">{1}</a></td>", issue.HtmlUrl, issue.Number);
-            file.WriteLine("    <td>{0}</td>", issue.Title);
-            file.WriteLine("    <td>{0}</td>", string.Join(", ", issue.Labels.Select(l => l.Name)));
-            file.WriteLine("  </tr>");
-        }
-        file.WriteLine("</table>");
-    }
-
-    static void ReportIssues(IEnumerable<Issue> issues)
-    {
-        Console.WriteLine("# of issues: {0}", issues.Count());
-        Console.WriteLine();
-
-        foreach (Issue issue in issues)
-        {
-            Console.WriteLine("{0} - {1}", issue.Number, issue.Title);
-            Console.WriteLine("    {0}", issue.HtmlUrl);
-            if (issue.Labels.Any())
-            {
-                Console.WriteLine("    Labels:");
-                foreach (Label label in issue.Labels.OrderBy(l => l.Name))
+                output.WriteLine("<table border =\"1\">");
+                foreach (Issue issue in queryIssues)
                 {
-                    Console.WriteLine("        {0}", label.Name);
+                    string issueLink = issue.HtmlUrl;
+                    output.WriteLine("  <tr>");
+                    output.WriteLine("    <td><a href=\"{0}\">#{1}</a></td>", issue.HtmlUrl, issue.Number);
+                    output.WriteLine("    <td>{0}</td>", issue.Title);
+                    if (issue.Assignee != null)
+                    {
+                        output.WriteLine("    <td><a href=\"{0}\">@{1}</a></td>", issue.Assignee.HtmlUrl, issue.Assignee.Login);
+                    }
+                    else
+                    {
+                        output.WriteLine("    <td>&nbsp;</td>");
+                    }
+                    output.WriteLine("  </tr>");
                 }
+                output.WriteLine("</table>");
             }
-            Console.WriteLine();
-        }
-    }
-
-    static void Test()
-    {
-        int[] issueNumbers = new int[] { 9859, 20, 10, 11519 };
-        string fileName = "test.json";
-        SerializeTest(issueNumbers, fileName);
-        DeserializeTest(fileName);
-    }
-
-    static void SerializeTest(IEnumerable<int> issueNumbers, string fileName)
-    {
-        Repository repo = new Repository("dotnet", "corefx");
-        repo.LoadIssues(issueNumbers);
-        repo.SerializeIssues(fileName);
-
-        foreach (Octokit.Issue issue in repo.Issues)
-        {
-            issue.PrintIssue();
-            Console.WriteLine();
-        }
-    }
-
-    static void DeserializeTest(string fileName)
-    {
-        IEnumerable<Issue> issues = IssueCollection.LoadFrom(fileName).Issues;
-
-        Console.WriteLine("Stats:");
-        Console.WriteLine("All Issues: {0}", issues.Count());
-        Console.WriteLine("Issues: {0}", issues.Where(i => (i.PullRequest == null)).Count());
-        Console.WriteLine("PullRequests: {0}", issues.Where(i => (i.PullRequest != null)).Count());
-        Console.WriteLine();
-
-        foreach (Issue issue in issues)
-        {
-            Console.WriteLine(issue.ToString());
-            Console.WriteLine();
+            output.WriteLine("</body></html>");
         }
     }
 }

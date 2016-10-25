@@ -124,6 +124,7 @@ namespace BugReport.DataModel
     {
         public string Name;
         public string Login;
+        public string HtmlUrl;
     }
 
     public class Milestone
