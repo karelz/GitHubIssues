@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using BugReport.Query;
 using BugReport.DataModel;
+using System.Text.RegularExpressions;
 
 namespace BugReport.Reports
 {
@@ -20,8 +21,10 @@ namespace BugReport.Reports
             Alerts = loader.Load(alertsXmlFileName);
         }
 
-        public void SendEmails(IssueCollection issuesStart, IssueCollection issuesEnd)
+        public void SendEmails(IssueCollection issuesStart, IssueCollection issuesEnd, string htmlTemplateFileName)
         {
+            string htmlTemplate = File.ReadAllText(htmlTemplateFileName);
+
             SmtpClient smtpClient = new SmtpClient("smtphost");
             smtpClient.UseDefaultCredentials = true;
 
@@ -31,10 +34,10 @@ namespace BugReport.Reports
                 IEnumerable<Issue> queryStart = alert.Query.Evaluate(issuesStart);
                 IEnumerable<Issue> queryEnd = alert.Query.Evaluate(issuesEnd);
 
-                IEnumerable<Issue> onlyStart = queryStart.Except(queryEnd);
-                IEnumerable<Issue> onlyEnd = queryEnd.Except(queryStart);
+                IEnumerable<Issue> goneIssues = queryStart.Except(queryEnd);
+                IEnumerable<Issue> newIssues = queryEnd.Except(queryStart);
 
-                if (!onlyStart.Any() && !onlyEnd.Any())
+                if (!goneIssues.Any() && !newIssues.Any())
                 {
                     continue;
                 }
@@ -52,30 +55,58 @@ namespace BugReport.Reports
                 message.Subject = "Test email from my tool";
                 message.IsBodyHtml = true;
 
-                StringBuilder text = new StringBuilder("Hello");
-                text.AppendLine("<br/>");
-                if (onlyStart.Any())
-                {
-                    text.AppendLine("  only start:");
-                    text.AppendLine("<br/>");
-                    foreach (Issue issue in onlyStart)
-                    {
-                        text.AppendFormat("    #{0} - {1}", issue.Number, issue.Title);
-                        text.AppendLine("<br/>");
-                    }
-                }
-                if (onlyEnd.Any())
-                {
-                    text.AppendLine("  only end:");
-                    text.AppendLine("<br/>");
-                    foreach (Issue issue in onlyEnd)
-                    {
-                        text.AppendFormat("    #{0} - {1}", issue.Number, issue.Title);
-                        text.AppendLine("<br/>");
-                    }
-                }
+                //string text = htmlTemplate.Replace
 
-                message.Body = text.ToString();
+                //htmlText.Replace()
+
+                //StringBuilder text = new StringBuilder(htmlTemplate);
+                string text = htmlTemplate;
+                text = text.Replace("%ALERT_NAME%", alert.Name);
+
+                if (!goneIssues.Any() || !newIssues.Any())
+                {
+                    Regex regex = new Regex("%ALL_ISSUES_START%.*%ALL_ISSUES_END%");
+                    text = regex.Replace(text, "");
+
+                    if (!goneIssues.Any())
+                    {
+                        regex = new Regex("%GONE_ISSUES_START%.*%GONE_ISSUES_END%");
+                        text = regex.Replace(text, "");
+                    }
+                    if (!newIssues.Any())
+                    {
+                        regex = new Regex("%NEW_ISSUES_START%.*%NEW_ISSUES_END%");
+                        text = regex.Replace(text, "");
+                    }
+                }
+                text = text.Replace("%ALL_ISSUES_START%", "");
+                text = text.Replace("%ALL_ISSUES_END%", "");
+                text = text.Replace("%GONE_ISSUES_START%", "");
+                text = text.Replace("%GONE_ISSUES_END%", "");
+                text = text.Replace("%NEW_ISSUES_START%", "");
+                text = text.Replace("%NEW_ISSUES_END%", "");
+
+                text = text.Replace("%ALL_ISSUES_LINK%", GitHubQuery.GetHyperLink(newIssues.Concat(goneIssues)));
+                text = text.Replace("%ALL_ISSUES_COUNT%", (goneIssues.Count() + newIssues.Count()).ToString());
+                text = text.Replace("%GONE_ISSUES_LINK%", GitHubQuery.GetHyperLink(goneIssues));
+                text = text.Replace("%GONE_ISSUES_COUNT%", goneIssues.Count().ToString());
+                text = text.Replace("%NEW_ISSUES_LINK%", GitHubQuery.GetHyperLink(newIssues));
+                text = text.Replace("%NEW_ISSUES_COUNT%", newIssues.Count().ToString());
+
+                IEnumerable<IssueEntry> newIssueEntries = newIssues.Select(issue => new IssueEntry(issue));
+                text = text.Replace("%NEW_ISSUES_TABLE%", FormatIssueTable(newIssueEntries));
+                IEnumerable<IssueEntry> goneIssueEntries = goneIssues.Select(issue =>
+                    {
+                        Issue newIssue = issuesEnd.GetIssue(issue.Number);
+                        if (newIssue == null)
+                        {   // Closed issue
+                            return new IssueEntry(issue, "Closed");
+                        }
+                        return new IssueEntry(newIssue);
+                    });
+                text = text.Replace("%GONE_ISSUES_TABLE%", FormatIssueTable(goneIssueEntries));
+
+                message.Body = text;
 
                 try
                 {
@@ -100,6 +131,66 @@ namespace BugReport.Reports
                 }
                 Console.Write(text.Replace("<br/>", ""));
             }
+        }
+
+        struct IssueEntry
+        {
+            public string IssueId;
+            public string Title;
+            public string LabelsText;
+            public string AssignedToText;
+
+            public IssueEntry(Issue issue, string assignedToOverride = null)
+            {
+                string idPrefix = "";
+                if (issue.IsPullRequest)
+                {
+                    idPrefix = "PR ";
+                }
+                IssueId = string.Format("{0}#<a href=\"{1}\">{2}</a>", idPrefix, issue.HtmlUrl, issue.Number);
+                Title = issue.Title;
+                LabelsText = string.Join(", ", issue.Labels.Select(l => l.Name));
+                if (assignedToOverride != null)
+                {
+                    AssignedToText = assignedToOverride;
+                }
+                else if (issue.Assignee != null)
+                {
+                    AssignedToText = string.Format("<a href=\"{0}\">@{1}</a>", issue.Assignee.HtmlUrl, issue.Assignee.Login);
+                }
+                else
+                {
+                    AssignedToText = "";
+                }
+            }
+        }
+
+        string FormatIssueTable(IEnumerable<IssueEntry> issues)
+        {
+            StringBuilder text = new StringBuilder();
+            text.AppendLine("<table>");
+            text.AppendLine("  <tr>");
+            text.AppendLine("    <th>Issue #</th>");
+            text.AppendLine("    <th>Title</th>");
+            text.AppendLine("    <th>Assigned To</th>");
+            text.AppendLine("  </tr>");
+            foreach (IssueEntry issue in issues)
+            {
+                text.AppendLine(  "  <tr>");
+                text.AppendFormat("    <td>{0}</td>", issue.IssueId).AppendLine();
+                text.AppendLine(  "    <td>");
+                text.AppendFormat("      {0}", issue.Title).AppendLine();
+                if (issue.LabelsText != null)
+                {
+                    text.AppendFormat("      <ul><li>{0}</li></ul>", issue.LabelsText).AppendLine();
+                }
+                text.AppendLine(  "    </td>");
+                text.AppendFormat("    <td>{0}</td>", issue.AssignedToText).AppendLine();
+                text.AppendLine(  "  </tr>");
+            }
+            text.AppendLine("</table>");
+
+            return text.ToString();
         }
 
         IEnumerable<Alert> Alerts = new List<Alert>();

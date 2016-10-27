@@ -15,7 +15,7 @@ class Program
         Console.WriteLine("  cache - will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json");
         Console.WriteLine("  report <input.json> <output.html> - Creates report of GitHub issues from cached .json file");
         Console.WriteLine("  diff <input1.json> <input2.json> <config.json> <out.html> - Creates diff report of GitHub issues between 2 cached .json files");
-        Console.WriteLine("  alerts <input1.json> <input2.json> <alerts.xml> - Sends alert emails based on .xml config");
+        Console.WriteLine("  alerts <input1.json> <input2.json> <emailTemplate.html> <alerts.xml> - Sends alert emails based on .xml config");
     }
 
     static void Main(string[] args)
@@ -37,9 +37,9 @@ class Program
                 DiffReport(args[1], args[2], args[3], args[4]);
                 return;
             }
-            if (args[0].Equals("alerts", StringComparison.OrdinalIgnoreCase) && (args.Length == 4))
+            if (args[0].Equals("alerts", StringComparison.OrdinalIgnoreCase) && (args.Length == 5))
             {
-                SendAlerts(args[1], args[2], args[3]);
+                SendAlerts(args[1], args[2], args[3], args[4]);
                 return;
             }
         }
@@ -69,12 +69,13 @@ class Program
         report.Write(IssueCollection.LoadFrom(inputJsonFileName), outputHtmlFileName);
     }
 
-    static void SendAlerts(string input1JsonFileName, string input2JsonFileName, string alertsXmlFileName)
+    static void SendAlerts(string input1JsonFileName, string input2JsonFileName, string htmlTemplateFileName, string alertsXmlFileName)
     {
         AlertsReport report = new AlertsReport(alertsXmlFileName);
         report.SendEmails(
             IssueCollection.LoadFrom(input1JsonFileName),
-            IssueCollection.LoadFrom(input2JsonFileName));
+            IssueCollection.LoadFrom(input2JsonFileName),
+            htmlTemplateFileName);
     }
 
     static void QueryReport(string inputJsonFileName, string congifgXmlFileName, string outputHtmlFileName)
