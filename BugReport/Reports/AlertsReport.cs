@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Mail;
 using System.Text;
-using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using BugReport.Query;
 using BugReport.DataModel;
-using System.Text.RegularExpressions;
 
 namespace BugReport.Reports
 {
@@ -37,10 +35,17 @@ namespace BugReport.Reports
                 IEnumerable<Issue> goneIssues = queryStart.Except(queryEnd);
                 IEnumerable<Issue> newIssues = queryEnd.Except(queryStart);
 
+                Console.WriteLine("Alert: {0}", alert.Name);
                 if (!goneIssues.Any() && !newIssues.Any())
                 {
+                    Console.WriteLine("    No changes to the query, skipping.");
+                    Console.WriteLine();
                     continue;
                 }
+
+                // 
+                // Prepare email
+                // 
 
                 MailMessage message = new MailMessage();
                 message.From = new MailAddress(Environment.UserName + "@microsoft.com");
@@ -52,16 +57,93 @@ namespace BugReport.Reports
                 {
                     message.To.Add(user.EmailAddress);
                 }
-                message.Subject = "Test email from my tool";
                 message.IsBodyHtml = true;
 
-                //string text = htmlTemplate.Replace
+                // 
+                // Substitute values in email template (incl. subject and body)
+                // 
 
-                //htmlText.Replace()
-
-                //StringBuilder text = new StringBuilder(htmlTemplate);
                 string text = htmlTemplate;
+
                 text = text.Replace("%ALERT_NAME%", alert.Name);
+
+                // 
+                // Parse shouldSendEmail
+                // 
+
+                bool shouldSendEmail = true;
+                {
+                    Regex sendEmailRegex = new Regex("%SEND_EMAIL%=(.*)\r\n");
+                    Match sendEmailMatch = sendEmailRegex.Match(text);
+                    if (!sendEmailMatch.Success)
+                    {
+                        throw new InvalidDataException(string.Format("Missing %SEND_EMAIL% entry in email template {0}", htmlTemplateFileName));
+                    }
+
+                    string sendEmail = sendEmailMatch.Groups[1].Value;
+                    if (sendEmailMatch.NextMatch().Success)
+                    {
+                        throw new InvalidDataException(string.Format("Multiple %SEND_EMAIL% entries in email template {0}", htmlTemplateFileName));
+                    }
+
+                    if (sendEmail == "0")
+                    {
+                        shouldSendEmail = false;
+                    }
+                    else if (sendEmail == "1")
+                    {
+                        shouldSendEmail = true;
+                    }
+                    else
+                    {
+                        throw new InvalidDataException(string.Format("Invalid %SEND_EMAIL% value \"{1}\", either 0 or 1 value expected in email template {0}", htmlTemplateFileName, sendEmail));
+                    }
+
+                    text = sendEmailRegex.Replace(text, "");
+                }
+
+                // 
+                // Parse file name
+                // 
+
+                string fileName;
+                {
+                    Regex fileNameRegex = new Regex("%FILE_NAME%=(.*)\r\n");
+                    Match fileNameMatch = fileNameRegex.Match(text);
+                    if (!fileNameMatch.Success)
+                    {
+                        throw new InvalidDataException(string.Format("Missing %FILE_NAME% entry in email template {0}", htmlTemplateFileName));
+                    }
+                    fileName = fileNameMatch.Groups[1].Value;
+                    if (fileNameMatch.NextMatch().Success)
+                    {
+                        throw new InvalidDataException(string.Format("Multiple %FILE_NAME% entries in email template {0}", htmlTemplateFileName));
+                    }
+                    text = fileNameRegex.Replace(text, "");
+                }
+
+                // 
+                // Parse email subject
+                // 
+
+                {
+                    Regex titleRegex = new Regex("%SUBJECT%=(.*)\r\n");
+                    Match titleMatch = titleRegex.Match(text);
+                    if (!titleMatch.Success)
+                    {
+                        throw new InvalidDataException(string.Format("Can't find subject in email template {0}", htmlTemplateFileName));
+                    }
+                    message.Subject = titleMatch.Groups[1].Value;
+                    if (titleMatch.NextMatch().Success)
+                    {
+                        throw new InvalidDataException(string.Format("Multiple subjects in email template {0}", htmlTemplateFileName));
+                    }
+                    text = titleRegex.Replace(text, "");
+                }
+
+                // 
+                // Substitute parts of email body
+                // 
 
                 if (!goneIssues.Any() || !newIssues.Any())
                 {
@@ -108,9 +190,33 @@ namespace BugReport.Reports
 
                 message.Body = text;
 
+                // 
+                // Generate report file and send email
+                // 
+
+                bool fileWritten = false;
+                if (fileName != "")
+                {
+                    try
+                    {
+                        File.WriteAllText(fileName, text);
+                        fileWritten = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("ERROR writing alert {0} into file {1}", alert.Name, fileName);
+                        Console.WriteLine(ex);
+                    }
+                }
+
+                bool emailSent = false;
                 try
                 {
-                    smtpClient.Send(message);
+                    if (shouldSendEmail)
+                    {
+                        smtpClient.Send(message);
+                        emailSent = true;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -118,18 +224,34 @@ namespace BugReport.Reports
                     Console.WriteLine(ex);
                 }
 
-                Console.WriteLine("Alert {0}", alert.Name);
-                Console.WriteLine("    Onwers:");
+                // 
+                // Logging
+                // 
+
+                if (fileName != "")
+                {
+                    Console.WriteLine("    Report: {0}", fileName);
+                    if (!fileWritten)
+                    {
+                        Console.WriteLine("        FAILED!!!");
+                    }
+                }
+                Console.WriteLine("    Email: {0}", emailSent ? "sent" : (shouldSendEmail ? "FAILED!!!" : "skipped"));
+                Console.WriteLine("        To:");
                 foreach (Alert.User user in alert.Owners)
                 {
-                    Console.WriteLine("        {0} - {1}", user.Name, user.EmailAddress);
+                    Console.WriteLine("            {0} - {1}", user.Name, user.EmailAddress);
                 }
-                Console.WriteLine("    CC:");
+                Console.WriteLine("        CC:");
                 foreach (Alert.User user in alert.CCs)
                 {
-                    Console.WriteLine("        {0} - {1}", user.Name, user.EmailAddress);
+                    Console.WriteLine("            {0} - {1}", user.Name, user.EmailAddress);
                 }
-                Console.Write(text.Replace("<br/>", ""));
+                if (fileName == "")
+                {
+                    Console.Write(text.Replace("<br/>", ""));
+                }
+                Console.WriteLine();
             }
         }
 
@@ -182,7 +304,7 @@ namespace BugReport.Reports
                 text.AppendFormat("      {0}", issue.Title).AppendLine();
                 if (issue.LabelsText != null)
                 {
-                    text.AppendFormat("      <ul><li>{0}</li></ul>", issue.LabelsText).AppendLine();
+                    text.AppendFormat("      <br/><div class=\"labels\">Labels: {0}</div>", issue.LabelsText).AppendLine();
                 }
                 text.AppendLine(  "    </td>");
                 text.AppendFormat("    <td>{0}</td>", issue.AssignedToText).AppendLine();
