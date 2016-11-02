@@ -15,37 +15,47 @@ class Program
         Console.WriteLine("  cache - will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json");
         Console.WriteLine("  report <input.json> <output.html> - Creates report of GitHub issues from cached .json file");
         Console.WriteLine("  diff <input1.json> <input2.json> <config.json> <out.html> - Creates diff report of GitHub issues between 2 cached .json files");
-        Console.WriteLine("  alerts <input1.json> <input2.json> <emailTemplate.html> <alerts.xml> - Sends alert emails based on .xml config");
+        Console.WriteLine("  alerts <input1.json> <input2.json> <emailTemplate.html> <alerts.xml> [<alert_name>] - Sends alert emails based on .xml config, optinally filtered to just alert_name");
     }
 
     static void Main(string[] args)
     {
-        if (args.Length >= 1)
+        try
         {
-            if (args[0].Equals("cache", StringComparison.OrdinalIgnoreCase) && (args.Length == 1))
+            if (args.Length >= 1)
             {
-                CacheGitHubIssues();
-                return;
+                if (args[0].Equals("cache", StringComparison.OrdinalIgnoreCase) && (args.Length == 1))
+                {
+                    CacheGitHubIssues();
+                    return;
+                }
+                if (args[0].Equals("report", StringComparison.OrdinalIgnoreCase) && (args.Length == 3))
+                {
+                    HtmlReport(args[1], args[2]);
+                    return;
+                }
+                if (args[0].Equals("diff", StringComparison.OrdinalIgnoreCase) && (args.Length == 5))
+                {
+                    DiffReport(args[1], args[2], args[3], args[4]);
+                    return;
+                }
+                if (args[0].Equals("alerts", StringComparison.OrdinalIgnoreCase) && ((args.Length == 5) || (args.Length == 6)))
+                {
+                    string alertName = (args.Length == 6) ? args[5] : null;
+                    SendAlerts(args[1], args[2], args[3], args[4], alertName);
+                    return;
+                }
             }
-            if (args[0].Equals("report", StringComparison.OrdinalIgnoreCase) && (args.Length == 3))
-            {
-                HtmlReport(args[1], args[2]);
-                return;
-            }
-            if (args[0].Equals("diff", StringComparison.OrdinalIgnoreCase) && (args.Length == 5))
-            {
-                DiffReport(args[1], args[2], args[3], args[4]);
-                return;
-            }
-            if (args[0].Equals("alerts", StringComparison.OrdinalIgnoreCase) && (args.Length == 5))
-            {
-                SendAlerts(args[1], args[2], args[3], args[4]);
-                return;
-            }
+            PrintUsage();
         }
-        PrintUsage();
-        
-        //DeserializeTest("Issues_2016-09-07@16-55.test.json");
+        catch (Exception ex)
+        {
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine("Catastrophic failure:");
+            Console.WriteLine(ex);
+        }
     }
 
     static void CacheGitHubIssues()
@@ -69,13 +79,14 @@ class Program
         report.Write(IssueCollection.LoadFrom(inputJsonFileName), outputHtmlFileName);
     }
 
-    static void SendAlerts(string input1JsonFileName, string input2JsonFileName, string htmlTemplateFileName, string alertsXmlFileName)
+    static void SendAlerts(string input1JsonFileName, string input2JsonFileName, string htmlTemplateFileName, string alertsXmlFileName, string alertName)
     {
         AlertsReport report = new AlertsReport(alertsXmlFileName);
         report.SendEmails(
             IssueCollection.LoadFrom(input1JsonFileName),
             IssueCollection.LoadFrom(input2JsonFileName),
-            htmlTemplateFileName);
+            htmlTemplateFileName,
+            alertName);
     }
 
     static void QueryReport(string inputJsonFileName, string congifgXmlFileName, string outputHtmlFileName)

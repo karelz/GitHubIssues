@@ -19,7 +19,7 @@ namespace BugReport.Reports
             Alerts = loader.Load(alertsXmlFileName);
         }
 
-        public void SendEmails(IssueCollection issuesStart, IssueCollection issuesEnd, string htmlTemplateFileName)
+        public void SendEmails(IssueCollection issuesStart, IssueCollection issuesEnd, string htmlTemplateFileName, string filteredAlertName)
         {
             string htmlTemplate = File.ReadAllText(htmlTemplateFileName);
 
@@ -43,6 +43,13 @@ namespace BugReport.Reports
                     continue;
                 }
 
+                if ((filteredAlertName != null) && (filteredAlertName != alert.Name))
+                {
+                    Console.WriteLine("    Filtered alert");
+                    Console.WriteLine();
+                    continue;
+                }
+
                 // 
                 // Prepare email
                 // 
@@ -55,7 +62,7 @@ namespace BugReport.Reports
                 }
                 foreach (Alert.User user in alert.CCs)
                 {
-                    message.To.Add(user.EmailAddress);
+                    message.CC.Add(user.EmailAddress);
                 }
                 message.IsBodyHtml = true;
 
@@ -147,17 +154,17 @@ namespace BugReport.Reports
 
                 if (!goneIssues.Any() || !newIssues.Any())
                 {
-                    Regex regex = new Regex("%ALL_ISSUES_START%.*%ALL_ISSUES_END%");
+                    Regex regex = new Regex("%ALL_ISSUES_START%(.|\n)*%ALL_ISSUES_END%");
                     text = regex.Replace(text, "");
 
                     if (!goneIssues.Any())
                     {
-                        regex = new Regex("%GONE_ISSUES_START%.*%GONE_ISSUES_END%");
+                        regex = new Regex("%GONE_ISSUES_START%(.|\n)*%GONE_ISSUES_END%");
                         text = regex.Replace(text, "");
                     }
                     if (!newIssues.Any())
                     {
-                        regex = new Regex("%NEW_ISSUES_START%.*%NEW_ISSUES_END%");
+                        regex = new Regex("%NEW_ISSUES_START%(.|\n)*%NEW_ISSUES_END%");
                         text = regex.Replace(text, "");
                     }
                 }
@@ -237,6 +244,7 @@ namespace BugReport.Reports
                     }
                 }
                 Console.WriteLine("    Email: {0}", emailSent ? "sent" : (shouldSendEmail ? "FAILED!!!" : "skipped"));
+                Console.WriteLine("        Subject: {0}", message.Subject);
                 Console.WriteLine("        To:");
                 foreach (Alert.User user in alert.Owners)
                 {
