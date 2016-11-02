@@ -18,7 +18,7 @@ namespace BugReport.Reports
         public AlertsReport(string alertsXmlFileName, bool skipEmail)
         {
             ConfigLoader loader = new ConfigLoader();
-            Alerts = loader.Load(alertsXmlFileName);
+            loader.Load(alertsXmlFileName, out _alerts, out _labels);
 
             this.skipEmail = skipEmail;
 
@@ -29,14 +29,17 @@ namespace BugReport.Reports
             }
         }
 
-        public void SendEmails(IssueCollection issuesStart, IssueCollection issuesEnd, string htmlTemplateFileName, string filteredAlertName)
+        // Returns false if any of the emails failed to be sent
+        public bool SendEmails(IssueCollection issuesStart, IssueCollection issuesEnd, string htmlTemplateFileName, string filteredAlertName)
         {
+            bool isAllEmailsSendSuccessful = true;
+
             string htmlTemplate = File.ReadAllText(htmlTemplateFileName);
 
             SmtpClient smtpClient = new SmtpClient("smtphost");
             smtpClient.UseDefaultCredentials = true;
 
-            foreach (Alert alert in Alerts)
+            foreach (Alert alert in _alerts)
             {
                 alert.Query.Validate(issuesEnd);
                 IEnumerable<Issue> queryStart = alert.Query.Evaluate(issuesStart);
@@ -239,6 +242,8 @@ namespace BugReport.Reports
                 }
                 catch (Exception ex)
                 {
+                    isAllEmailsSendSuccessful = false;
+
                     Console.WriteLine("ERROR sending alert {0}", alert.Name);
                     Console.WriteLine(ex);
                 }
@@ -273,6 +278,8 @@ namespace BugReport.Reports
                 }
                 Console.WriteLine();
             }
+
+            return isAllEmailsSendSuccessful;
         }
 
         struct IssueEntry
@@ -335,16 +342,31 @@ namespace BugReport.Reports
             return text.ToString();
         }
 
-        IEnumerable<Alert> Alerts = new List<Alert>();
+
+        IEnumerable<Alert> _alerts;
+        IEnumerable<Label> _labels;
+        public IEnumerable<Label> Labels
+        {
+            get
+            {
+                return _labels;
+            }
+        }
 
         private class ConfigLoader
         {
             List<Alert.User> Users = new List<Alert.User>();
 
-            public IEnumerable<Alert> Load(string alertsXmlFileName)
+            public void Load(string alertsXmlFileName, out IEnumerable<Alert> alerts, out IEnumerable<Label> labels)
             {
                 XElement root = XElement.Load(alertsXmlFileName);
+                LoadUsers(root);
+                alerts = LoadAlerts(root);
+                labels = LoadLabels(root);
+            }
 
+            void LoadUsers(XElement root)
+            {
                 foreach (XElement usersNode in root.Descendants("users"))
                 {
                     string defaultEmailServer = null;
@@ -396,7 +418,10 @@ namespace BugReport.Reports
                         Users.Add(new Alert.User(name, email, emailAlias, gitHubLogin));
                     }
                 }
+            }
 
+            IEnumerable<Alert> LoadAlerts(XElement root)
+            {
                 foreach (XElement alertsNode in root.Descendants("alerts"))
                 {
                     foreach (XElement alertNode in alertsNode.Descendants("alert"))
@@ -417,6 +442,17 @@ namespace BugReport.Reports
                             throw new InvalidDataException("Invalid query in alert: " + alertName, ex);
                         }
                         yield return alert;
+                    }
+                }
+            }
+
+            IEnumerable<Label> LoadLabels(XElement root)
+            {
+                foreach (XElement labelsNode in root.Descendants("labels"))
+                {
+                    foreach (XElement labelNode in labelsNode.Descendants("label"))
+                    {
+                        yield return new Label(labelNode.Attribute("name").Value);
                     }
                 }
             }

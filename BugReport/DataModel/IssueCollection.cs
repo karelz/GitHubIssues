@@ -100,13 +100,29 @@ namespace BugReport.DataModel
             }
         }
 
-        public static IssueCollection LoadFrom(string fileName, IssueKindFlags issueKind = IssueKindFlags.All)
+        public static IssueCollection LoadFrom(string fileName, IssueKindFlags issueKind = IssueKindFlags.All, IEnumerable<Label> labels = null)
         {
             JsonSerializer serializer = new JsonSerializer();
             using (StreamReader sr = new StreamReader(fileName))
             using (JsonReader reader = new JsonTextReader(sr))
             {
-                return new IssueCollection(serializer.Deserialize<List<Issue>>(reader).Where(i => i.IsIssueKind(issueKind)));
+                IssueCollection issues = new IssueCollection(serializer.Deserialize<List<Issue>>(reader).Where(i => i.IsIssueKind(issueKind)));
+                issues.LoadLabels(labels);
+                return issues;
+            }
+        }
+
+        void LoadLabels(IEnumerable<Label> labels)
+        {
+            if (labels != null)
+            {
+                foreach (Label label in labels)
+                {
+                    if (!LabelsMap.ContainsKey(label.Name))
+                    {
+                        LabelsMap[label.Name] = label;
+                    }
+                }
             }
         }
     }

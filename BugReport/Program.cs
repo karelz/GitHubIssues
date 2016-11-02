@@ -19,7 +19,15 @@ class Program
         Console.WriteLine("      alerts_SkipEmail or set SEND_EMAIL=0 - Won't send any emails");
     }
 
-    static void Main(string[] args)
+    enum ErrorCode
+    {
+        Success = 0,
+        InvalidCommand = -1,
+        EmailSendFailure = -50,
+        CatastrophicFailure = -100
+    }
+
+    static int Main(string[] args)
     {
         try
         {
@@ -28,17 +36,17 @@ class Program
                 if (args[0].Equals("cache", StringComparison.OrdinalIgnoreCase) && (args.Length == 2))
                 {
                     CacheGitHubIssues(args[1]);
-                    return;
+                    return (int)ErrorCode.Success;
                 }
                 if (args[0].Equals("report", StringComparison.OrdinalIgnoreCase) && (args.Length == 3))
                 {
                     HtmlReport(args[1], args[2]);
-                    return;
+                    return (int)ErrorCode.Success;
                 }
                 if (args[0].Equals("diff", StringComparison.OrdinalIgnoreCase) && (args.Length == 5))
                 {
                     DiffReport(args[1], args[2], args[3], args[4]);
-                    return;
+                    return (int)ErrorCode.Success;
                 }
                 if ((args[0].Equals("alerts", StringComparison.OrdinalIgnoreCase)
                      || args[0].Equals("alerts_SkipEmail", StringComparison.OrdinalIgnoreCase))
@@ -46,11 +54,12 @@ class Program
                 {
                     bool skipEmail = args[0].Equals("alerts_SkipEmail", StringComparison.OrdinalIgnoreCase);
                     string alertName = (args.Length == 6) ? args[5] : null;
-                    SendAlerts(args[1], args[2], args[3], args[4], alertName, skipEmail);
-                    return;
+                    bool isAllEmailSendSuccessful = SendAlerts(args[1], args[2], args[3], args[4], alertName, skipEmail);
+                    return (int)(isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure);
                 }
             }
             PrintUsage();
+            return (int)ErrorCode.InvalidCommand;
         }
         catch (Exception ex)
         {
@@ -59,6 +68,7 @@ class Program
             Console.WriteLine();
             Console.WriteLine("Catastrophic failure:");
             Console.WriteLine(ex);
+            return (int)ErrorCode.CatastrophicFailure;
         }
     }
 
@@ -72,8 +82,8 @@ class Program
     static void DiffReport(string input1JsonFileName, string input2JsonFileName, string configJsonFileName, string outputHtmlFileName)
     {
         DiffReport report = new DiffReport(
-            IssueCollection.LoadFrom(input1JsonFileName, IssueKindFlags.Issue),
-            IssueCollection.LoadFrom(input2JsonFileName, IssueKindFlags.Issue));
+            IssueCollection.LoadFrom(input1JsonFileName, issueKind: IssueKindFlags.Issue),
+            IssueCollection.LoadFrom(input2JsonFileName, issueKind: IssueKindFlags.Issue));
         report.Report(configJsonFileName, outputHtmlFileName);
     }
 
@@ -83,59 +93,14 @@ class Program
         report.Write(IssueCollection.LoadFrom(inputJsonFileName), outputHtmlFileName);
     }
 
-    static void SendAlerts(string input1JsonFileName, string input2JsonFileName, string htmlTemplateFileName, string alertsXmlFileName, string alertName, bool skipEmail)
+    // Returns false if any of the emails failed to be sent
+    static bool SendAlerts(string input1JsonFileName, string input2JsonFileName, string htmlTemplateFileName, string alertsXmlFileName, string alertName, bool skipEmail)
     {
         AlertsReport report = new AlertsReport(alertsXmlFileName, skipEmail);
-        report.SendEmails(
-            IssueCollection.LoadFrom(input1JsonFileName),
-            IssueCollection.LoadFrom(input2JsonFileName),
+        return report.SendEmails(
+            IssueCollection.LoadFrom(input1JsonFileName, labels: report.Labels),
+            IssueCollection.LoadFrom(input2JsonFileName, labels: report.Labels),
             htmlTemplateFileName,
             alertName);
-    }
-
-    static void QueryReport(string inputJsonFileName, string congifgXmlFileName, string outputHtmlFileName)
-    {
-        IssueCollection issues = IssueCollection.LoadFrom(inputJsonFileName);
-
-        using (StreamWriter output = new StreamWriter(outputHtmlFileName))
-        {
-            output.WriteLine("<html><body>");
-            XElement rootElement = XElement.Load(congifgXmlFileName);
-            foreach (XElement queryElement in rootElement.Descendants("query"))
-            {
-                string queryText = queryElement.Value;
-                QueryParser queryParser = new QueryParser(queryText);
-                Expression queryExpression = queryParser.Parse();
-
-                queryExpression.Validate(issues);
-                IEnumerable<Issue> queryIssues = issues.Issues.Where(i => queryExpression.Evaluate(i));
-
-                output.WriteLine("<p>");
-                output.WriteLine("Query: {0}", queryText);
-                output.WriteLine("<br/>");
-                output.WriteLine("Issues: <a href=\"{1}\">{0}</a>", queryIssues.Count(), GitHubQuery.GetHyperLink(queryIssues));
-                output.WriteLine("</p>");
-
-                output.WriteLine("<table border =\"1\">");
-                foreach (Issue issue in queryIssues)
-                {
-                    string issueLink = issue.HtmlUrl;
-                    output.WriteLine("  <tr>");
-                    output.WriteLine("    <td><a href=\"{0}\">#{1}</a></td>", issue.HtmlUrl, issue.Number);
-                    output.WriteLine("    <td>{0}</td>", issue.Title);
-                    if (issue.Assignee != null)
-                    {
-                        output.WriteLine("    <td><a href=\"{0}\">@{1}</a></td>", issue.Assignee.HtmlUrl, issue.Assignee.Login);
-                    }
-                    else
-                    {
-                        output.WriteLine("    <td>&nbsp;</td>");
-                    }
-                    output.WriteLine("  </tr>");
-                }
-                output.WriteLine("</table>");
-            }
-            output.WriteLine("</body></html>");
-        }
     }
 }
