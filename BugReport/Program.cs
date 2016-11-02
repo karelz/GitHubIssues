@@ -12,10 +12,11 @@ class Program
     static void PrintUsage()
     {
         Console.WriteLine("Usage:");
-        Console.WriteLine("  cache - will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json");
+        Console.WriteLine("  cache <alerts.xml> - will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json");
         Console.WriteLine("  report <input.json> <output.html> - Creates report of GitHub issues from cached .json file");
         Console.WriteLine("  diff <input1.json> <input2.json> <config.json> <out.html> - Creates diff report of GitHub issues between 2 cached .json files");
         Console.WriteLine("  alerts <input1.json> <input2.json> <emailTemplate.html> <alerts.xml> [<alert_name>] - Sends alert emails based on .xml config, optinally filtered to just alert_name");
+        Console.WriteLine("      alerts_SkipEmail or set SEND_EMAIL=0 - Won't send any emails");
     }
 
     static void Main(string[] args)
@@ -24,9 +25,9 @@ class Program
         {
             if (args.Length >= 1)
             {
-                if (args[0].Equals("cache", StringComparison.OrdinalIgnoreCase) && (args.Length == 1))
+                if (args[0].Equals("cache", StringComparison.OrdinalIgnoreCase) && (args.Length == 2))
                 {
-                    CacheGitHubIssues();
+                    CacheGitHubIssues(args[1]);
                     return;
                 }
                 if (args[0].Equals("report", StringComparison.OrdinalIgnoreCase) && (args.Length == 3))
@@ -39,10 +40,13 @@ class Program
                     DiffReport(args[1], args[2], args[3], args[4]);
                     return;
                 }
-                if (args[0].Equals("alerts", StringComparison.OrdinalIgnoreCase) && ((args.Length == 5) || (args.Length == 6)))
+                if ((args[0].Equals("alerts", StringComparison.OrdinalIgnoreCase)
+                     || args[0].Equals("alerts_SkipEmail", StringComparison.OrdinalIgnoreCase))
+                    && ((args.Length == 5) || (args.Length == 6)))
                 {
+                    bool skipEmail = args[0].Equals("alerts_SkipEmail", StringComparison.OrdinalIgnoreCase);
                     string alertName = (args.Length == 6) ? args[5] : null;
-                    SendAlerts(args[1], args[2], args[3], args[4], alertName);
+                    SendAlerts(args[1], args[2], args[3], args[4], alertName, skipEmail);
                     return;
                 }
             }
@@ -58,9 +62,9 @@ class Program
         }
     }
 
-    static void CacheGitHubIssues()
+    static void CacheGitHubIssues(string alertsXmlFileName)
     {
-        Repository repo = new Repository("dotnet", "corefx");
+        Repository repo = new Repository(alertsXmlFileName);
         repo.LoadIssues();
         repo.SerializeIssues(string.Format("Issues_{0:yyyy-MM-dd@HH-mm}.json", DateTime.Now));
     }
@@ -79,9 +83,9 @@ class Program
         report.Write(IssueCollection.LoadFrom(inputJsonFileName), outputHtmlFileName);
     }
 
-    static void SendAlerts(string input1JsonFileName, string input2JsonFileName, string htmlTemplateFileName, string alertsXmlFileName, string alertName)
+    static void SendAlerts(string input1JsonFileName, string input2JsonFileName, string htmlTemplateFileName, string alertsXmlFileName, string alertName, bool skipEmail)
     {
-        AlertsReport report = new AlertsReport(alertsXmlFileName);
+        AlertsReport report = new AlertsReport(alertsXmlFileName, skipEmail);
         report.SendEmails(
             IssueCollection.LoadFrom(input1JsonFileName),
             IssueCollection.LoadFrom(input2JsonFileName),

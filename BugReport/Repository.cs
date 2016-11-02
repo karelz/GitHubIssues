@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Octokit;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -13,10 +14,28 @@ public class Repository
     public string Owner { get; private set; }
     public string Name { get; private set; }
 
-    public Repository(string owner, string name)
+    public Repository(string alertsXmlFileName)
     {
-        Owner = owner;
-        Name = name;
+        XElement root = XElement.Load(alertsXmlFileName);
+
+        IEnumerable<XElement> repositoryNodes = root.Descendants("repository");
+        if (!repositoryNodes.Any())
+        {
+            throw new InvalidDataException("Missing 'repository' node");
+        }
+        if (repositoryNodes.Count() > 1)
+        {
+            throw new InvalidDataException("Duplicate 'repository' node defined");
+        }
+
+        string repoName = repositoryNodes.First().Attribute("name").Value;
+        string[] repoNameParts = repoName.Split('/');
+        if (repoNameParts.Length != 2)
+        {
+            throw new InvalidDataException("Invalid repository name format: " + repoName);
+        }
+        Owner = repoNameParts[0];
+        Name = repoNameParts[1];
     }
 
     public static string s_GitHubProductIdentifier = "GitHubBugReporter";
@@ -69,44 +88,4 @@ public class Repository
             serializer.Serialize(writer, Issues);
         }
     }
-}
-
-public static class IssueExtensions
-{
-    public static void PrintIssue(this Issue issue)
-    {
-        Console.WriteLine("Number: {0}", issue.Number);
-        Console.WriteLine("PullRequest: {0}", (issue.PullRequest == null) ? "Issue" : ("PullRequest: " + issue.PullRequest.ToString()));
-        Console.WriteLine("State: {0}", issue.State);
-        Console.WriteLine("Assignee.Name:  {0}", (issue.Assignee == null) ? "<null>" : issue.Assignee.Name);
-        Console.WriteLine("        .Login: {0}", (issue.Assignee == null) ? "<null>" : issue.Assignee.Login);
-        Console.WriteLine("Labels.Name:");
-        foreach (Label label in issue.Labels)
-        {
-            Console.WriteLine("    {0}", label.Name);
-        }
-        Console.WriteLine("Title: {0}", issue.Title);
-        Console.WriteLine("Milestone.Title: {0}", (issue.Milestone == null) ? "<null>" : issue.Milestone.Title);
-        Console.WriteLine("User.Name:  {0}", (issue.User == null) ? "<null>" : issue.User.Name);
-        Console.WriteLine("    .Login: {0}", (issue.User == null) ? "<null>" : issue.User.Login);
-        Console.WriteLine("CreatedAt: {0}", issue.CreatedAt);
-        Console.WriteLine("UpdatedAt: {0}", issue.UpdatedAt);
-        Console.WriteLine("ClosedAt:  {0}", issue.ClosedAt);
-        Console.WriteLine("ClosedBy.Name:  {0}", (issue.ClosedBy == null) ? "<null>" : issue.ClosedBy.Name);
-        Console.WriteLine("        .Login: {0}", (issue.ClosedBy == null) ? "<null>" : issue.ClosedBy.Login);
-    }
-
-    /*
-    public static void SerializeIssue(this Issue issue, string fileName)
-    {
-        JsonSerializer serializer = new JsonSerializer();
-        serializer.Formatting = Formatting.Indented;
-
-        using (StreamWriter sw = new StreamWriter(fileName))
-        using (JsonWriter writer = new JsonTextWriter(sw))
-        {
-            serializer.Serialize(writer, issue);
-        }
-    }
-    */
 }

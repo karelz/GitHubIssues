@@ -13,10 +13,20 @@ namespace BugReport.Reports
 {
     public class AlertsReport
     {
-        public AlertsReport(string alertsXmlFileName)
+        bool skipEmail;
+
+        public AlertsReport(string alertsXmlFileName, bool skipEmail)
         {
             ConfigLoader loader = new ConfigLoader();
             Alerts = loader.Load(alertsXmlFileName);
+
+            this.skipEmail = skipEmail;
+
+            string sendEmailEnvironmentVariable = Environment.GetEnvironmentVariable("SEND_EMAIL");
+            if (sendEmailEnvironmentVariable == "0")
+            {
+                skipEmail = true;
+            }
         }
 
         public void SendEmails(IssueCollection issuesStart, IssueCollection issuesEnd, string htmlTemplateFileName, string filteredAlertName)
@@ -82,31 +92,33 @@ namespace BugReport.Reports
                 {
                     Regex sendEmailRegex = new Regex("%SEND_EMAIL%=(.*)\r\n");
                     Match sendEmailMatch = sendEmailRegex.Match(text);
-                    if (!sendEmailMatch.Success)
+                    if (sendEmailMatch.Success)
                     {
-                        throw new InvalidDataException(string.Format("Missing %SEND_EMAIL% entry in email template {0}", htmlTemplateFileName));
-                    }
+                        string sendEmail = sendEmailMatch.Groups[1].Value;
+                        if (sendEmailMatch.NextMatch().Success)
+                        {
+                            throw new InvalidDataException(string.Format("Multiple %SEND_EMAIL% entries in email template {0}", htmlTemplateFileName));
+                        }
 
-                    string sendEmail = sendEmailMatch.Groups[1].Value;
-                    if (sendEmailMatch.NextMatch().Success)
-                    {
-                        throw new InvalidDataException(string.Format("Multiple %SEND_EMAIL% entries in email template {0}", htmlTemplateFileName));
-                    }
+                        if (sendEmail == "0")
+                        {
+                            shouldSendEmail = false;
+                        }
+                        else if (sendEmail == "1")
+                        {
+                            shouldSendEmail = true;
+                        }
+                        else
+                        {
+                            throw new InvalidDataException(string.Format("Invalid %SEND_EMAIL% value \"{1}\", either 0 or 1 value expected in email template {0}", htmlTemplateFileName, sendEmail));
+                        }
 
-                    if (sendEmail == "0")
-                    {
-                        shouldSendEmail = false;
+                        text = sendEmailRegex.Replace(text, "");
                     }
-                    else if (sendEmail == "1")
-                    {
-                        shouldSendEmail = true;
-                    }
-                    else
-                    {
-                        throw new InvalidDataException(string.Format("Invalid %SEND_EMAIL% value \"{1}\", either 0 or 1 value expected in email template {0}", htmlTemplateFileName, sendEmail));
-                    }
-
-                    text = sendEmailRegex.Replace(text, "");
+                }
+                if (skipEmail)
+                {
+                    shouldSendEmail = false;
                 }
 
                 // 
