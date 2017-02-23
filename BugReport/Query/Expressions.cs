@@ -10,14 +10,14 @@ namespace BugReport.Query
 {
     public abstract class Expression
     {
-        public abstract bool Evaluate(Issue issue);
+        public abstract bool Evaluate(DataModelIssue issue);
         public abstract void Validate(IssueCollection collection);
 
-        public IEnumerable<Issue> Evaluate(IEnumerable<Issue> issues)
+        public IEnumerable<DataModelIssue> Evaluate(IEnumerable<DataModelIssue> issues)
         {
             return issues.Where(i => Evaluate(i));
         }
-        public IEnumerable<Issue> Evaluate(IssueCollection issues)
+        public IEnumerable<DataModelIssue> Evaluate(IssueCollection issues)
         {
             return Evaluate(issues.Issues);
         }
@@ -42,7 +42,7 @@ namespace BugReport.Query
         {
             this.expr = expr;
         }
-        public override bool Evaluate(Issue issue)
+        public override bool Evaluate(DataModelIssue issue)
         {
             return !expr.Evaluate(issue);
         }
@@ -64,7 +64,7 @@ namespace BugReport.Query
         {
             this.expressions = expressions;
         }
-        public override bool Evaluate(Issue issue)
+        public override bool Evaluate(DataModelIssue issue)
         {
             foreach (Expression expr in expressions)
             {
@@ -102,7 +102,7 @@ namespace BugReport.Query
         {
             this.expressions = expressions;
         }
-        public override bool Evaluate(Issue issue)
+        public override bool Evaluate(DataModelIssue issue)
         {
             foreach (Expression expr in expressions)
             {
@@ -139,7 +139,7 @@ namespace BugReport.Query
         {
             this.labelName = labelName;
         }
-        public override bool Evaluate(Issue issue)
+        public override bool Evaluate(DataModelIssue issue)
         {
             return issue.HasLabel(labelName);
         }
@@ -163,9 +163,9 @@ namespace BugReport.Query
         {
             this.isIssue = isIssue;
         }
-        public override bool Evaluate(Issue issue)
+        public override bool Evaluate(DataModelIssue issue)
         {
-            return issue.IsIssue == isIssue;
+            return issue.IsIssueOrComment == isIssue;
         }
         public override void Validate(IssueCollection collection)
         {
@@ -183,7 +183,7 @@ namespace BugReport.Query
         {
             this.isOpen = isOpen;
         }
-        public override bool Evaluate(Issue issue)
+        public override bool Evaluate(DataModelIssue issue)
         {
             return issue.IsOpen == isOpen;
         }
@@ -203,7 +203,7 @@ namespace BugReport.Query
         {
             this.milestoneName = milestoneName;
         }
-        public override bool Evaluate(Issue issue)
+        public override bool Evaluate(DataModelIssue issue)
         {
             return issue.IsMilestone(milestoneName);
         }
@@ -227,7 +227,7 @@ namespace BugReport.Query
         {
             this.assigneeName = assigneeName;
         }
-        public override bool Evaluate(Issue issue)
+        public override bool Evaluate(DataModelIssue issue)
         {
             return issue.HasAssignee(assigneeName);
         }

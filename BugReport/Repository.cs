@@ -8,11 +8,13 @@ using System.Xml.Linq;
 using Octokit;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Collections.Concurrent;
 
 public class Repository
 {
     public string Owner { get; private set; }
     public string Name { get; private set; }
+    public string Token { get; set; }
 
     public Repository(string alertsXmlFileName)
     {
@@ -41,11 +43,16 @@ public class Repository
     public static string s_GitHubProductIdentifier = "GitHubBugReporter";
 
     public IReadOnlyList<Issue> Issues;
+    public ConcurrentBag<IssueComment> IssueComments;
 
+    /// <summary>
+    /// Gets all of the issues in the repository, closed and open
+    /// </summary>
     public void LoadIssues()
     {
         GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
-
+        if (Token != null)
+            client.Credentials = new Credentials(Token);
         RepositoryIssueRequest issueRequest = new RepositoryIssueRequest
         {
             State = ItemStateFilter.Open,
@@ -58,12 +65,43 @@ public class Repository
         }).Wait();
     }
 
+    /// <summary>
+    /// Get all comment info for each open issue in the repo
+    /// </summary>
+    public void LoadIssueComments()
+    {
+        GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
+        if (Token != null)
+        {
+            client.Credentials = new Credentials(Token);
+        }
+
+        IssueComments = new ConcurrentBag<IssueComment>();
+        List<Task> tasks = new List<Task>();
+        foreach (Issue issue in Issues)
+        {
+            if (issue.State == ItemState.Open)
+            {
+                tasks.Add(Task.Run(async () =>
+                {
+                    IReadOnlyList<IssueComment> comments = await client.Issue.Comment.GetAllForIssue(Owner, Name, issue.Number);
+                    foreach (IssueComment comment in comments)
+                        IssueComments.Add(comment);
+                }));
+            }
+        }
+        Task.WaitAll(tasks.ToArray());
+    }
+
     public void LoadIssues(IEnumerable<int> issueNumbers)
     {
         GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
+        if (Token != null)
+        {
+            client.Credentials = new Credentials(Token);
+        }
 
         List<Issue> issues = new List<Issue>();
-
         foreach (int issueNumber in issueNumbers)
         {
             Issue issue = null;
@@ -77,7 +115,7 @@ public class Repository
         Issues = issues;
     }
 
-    public void SerializeIssues(string fileName)
+    public void SerializeToFile(string fileName, object objToSerialize)
     {
         JsonSerializer serializer = new JsonSerializer();
         serializer.Formatting = Formatting.Indented;
@@ -85,7 +123,7 @@ public class Repository
         using (StreamWriter sw = new StreamWriter(fileName))
         using (JsonWriter writer = new JsonTextWriter(sw))
         {
-            serializer.Serialize(writer, Issues);
+            serializer.Serialize(writer, objToSerialize);
         }
     }
 }

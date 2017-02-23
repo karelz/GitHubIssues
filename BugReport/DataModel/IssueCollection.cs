@@ -11,11 +11,11 @@ namespace BugReport.DataModel
 {
     public class IssueCollection
     {
-        public IEnumerable<Issue> Issues { get; private set; }
+        public IEnumerable<DataModelIssue> Issues { get; private set; }
 
-        public Issue GetIssue(int id)
+        public DataModelIssue GetIssue(int id)
         {
-            foreach (Issue issue in Issues)
+            foreach (DataModelIssue issue in Issues)
             {
                 if (issue.Number == id)
                 {
@@ -61,25 +61,28 @@ namespace BugReport.DataModel
             return MilestonesMap.ContainsKey(milestoneName);
         }
 
-        public IssueCollection(IEnumerable<Issue> issues)
+        public IssueCollection(IEnumerable<DataModelIssue> issues)
         {
             Issues = issues;
 
             LabelsMap = new Dictionary<string, Label>();
             MilestonesMap = new Dictionary<string, Milestone>();
 
-            foreach (Issue issue in issues)
+            foreach (DataModelIssue issue in issues)
             {
-                for (int i = 0; i < issue.Labels.Length; i++)
+                if (issue.Labels != null)
                 {
-                    string labelName = issue.Labels[i].Name;
-                    if (LabelsMap.ContainsKey(labelName))
+                    for (int i = 0; i < issue.Labels.Length; i++)
                     {
-                        issue.Labels[i] = LabelsMap[labelName];
-                    }
-                    else
-                    {
-                        LabelsMap[labelName] = issue.Labels[i];
+                        string labelName = issue.Labels[i].Name;
+                        if (LabelsMap.ContainsKey(labelName))
+                        {
+                            issue.Labels[i] = LabelsMap[labelName];
+                        }
+                        else
+                        {
+                            LabelsMap[labelName] = issue.Labels[i];
+                        }
                     }
                 }
 
@@ -106,7 +109,7 @@ namespace BugReport.DataModel
             using (StreamReader sr = new StreamReader(fileName))
             using (JsonReader reader = new JsonTextReader(sr))
             {
-                IssueCollection issues = new IssueCollection(serializer.Deserialize<List<Issue>>(reader).Where(i => i.IsIssueKind(issueKind)));
+                IssueCollection issues = new IssueCollection(serializer.Deserialize<List<DataModelIssue>>(reader).Where(i => i.IsIssueKind(issueKind)));
                 issues.LoadLabels(labels);
                 return issues;
             }

@@ -53,7 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DataModel\IssueCollection.cs" />
-    <Compile Include="DataModel\Issue.cs" />
+    <Compile Include="DataModel\DataModelIssue.cs" />
     <Compile Include="DataModel\Extensions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Query\Expressions.cs" />
@@ -61,20 +61,27 @@
     <Compile Include="Query\SyntaxParser.cs" />
     <Compile Include="Query\Token.cs" />
     <Compile Include="Query\Tokenizer.cs" />
-    <Compile Include="Reports\Alert.cs" />
-    <Compile Include="Reports\AlertsReport.cs" />
-    <Compile Include="Reports\AreaLabels.cs" />
-    <Compile Include="Reports\DiffReport.cs" />
-    <Compile Include="Reports\HtmlReport.cs" />
-    <Compile Include="Reports\LabelGroup.cs" />
-    <Compile Include="Reports\GitHubQuery.cs" />
-    <Compile Include="Reports\Util.cs" />
+    <Compile Include="Reports\AlertsReport\Alert.cs" />
+    <Compile Include="Reports\AlertsReport\AlertReport_NeedsMSResponse.cs" />
+    <Compile Include="Reports\AlertsReport\AlertReport.cs" />
+    <Compile Include="Reports\AlertsReport\AlertReport_Untriaged.cs" />
+    <Compile Include="Reports\AlertsReport\AlertReport_Diff.cs" />
+    <Compile Include="Reports\AlertsReport\IssueEntry.cs" />
+    <Compile Include="Reports\AlertsReport\ConfigLoader.cs" />
+    <Compile Include="Reports\AlertsReport\AlertReporting.cs" />
+    <Compile Include="Reports\DiffReport\AreaLabels.cs" />
+    <Compile Include="Reports\DiffReport\DiffReport.cs" />
+    <Compile Include="Reports\HtmlReport\HtmlReport.cs" />
+    <Compile Include="Reports\HtmlReport\LabelGroup.cs" />
+    <Compile Include="Reports\AlertsReport\GitHubQuery.cs" />
+    <Compile Include="Reports\DiffReport\Util.cs" />
     <Compile Include="Repository.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
