@@ -37,8 +37,8 @@ namespace BugReport.Reports
 
         void Report(IssueQuery query)
         {
-            IEnumerable<Issue> query1 = Issues1.Issues.Where(i => query(i));
-            IEnumerable<Issue> query2 = Issues2.Issues.Where(i => query(i));
+            IEnumerable<DataModelIssue> query1 = Issues1.Issues.Where(i => query(i));
+            IEnumerable<DataModelIssue> query2 = Issues2.Issues.Where(i => query(i));
 
             Console.WriteLine("Created:");
             ReportIssues(query2.Except(Issues1));
@@ -50,13 +50,13 @@ namespace BugReport.Reports
             ReportIssues(query1.Except(Issues2));
         }
 
-        void ReportIssues(IEnumerable<Issue> issues)
+        void ReportIssues(IEnumerable<DataModelIssue> issues)
         {
-            foreach (Issue issue in issues)
+            foreach (DataModelIssue issue in issues)
             {
                 Console.WriteLine("  {0} - {1}", issue.Number, issue.Title);
-                Issue issue1 = Issues1.GetIssue(issue.Number);
-                Issue issue2 = Issues2.GetIssue(issue.Number);
+                DataModelIssue issue1 = Issues1.GetIssue(issue.Number);
+                DataModelIssue issue2 = Issues2.GetIssue(issue.Number);
 
                 if ((issue1 != null) && (issue2 != null))
                 {
@@ -70,7 +70,7 @@ namespace BugReport.Reports
             }
         }
 
-        void ReportIssue_LabelsDiff(Issue issue1, IEnumerable<Label> areaLabels1, Issue issue2, IEnumerable<Label> areaLabels2)
+        void ReportIssue_LabelsDiff(DataModelIssue issue1, IEnumerable<Label> areaLabels1, DataModelIssue issue2, IEnumerable<Label> areaLabels2)
         {
             IEnumerable<Label> labels1Only = issue1.Labels.ExceptByName(issue2.Labels);
             IEnumerable<Label> labels2Only = issue2.Labels.ExceptByName(issue1.Labels);
@@ -95,7 +95,7 @@ namespace BugReport.Reports
             return textIfEmpty;
         }
 
-        delegate bool IssueQuery(Issue issue);
+        delegate bool IssueQuery(DataModelIssue issue);
 
         static IssueQuery CreateQuery(string label)
         {

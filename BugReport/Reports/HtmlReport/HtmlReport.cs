@@ -11,8 +11,8 @@ namespace BugReport.Reports
     public class HtmlReport
     {
         StreamWriter File;
-        IEnumerable<Issue> Issues;
-        IEnumerable<Issue> PullRequests;
+        IEnumerable<DataModelIssue> Issues;
+        IEnumerable<DataModelIssue> PullRequests;
 
         [FlagsAttribute]
         public enum IssueFlags
@@ -49,7 +49,7 @@ namespace BugReport.Reports
             LabelGroup.Add(ignoredIssueTypeLabelGroups, issuesCollection.GetLabel("netstandard2.0"));
             LabelGroup.Add(ignoredIssueTypeLabelGroups, issuesCollection.GetLabel("os-windows-uwp"));
 
-            Issues = issuesCollection.Issues.Where(i => i.IsIssue);
+            Issues = issuesCollection.Issues.Where(i => i.IsIssueOrComment);
             PullRequests = issuesCollection.Issues.Where(i => i.IsPullRequest);
             using (File = new StreamWriter(outputHtmlFile))
             {
@@ -80,8 +80,8 @@ namespace BugReport.Reports
             // Issues without any area
             {
                 IEnumerable<Label> areaLabels = yLabelGroups.SelectMany(lg => lg.Labels);
-                IEnumerable<Issue> yNoAreaIssues = Issues.Where(i => !i.Labels.Intersect(areaLabels).Any());
-                IEnumerable<Issue> yNoAreaPullRequests = PullRequests.Where(i => !i.Labels.Intersect(areaLabels).Any());
+                IEnumerable<DataModelIssue> yNoAreaIssues = Issues.Where(i => !i.Labels.Intersect(areaLabels).Any());
+                IEnumerable<DataModelIssue> yNoAreaPullRequests = PullRequests.Where(i => !i.Labels.Intersect(areaLabels).Any());
                 ReportTableRow(
                     "  ",
                     "    ",
@@ -111,12 +111,12 @@ namespace BugReport.Reports
             foreach (var yIssueInfo in yIssueInfos.OrderByDescending(i => i.Issues.Count()))
             {
                 LabelGroup y = yIssueInfo.LabelGroup;
-                IEnumerable<Issue> yIssues = yIssueInfo.Issues;
-                IEnumerable<Issue> yPullRequests = PullRequests.Where(i => i.ContainsLabel(y.Labels));
+                IEnumerable<DataModelIssue> yIssues = yIssueInfo.Issues;
+                IEnumerable<DataModelIssue> yPullRequests = PullRequests.Where(i => i.ContainsLabel(y.Labels));
 
                 IEnumerable<LabelGroup> yOtherAreaLabelGroups = yLabelGroups.Where(lg => (lg != y));
                 IEnumerable<Label> yOtherAreaLabels = yOtherAreaLabelGroups.SelectMany(lg => lg.Labels);
-                IEnumerable<Issue> yMultiAreaIssues = yIssueInfo.Issues.Where(i => i.Labels.Intersect(yOtherAreaLabels).Any());
+                IEnumerable<DataModelIssue> yMultiAreaIssues = yIssueInfo.Issues.Where(i => i.Labels.Intersect(yOtherAreaLabels).Any());
 
                 ReportTableRow(
                     "  ",
@@ -169,7 +169,7 @@ namespace BugReport.Reports
         string ReportLabelGroups_Cell(
             LabelGroup xLabelGroup,
             IEnumerable<LabelGroup> xMinusLabelGroups,
-            IEnumerable<Issue> yIssues,
+            IEnumerable<DataModelIssue> yIssues,
             IssueFlags issueFlags = IssueFlags.Issue | IssueFlags.Open,
             bool forceIssueList = false)
         {
@@ -181,13 +181,13 @@ namespace BugReport.Reports
         string ReportLabelGroups_Cell(
             LabelGroup xLabelGroup,
             IEnumerable<LabelGroup> xMinusLabelGroups,
-            IEnumerable<Issue> yIssues,
+            IEnumerable<DataModelIssue> yIssues,
             LabelGroup yLabelGroup,
             IEnumerable<LabelGroup> yMinusLabelGroups,
             IssueFlags issueFlags = IssueFlags.Issue | IssueFlags.Open,
             bool forceIssueList = false)
         {
-            IEnumerable<Issue> issues = yIssues;
+            IEnumerable<DataModelIssue> issues = yIssues;
             if (xLabelGroup.Labels.Any())
             {
                 issues = issues.Where(i => i.Labels.Intersect(xLabelGroup.Labels).Any());
@@ -241,7 +241,7 @@ namespace BugReport.Reports
         }
 
         const int GitHubQuery_IssuesLimit = 50;
-        string ReportLabelGroups_IssuesList(IEnumerable<Issue> issues)
+        string ReportLabelGroups_IssuesList(IEnumerable<DataModelIssue> issues)
         {
             int issuesCount = issues.Count();
             if (issuesCount == 0)
@@ -270,11 +270,11 @@ namespace BugReport.Reports
             return text.ToString();
         }
 
-        static StringBuilder GetGitHubQueryHyperLink(IEnumerable<Issue> issues)
+        static StringBuilder GetGitHubQueryHyperLink(IEnumerable<DataModelIssue> issues)
         {
             StringBuilder link = new StringBuilder();
             link.Append("https://github.com/dotnet/corefx/issues?utf8=%E2%9C%93&q=");
-            foreach (Issue i in issues)
+            foreach (DataModelIssue i in issues)
             {
                 link.AppendFormat("{0}%20", i.Number);
             }
@@ -282,10 +282,10 @@ namespace BugReport.Reports
         }
 
         string ReportLabelGroups_Multiple(
-            IEnumerable<Issue> issues,
+            IEnumerable<DataModelIssue> issues,
             IEnumerable<LabelGroup> labelGroups)
         {
-            IEnumerable<Issue> multipleIssues = issues.Where(i => labelGroups.Where(lg => i.Labels.Intersect(lg.Labels).Any()).Count() > 1);
+            IEnumerable<DataModelIssue> multipleIssues = issues.Where(i => labelGroups.Where(lg => i.Labels.Intersect(lg.Labels).Any()).Count() > 1);
             return ReportLabelGroups_IssuesList(multipleIssues);
         }
 
