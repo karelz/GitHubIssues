@@ -13,7 +13,7 @@ class Program
     {
         Console.WriteLine("Usage:");
         Console.WriteLine("  cache <alerts.xml> [<GithubToken>]- will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json");
-        Console.WriteLine("  cacheWithComments <alerts.xml> [<GithubToken>]- will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json and Github comments into file Comments_YYY-MM-DD@HH-MM.json");
+        Console.WriteLine("  cacheWithComments <alerts.xml> [<GithubToken>] - will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json and Github comments into file Comments_YYY-MM-DD@HH-MM.json");
         Console.WriteLine("  report <input.json> <output.html> - Creates report of GitHub issues from cached .json file");
         Console.WriteLine("  diff <input1.json> <input2.json> <config.json> <out.html> - Creates diff report of GitHub issues between 2 cached .json files");
         Console.WriteLine("  alerts <input1.json> <input2.json> <emailTemplate.html> <alerts.xml> [<alert_name>] - Sends alert emails based on .xml config, optinally filtered to just alert_name");
@@ -43,9 +43,9 @@ class Program
                     && (args.Length == 2 || args.Length == 3))
                 {
                     if (args.Length == 2)
-                        CacheGitHubIssues(args[1], token: null, includeComments: args[0].Equals("cacheWithComments"));
+                        CacheGitHubIssues(args[1], authenticationToken: null, includeComments: args[0].Equals("cacheWithComments"));
                     else
-                        CacheGitHubIssues(args[1], token: args[2], includeComments: args[0].Equals("cacheWithComments"));
+                        CacheGitHubIssues(args[1], authenticationToken: args[2], includeComments: args[0].Equals("cacheWithComments"));
 
                     return (int)ErrorCode.Success;
                 }
@@ -101,11 +101,11 @@ class Program
         }
     }
 
-    static void CacheGitHubIssues(string alertsXmlFileName, string token, bool includeComments)
+    static void CacheGitHubIssues(string alertsXmlFileName, string authenticationToken, bool includeComments)
     {
         Repository repo = new Repository(alertsXmlFileName);
         DateTime currentTime = DateTime.Now;
-        repo.Token = token;
+        repo.AuthenticationToken = authenticationToken;
         repo.LoadIssues();
         repo.SerializeToFile(string.Format("Issues_{0:yyyy-MM-dd@HH-mm}.json", currentTime), repo.Issues);
         if (includeComments)

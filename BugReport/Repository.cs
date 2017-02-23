@@ -14,7 +14,7 @@ public class Repository
 {
     public string Owner { get; private set; }
     public string Name { get; private set; }
-    public string Token { get; set; }
+    public string AuthenticationToken { get; set; }
 
     public Repository(string alertsXmlFileName)
     {
@@ -51,8 +51,8 @@ public class Repository
     public void LoadIssues()
     {
         GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
-        if (Token != null)
-            client.Credentials = new Credentials(Token);
+        if (AuthenticationToken != null)
+            client.Credentials = new Credentials(AuthenticationToken);
         RepositoryIssueRequest issueRequest = new RepositoryIssueRequest
         {
             State = ItemStateFilter.Open,
@@ -71,9 +71,9 @@ public class Repository
     public void LoadIssueComments()
     {
         GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
-        if (Token != null)
+        if (AuthenticationToken != null)
         {
-            client.Credentials = new Credentials(Token);
+            client.Credentials = new Credentials(AuthenticationToken);
         }
 
         IssueComments = new ConcurrentBag<IssueComment>();
@@ -96,9 +96,9 @@ public class Repository
     public void LoadIssues(IEnumerable<int> issueNumbers)
     {
         GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
-        if (Token != null)
+        if (AuthenticationToken != null)
         {
-            client.Credentials = new Credentials(Token);
+            client.Credentials = new Credentials(AuthenticationToken);
         }
 
         List<Issue> issues = new List<Issue>();
