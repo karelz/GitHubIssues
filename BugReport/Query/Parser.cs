@@ -181,6 +181,21 @@ namespace BugReport.Query
                 {
                     expr = new ExpressionAssignee(token.Word2);
                 }
+                else if (token.IsKeyValuePair("no"))
+                {
+                    if (token.IsKeyValuePair("no", "milestone"))
+                    {
+                        expr = new ExpressionMilestone(null);
+                    }
+                    else if (token.IsKeyValuePair("no", "assignee"))
+                    {
+                        expr = new ExpressionAssignee(null);
+                    }
+                    else
+                    {
+                        throw new InvalidQueryException("Unexpected value in key-value pair, expected: [milestone|assignee]", queryString, token.Position);
+                    }
+                }
                 else
                 {
                     throw new InvalidQueryException("Unexpected key in key-value pair, expected: [label|-label|milestone|is|assignee]", queryString, token.Position);
