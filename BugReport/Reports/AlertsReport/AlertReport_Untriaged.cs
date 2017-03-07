@@ -12,7 +12,7 @@ namespace BugReport.Reports
 {
     public class AlertReport_Untriaged : AlertReport
     {
-        private readonly string[] _issueTypeLabels = { "bug", "test bug", "enhancement", "api-needs-work", "api-needs-exposed", "api-ready-for-review", "api-approved", "Design Discussion", "documentation", "needs more info", "packaging", "question", "release notes", "test enhancement" };
+        private readonly string[] _issueTypeLabels = { "bug", "test bug", "enhancement", "test enhancement", "api-needs-work", "api-ready-for-review", "api-approved", "documentation", "question" };
 
         private enum UntriagedType
         {
