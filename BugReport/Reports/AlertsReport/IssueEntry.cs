@@ -17,7 +17,9 @@ namespace BugReport.Reports
         public string Title;
         public string LabelsText;
         public string AssignedToText;
+        public string MilestoneText;
 
+        // assignedToOverride - used for using 'Closed' as AssignedTo value in reports
         public IssueEntry(DataModelIssue issue, string assignedToOverride = null)
         {
             string idPrefix = "";
@@ -25,9 +27,13 @@ namespace BugReport.Reports
             {
                 idPrefix = "PR ";
             }
+
             IssueId = string.Format("{0}#<a href=\"{1}\">{2}</a>", idPrefix, issue.HtmlUrl, issue.Number);
+
             Title = issue.Title;
+
             LabelsText = string.Join(", ", issue.Labels.Select(l => l.Name));
+
             if (assignedToOverride != null)
             {
                 AssignedToText = assignedToOverride;
@@ -39,6 +45,15 @@ namespace BugReport.Reports
             else
             {
                 AssignedToText = "";
+            }
+
+            if (issue.Milestone != null)
+            {
+                MilestoneText = issue.Milestone.Title;
+            }
+            else
+            {
+                MilestoneText = "";
             }
         }
     }
