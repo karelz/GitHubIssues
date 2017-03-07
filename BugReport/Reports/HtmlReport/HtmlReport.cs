@@ -10,6 +10,7 @@ namespace BugReport.Reports
 {
     public class HtmlReport
     {
+        /*
         StreamWriter File;
         IEnumerable<DataModelIssue> Issues;
         IEnumerable<DataModelIssue> PullRequests;
@@ -24,31 +25,10 @@ namespace BugReport.Reports
             Closed = 8,
             IssueStatusMask = Open | Closed
         }
-
+        */
         public void Write(IssueCollection issuesCollection, string outputHtmlFile)
         {
-            List<LabelGroup> areaLabelGroups = issuesCollection.GetAreaLabels().OrderBy(l => l.Name).Select(l => new LabelGroup(l)).ToList();
-
-            List<LabelGroup> issueTypeLabelGroups = new List<LabelGroup>();
-            LabelGroup.Add(issueTypeLabelGroups, issuesCollection.GetLabel("bug"));
-            LabelGroup featureLabelGroup = new LabelGroup("Enhancement/api-*");
-            featureLabelGroup.Labels.AddIfNotNull(issuesCollection.GetLabel("api-approved"));
-            featureLabelGroup.Labels.AddIfNotNull(issuesCollection.GetLabel("api-needs-work"));
-            featureLabelGroup.Labels.AddIfNotNull(issuesCollection.GetLabel("api-ready-for-review"));
-            featureLabelGroup.Labels.AddIfNotNull(issuesCollection.GetLabel("api-needs-exposed"));
-            //LabelGroup.Add(issueTypeLabelGroups, issuesCollection.GetLabel("enhancement"));
-            featureLabelGroup.Labels.AddIfNotNull(issuesCollection.GetLabel("enhancement"));
-            issueTypeLabelGroups.Add(featureLabelGroup);
-            LabelGroup.Add(issueTypeLabelGroups, issuesCollection.GetLabel("test bug"));
-            LabelGroup.Add(issueTypeLabelGroups, issuesCollection.GetLabel("test enhancement"));
-            LabelGroup.Add(issueTypeLabelGroups, issuesCollection.GetLabel("documentation"));
-            LabelGroup.Add(issueTypeLabelGroups, issuesCollection.GetLabel("question"));
-
-            List<LabelGroup> ignoredIssueTypeLabelGroups = new List<LabelGroup>();
-            LabelGroup.Add(ignoredIssueTypeLabelGroups, issuesCollection.GetLabel("tracking-external-issue"));
-            LabelGroup.Add(ignoredIssueTypeLabelGroups, issuesCollection.GetLabel("netstandard2.0"));
-            LabelGroup.Add(ignoredIssueTypeLabelGroups, issuesCollection.GetLabel("os-windows-uwp"));
-
+            /*
             Issues = issuesCollection.Issues.Where(i => i.IsIssueOrComment);
             PullRequests = issuesCollection.Issues.Where(i => i.IsPullRequest);
             using (File = new StreamWriter(outputHtmlFile))
@@ -58,8 +38,9 @@ namespace BugReport.Reports
                 File.WriteLine("</body></html>");
             }
             File = null;
+            */
         }
-
+        /*
         void ReportLabelGroups(IEnumerable<LabelGroup> xLabelGroups, IEnumerable<LabelGroup> xIgnoredLabelGroups, IEnumerable<LabelGroup> yLabelGroups)
         {
             File.WriteLine("<table border=\"1\">");
@@ -280,33 +261,6 @@ namespace BugReport.Reports
             }
             return link;
         }
-
-        string ReportLabelGroups_Multiple(
-            IEnumerable<DataModelIssue> issues,
-            IEnumerable<LabelGroup> labelGroups)
-        {
-            IEnumerable<DataModelIssue> multipleIssues = issues.Where(i => labelGroups.Where(lg => i.Labels.Intersect(lg.Labels).Any()).Count() > 1);
-            return ReportLabelGroups_IssuesList(multipleIssues);
-        }
-
-        void ReportTableRow(string prefixTR, string prefixTD, string col1, string col2, string col3, string col4, IEnumerable<string> columns1, string colMid1, string colMid2, IEnumerable<string> columns2, string colLast)
-        {
-            ReportTableRow(prefixTR, prefixTD, new string[] { col1, col2, col3, col4 }.Concat(columns1).Concat(new string[] { colMid1, colMid2 }).Concat(columns2).Concat(new string[] { colLast }));
-        }
-        /*
-        void ReportTableRow(string prefixTR, string prefixTD, string col1, string col2, string col3, IEnumerable<string> columns, string colLast2, string colLast1)
-        {
-            ReportTableRow(prefixTR, prefixTD, new string[] { col1, col2, col3 }.Concat(columns).Concat(new string[] { colLast2, colLast1 }));
-        }
         */
-        void ReportTableRow(string prefixTR, string prefixTD, IEnumerable<string> columns)
-        {
-            File.WriteLine("{0}<tr>", prefixTR);
-            foreach (string column in columns)
-            {
-                File.WriteLine("{0}<td>{1}</td>", prefixTD, column);
-            }
-            File.WriteLine("{0}</tr>", prefixTR);
-        }
     }
 }

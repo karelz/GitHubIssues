@@ -15,7 +15,6 @@ class Program
         Console.WriteLine("  cache <alerts.xml> [<GithubToken>]- will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json");
         Console.WriteLine("  cacheWithComments <alerts.xml> [<GithubToken>] - will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json and Github comments into file Comments_YYY-MM-DD@HH-MM.json");
         Console.WriteLine("  report <input.json> <output.html> - Creates report of GitHub issues from cached .json file");
-        Console.WriteLine("  diff <input1.json> <input2.json> <config.json> <out.html> - Creates diff report of GitHub issues between 2 cached .json files");
         Console.WriteLine("  alerts <input1.json> <input2.json> <emailTemplate.html> <alerts.xml> [<alert_name>] - Sends alert emails based on .xml config, optinally filtered to just alert_name");
         Console.WriteLine("      alerts_SkipEmail or set SEND_EMAIL=0 - Won't send any emails");
         Console.WriteLine("  untriaged <issues.json> <emailTemplate.html> <alerts.xml> [<alert_name>] - Sends alert emails based on .xml config, optinally filtered to just alert_name");
@@ -52,11 +51,6 @@ class Program
                 else if (args[0].Equals("report", StringComparison.OrdinalIgnoreCase) && (args.Length == 3))
                 {
                     HtmlReport(args[1], args[2]);
-                    return (int)ErrorCode.Success;
-                }
-                else if (args[0].Equals("diff", StringComparison.OrdinalIgnoreCase) && (args.Length == 5))
-                {
-                    DiffReport(args[1], args[2], args[3], args[4]);
                     return (int)ErrorCode.Success;
                 }
                 else if ((args[0].Equals("alerts", StringComparison.OrdinalIgnoreCase)
@@ -113,14 +107,6 @@ class Program
             repo.LoadIssueComments();
             repo.SerializeToFile(string.Format("Comments_{0:yyyy-MM-dd@HH-mm}.json", currentTime), repo.IssueComments);
         }
-    }
-
-    static void DiffReport(string input1JsonFileName, string input2JsonFileName, string configJsonFileName, string outputHtmlFileName)
-    {
-        DiffReport report = new DiffReport(
-            IssueCollection.LoadFrom(input1JsonFileName, issueKind: IssueKindFlags.Issue),
-            IssueCollection.LoadFrom(input2JsonFileName, issueKind: IssueKindFlags.Issue));
-        report.Report(configJsonFileName, outputHtmlFileName);
     }
 
     static void HtmlReport(string inputJsonFileName, string outputHtmlFileName)
