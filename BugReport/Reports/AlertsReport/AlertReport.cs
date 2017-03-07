@@ -63,6 +63,7 @@ namespace BugReport.Reports
             text.AppendLine("    <th>Issue #</th>");
             text.AppendLine("    <th>Title</th>");
             text.AppendLine("    <th>Assigned To</th>");
+            text.AppendLine("    <th>Milestone</th>");
             text.AppendLine("  </tr>");
             foreach (IssueEntry issue in issues)
             {
@@ -76,6 +77,7 @@ namespace BugReport.Reports
                 }
                 text.AppendLine("    </td>");
                 text.AppendFormat("    <td>{0}</td>", issue.AssignedToText).AppendLine();
+                text.AppendFormat("    <td>{0}</td>", issue.MilestoneText).AppendLine();
                 text.AppendLine("  </tr>");
             }
             text.AppendLine("</table>");
