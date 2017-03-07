@@ -13,109 +13,150 @@ namespace BugReport.Reports
 {
     public class ConfigLoader
     {
-        List<Alert.User> Users = new List<Alert.User>();
+        private List<Alert.User> Users = new List<Alert.User>();
 
-        public void Load(string alertsXmlFileName, out IEnumerable<Alert> alerts, out IEnumerable<Label> labels)
+        private struct ConfigFile
         {
-            XElement root = XElement.Load(alertsXmlFileName);
-            LoadUsers(root);
-            alerts = LoadAlerts(root);
-            labels = LoadLabels(root);
+            public string FileName;
+            public XElement Root;
+
+            public ConfigFile(string fileName, XElement root)
+            {
+                FileName = fileName;
+                Root = root;
+            }
         }
 
-        void LoadUsers(XElement root)
+        public void Load(string configXmlFileName, out IEnumerable<Alert> alerts, out IEnumerable<Label> labels)
         {
-            foreach (XElement usersNode in root.Descendants("users"))
+            // List of XML config files to load
+            Queue<string> configFilesToLoad = new Queue<string>();
+            configFilesToLoad.Enqueue(configXmlFileName);
+
+            // List of all XML roots to from all XML config files
+            List<ConfigFile> configFiles = new List<ConfigFile>();
+
+            while (configFilesToLoad.Count > 0)
             {
-                string defaultEmailServer = null;
-                XAttribute defaultEmailServerAttribute = usersNode.Attribute("default-email-server");
-                if (defaultEmailServerAttribute != null)
+                string fileName = configFilesToLoad.Dequeue();
+                XElement root = XElement.Load(fileName);
+                configFiles.Add(new ConfigFile(fileName, root));
+
+                string directoryName = Path.GetDirectoryName(fileName);
+
+                foreach (XElement fileNode in root.Descendants("file"))
                 {
-                    defaultEmailServer = defaultEmailServerAttribute.Value;
-                    if (!defaultEmailServer.Contains('@'))
-                    {
-                        defaultEmailServer = "@" + defaultEmailServer;
-                    }
+                    configFilesToLoad.Enqueue(Path.Combine(directoryName, fileNode.Attribute("include").Value));
                 }
+            }
 
-                foreach (XElement userNode in usersNode.Descendants("user"))
+            LoadUsers(configFiles);
+            alerts = LoadAlerts(configFiles);
+            labels = LoadLabels(configFiles);
+        }
+
+        private void LoadUsers(IEnumerable<ConfigFile> configFiles)
+        {
+            foreach (ConfigFile configFile in configFiles)
+            {
+                foreach (XElement usersNode in configFile.Root.Descendants("users"))
                 {
-                    string name = userNode.Attribute("name").Value;
-                    string emailAlias = userNode.Attribute("alias").Value;
-                    string gitHubLogin = userNode.Attribute("github").Value;
-
-                    if (!gitHubLogin.StartsWith("@"))
+                    string defaultEmailServer = null;
+                    XAttribute defaultEmailServerAttribute = usersNode.Attribute("default-email-server");
+                    if (defaultEmailServerAttribute != null)
                     {
-                        throw new InvalidDataException("GitHub login expected to start with @: " + gitHubLogin);
-                    }
-                    if (emailAlias.StartsWith("@"))
-                    {
-                        throw new InvalidDataException("Alias cannot start with @: " + emailAlias);
+                        defaultEmailServer = defaultEmailServerAttribute.Value;
+                        if (!defaultEmailServer.Contains('@'))
+                        {
+                            defaultEmailServer = "@" + defaultEmailServer;
+                        }
                     }
 
-                    if (FindUser(gitHubLogin) != null)
+                    foreach (XElement userNode in usersNode.Descendants("user"))
                     {
-                        throw new InvalidDataException("Duplicate user defined with GitHub login: " + gitHubLogin);
-                    }
-                    if (FindUser(emailAlias) != null)
-                    {
-                        throw new InvalidDataException("Duplicate user defined with alias: " + emailAlias);
-                    }
+                        string name = userNode.Attribute("name").Value;
+                        string emailAlias = userNode.Attribute("alias").Value;
+                        string gitHubLogin = userNode.Attribute("github").Value;
 
-                    string email;
-                    if (emailAlias.Contains('@'))
-                    {
-                        email = emailAlias;
-                        emailAlias = null;
-                    }
-                    else
-                    {
-                        email = emailAlias + defaultEmailServer;
-                    }
+                        if (!gitHubLogin.StartsWith("@"))
+                        {
+                            throw new InvalidDataException("GitHub login expected to start with @: " + gitHubLogin);
+                        }
+                        if (emailAlias.StartsWith("@"))
+                        {
+                            throw new InvalidDataException("Alias cannot start with @: " + emailAlias);
+                        }
 
-                    Users.Add(new Alert.User(name, email, emailAlias, gitHubLogin));
+                        if (FindUser(gitHubLogin) != null)
+                        {
+                            throw new InvalidDataException("Duplicate user defined with GitHub login: " + gitHubLogin);
+                        }
+                        if (FindUser(emailAlias) != null)
+                        {
+                            throw new InvalidDataException("Duplicate user defined with alias: " + emailAlias);
+                        }
+
+                        string email;
+                        if (emailAlias.Contains('@'))
+                        {
+                            email = emailAlias;
+                            emailAlias = null;
+                        }
+                        else
+                        {
+                            email = emailAlias + defaultEmailServer;
+                        }
+
+                        Users.Add(new Alert.User(name, email, emailAlias, gitHubLogin));
+                    }
                 }
             }
         }
 
-        IEnumerable<Alert> LoadAlerts(XElement root)
+        private IEnumerable<Alert> LoadAlerts(IEnumerable<ConfigFile> configFiles)
         {
-            foreach (XElement alertsNode in root.Descendants("alerts"))
+            foreach (ConfigFile configFile in configFiles)
             {
-                foreach (XElement alertNode in alertsNode.Descendants("alert"))
+                foreach (XElement alertsNode in configFile.Root.Descendants("alerts"))
                 {
-                    string alertName = alertNode.Attribute("name").Value;
-
-                    string query = alertNode.Descendants("query").First().Value;
-                    IEnumerable<Alert.User> owners = alertNode.Descendants("owner").Select(e => FindUserOrThrow(e.Value));
-                    IEnumerable<Alert.User> ccUsers = alertNode.Descendants("cc").Select(e => FindUserOrThrow(e.Value));
-
-                    Alert alert;
-                    try
+                    foreach (XElement alertNode in alertsNode.Descendants("alert"))
                     {
-                        alert = new Alert(alertName, query, owners, ccUsers);
+                        string alertName = alertNode.Attribute("name").Value;
+
+                        string query = alertNode.Descendants("query").First().Value;
+                        IEnumerable<Alert.User> owners = alertNode.Descendants("owner").Select(e => FindUserOrThrow(e.Value));
+                        IEnumerable<Alert.User> ccUsers = alertNode.Descendants("cc").Select(e => FindUserOrThrow(e.Value));
+
+                        Alert alert;
+                        try
+                        {
+                            alert = new Alert(alertName, query, owners, ccUsers);
+                        }
+                        catch (InvalidQueryException ex)
+                        {
+                            throw new InvalidDataException("Invalid query in alert: " + alertName, ex);
+                        }
+                        yield return alert;
                     }
-                    catch (InvalidQueryException ex)
-                    {
-                        throw new InvalidDataException("Invalid query in alert: " + alertName, ex);
-                    }
-                    yield return alert;
                 }
             }
         }
 
-        IEnumerable<Label> LoadLabels(XElement root)
+        private IEnumerable<Label> LoadLabels(IEnumerable<ConfigFile> configFiles)
         {
-            foreach (XElement labelsNode in root.Descendants("labels"))
+            foreach (ConfigFile configFile in configFiles)
             {
-                foreach (XElement labelNode in labelsNode.Descendants("label"))
+                foreach (XElement labelsNode in configFile.Root.Descendants("labels"))
                 {
-                    yield return new Label(labelNode.Attribute("name").Value);
+                    foreach (XElement labelNode in labelsNode.Descendants("label"))
+                    {
+                        yield return new Label(labelNode.Attribute("name").Value);
+                    }
                 }
             }
         }
 
-        Alert.User FindUser(string id)
+        private Alert.User FindUser(string id)
         {
             foreach (Alert.User user in Users)
             {
@@ -126,7 +167,8 @@ namespace BugReport.Reports
             }
             return null;
         }
-        Alert.User FindUserOrThrow(string id)
+
+        private Alert.User FindUserOrThrow(string id)
         {
             Alert.User user = FindUser(id);
             if (user == null)
