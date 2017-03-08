@@ -163,6 +163,7 @@ namespace BugReport.Reports
             text.AppendLine("    <th>Problem</th>");
             text.AppendLine("    <th>Title</th>");
             text.AppendLine("    <th>Assigned To</th>");
+            text.AppendLine("    <th>Milestone</th>");
             text.AppendLine("  </tr>");
             foreach (KeyValuePair<DataModelIssue, ExpressionUntriaged.Flags> mapEntry in issuesMap)
             {
@@ -178,6 +179,7 @@ namespace BugReport.Reports
                 }
                 text.AppendLine("    </td>");
                 text.AppendLine($"    <td>{issue.AssignedToText}</td>");
+                text.AppendLine($"    <td>{issue.MilestoneText}</td>");
                 text.AppendLine("  </tr>");
             }
             text.AppendLine("</table>");
