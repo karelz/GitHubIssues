@@ -17,7 +17,7 @@ namespace BugReport.Reports
         private enum UntriagedType
         {
             UntriagedLabel = 1,
-            MissingMileStone = 2,
+            MissingMilestone = 2,
             MissingAreaLabel = 4,
             MissingIssueTypeLabel = 8
         }
@@ -76,7 +76,7 @@ namespace BugReport.Reports
 
             // check if this issue has a Milestone
             if (issue.Milestone == null)
-                triage |= UntriagedType.MissingMileStone;
+                triage |= UntriagedType.MissingMilestone;
 
             // Check if this issue has an area label
             if (issue.Labels.FirstOrDefault((label) => label.Name.StartsWith("area-")) == default(Label))
