@@ -26,9 +26,11 @@ namespace BugReport.Query
 
         protected class Indentation
         {
+            private static readonly string Prefix = "  ";
+
             public static string Indent(string value)
             {
-                return Indent("  ", value);
+                return Indent(Prefix, value);
             }
             public static string Indent(string prefix, string value)
             {
@@ -109,33 +111,17 @@ namespace BugReport.Query
         }
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder("AND:");
-            foreach (Expression expr in expressions)
-            {
-                sb.AppendLine();
-                sb.Append(Indentation.Indent(expr.ToString()));
-            }
-            return sb.ToString();
+            return "AND:\n" + string.Join("\n", expressions.Select(expr => Indentation.Indent(expr.ToString())));
         }
 
         public override string GetGitHubQueryURL()
         {
-            string query = null;
-            foreach (Expression expr in expressions)
+            IEnumerable<string> subQueries = expressions.Select(expr => expr.GetGitHubQueryURL());
+            if (subQueries.Contains(null))
             {
-                string exprQuery = expr.GetGitHubQueryURL();
-                if (exprQuery == null)
-                {
-                    return null;
-                }
-
-                if (query != null)
-                {
-                    query += " ";
-                }
-                query += exprQuery;
+                return null;
             }
-            return query;
+            return string.Join(" ", subQueries);
         }
     }
 
@@ -167,13 +153,7 @@ namespace BugReport.Query
         }
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder("OR:");
-            foreach (Expression expr in expressions)
-            {
-                sb.AppendLine();
-                sb.Append(Indentation.Indent(expr.ToString()));
-            }
-            return sb.ToString();
+            return "OR:\n" + string.Join("\n", expressions.Select(expr => Indentation.Indent(expr.ToString())));
         }
 
         public override string GetGitHubQueryURL()

@@ -12,28 +12,19 @@ namespace BugReport.Reports
 {
     public class ExpressionUntriaged : Expression
     {
-        public override bool Evaluate(DataModelIssue issue)
-        {
-            throw new NotImplementedException();
-        }
+        private IEnumerable<string> _issueTypeLabels;
+        private IEnumerable<Label> _areaLabels;
+        private string _untriagedLabel;
 
-        public override void Validate(IssueCollection collection)
+        public ExpressionUntriaged(IEnumerable<string> issueTypeLabels, IEnumerable<Label> areaLabels, string untriagedLabel)
         {
-            throw new NotImplementedException();
+            _issueTypeLabels = issueTypeLabels;
+            _areaLabels = areaLabels;
+            _untriagedLabel = untriagedLabel;
         }
-
-        public override string GetGitHubQueryURL()
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    public class AlertReport_Untriaged : AlertReport
-    {
-        private readonly string[] _issueTypeLabels = { "bug", "test bug", "enhancement", "test enhancement", "api-needs-work", "api-ready-for-review", "api-approved", "documentation", "question" };
 
         [Flags]
-        private enum UntriagedFlags
+        public enum Flags
         {
             UntriagedLabel = 0x1,
             MissingMilestone = 0x2,
@@ -43,26 +34,85 @@ namespace BugReport.Reports
             MultipleAreaLabels = 0x20
         }
 
-        private string UntriagedTypeToString(UntriagedFlags flags)
+        public static IEnumerable<Flags> EnumerateFlags(Flags flags)
         {
-            string ret = "";
-            foreach (UntriagedFlags untriagedFlag in Enum.GetValues(typeof(UntriagedFlags)))
+            foreach (Flags flag in Enum.GetValues(typeof(Flags)))
             {
-                if ((flags & untriagedFlag) != 0)
+                if ((flags & flag) != 0)
                 {
-                    if (ret != "")
-                    {
-                        ret += ", ";
-                    }
-                    ret += untriagedFlag.ToString();
+                    yield return flag;
                 }
             }
-            return ret;
         }
 
-        public AlertReport_Untriaged(Alert alert, bool sendEmail, string htmlTemplateFileName) : 
+        public Flags GetUntriagedFlags(DataModelIssue issue)
+        {
+            Flags triageFlags = 0;
+
+            // Check if this issue is marked as 'untriaged'
+            if (issue.Labels.ContainsLabel(_untriagedLabel))
+            {
+                triageFlags |= Flags.UntriagedLabel;
+            }
+
+            // check if this issue has a Milestone
+            if (issue.Milestone == null)
+            {
+                triageFlags |= Flags.MissingMilestone;
+            }
+
+            // Count area labels
+            int areaLabelsCount = issue.Labels.IntersectByName(_areaLabels).Count();
+            if (areaLabelsCount == 0)
+            {
+                triageFlags |= Flags.MissingAreaLabel;
+            }
+            else if (areaLabelsCount > 1)
+            {
+                triageFlags |= Flags.MultipleAreaLabels;
+            }
+
+            // Count issue labels
+            int issueTypeLabelsCount = issue.Labels.IntersectByName(_issueTypeLabels).Count();
+            if (issueTypeLabelsCount == 0)
+            {
+                triageFlags |= Flags.MissingIssueTypeLabel;
+            }
+            else if (issueTypeLabelsCount > 1)
+            {
+                triageFlags |= Flags.MultipleIssueTypeLabels;
+            }
+
+            return triageFlags;
+        }
+
+        public override bool Evaluate(DataModelIssue issue)
+        {
+            return GetUntriagedFlags(issue) != 0;
+        }
+
+        public override void Validate(IssueCollection collection)
+        {
+            // Nothing to validate
+        }
+
+        public override string GetGitHubQueryURL()
+        {
+            return null;
+        }
+    }
+
+    public class AlertReport_Untriaged : AlertReport
+    {
+        public static readonly string[] IssueTypeLabels = { "bug", "test bug", "enhancement", "test enhancement", "api-needs-work", "api-ready-for-review", "api-approved", "documentation", "question" };
+        public static readonly string UntriagedLabel = "untriaged";
+
+        private ExpressionUntriaged _untriagedQuery;
+
+        public AlertReport_Untriaged(Alert alert, bool sendEmail, string htmlTemplateFileName, IEnumerable<Label> areaLabels) : 
             base(alert, sendEmail, htmlTemplateFileName)
         {
+            _untriagedQuery = new ExpressionUntriaged(IssueTypeLabels, areaLabels, UntriagedLabel);
         }
 
         /// <summary>
@@ -71,15 +121,17 @@ namespace BugReport.Reports
         public override bool FillReportBody(IssueCollection collection1, IssueCollection collection2)
         {
             IEnumerable<DataModelIssue> matchingIssues = _alert.Query.Evaluate(collection1);
-            Dictionary<DataModelIssue, UntriagedFlags> untriaged = new Dictionary<DataModelIssue, UntriagedFlags>();
+            var untriagedFlagsMap = new Dictionary<DataModelIssue, ExpressionUntriaged.Flags>();
             foreach (DataModelIssue issue in matchingIssues)
             {
-                UntriagedFlags type = IssueIsUntriaged(issue);
-                if (type != 0)
-                    untriaged[issue] = type;
+                ExpressionUntriaged.Flags flags = _untriagedQuery.GetUntriagedFlags(issue);
+                if (flags != 0)
+                {
+                    untriagedFlagsMap[issue] = flags;
+                }
             }
 
-            if (!untriaged.Any())
+            if (!untriagedFlagsMap.Any())
             {
                 Console.WriteLine("    No untriaged issues, skipping.");
                 Console.WriteLine();
@@ -89,52 +141,20 @@ namespace BugReport.Reports
             BodyText = BodyText.Replace("%UNTRIAGED_ISSUES_START%", "");
             BodyText = BodyText.Replace("%UNTRIAGED_ISSUES_END%", "");
 
-            BodyText = BodyText.Replace("%UNTRIAGED_ISSUES_LINK%", GitHubQuery.GetHyperLink(untriaged.Keys));
-            BodyText = BodyText.Replace("%UNTRIAGED_ISSUES_COUNT%", untriaged.Count().ToString());
+            BodyText = BodyText.Replace("%UNTRIAGED_ISSUES_LINK%", GitHubQuery.GetHyperLink(untriagedFlagsMap.Keys));
+            BodyText = BodyText.Replace("%UNTRIAGED_ISSUES_COUNT%", untriagedFlagsMap.Count().ToString());
 
-            IEnumerable<IssueEntry> untriagedIssueEntries = untriaged.Select(issue => new IssueEntry(issue.Key));
-            BodyText = BodyText.Replace("%UNTRIAGED_ISSUES_TABLE%", FormatIssueTable_Untriaged(untriaged));
+            IEnumerable<IssueEntry> untriagedIssueEntries = untriagedFlagsMap.Keys.Select(issue => new IssueEntry(issue));
+            BodyText = BodyText.Replace("%UNTRIAGED_ISSUES_TABLE%", FormatIssueTable_Untriaged(untriagedFlagsMap));
             return true;
         }
 
-        private UntriagedFlags IssueIsUntriaged(DataModelIssue issue)
+        private string UntriagedTypeToString(ExpressionUntriaged.Flags flags)
         {
-            UntriagedFlags triage = 0;
-
-            // Check if this issue is marked as 'untriaged'
-            if (issue.Labels.ContainsLabel("untriaged"))
-                triage |= UntriagedFlags.UntriagedLabel;
-
-            // check if this issue has a Milestone
-            if (issue.Milestone == null)
-                triage |= UntriagedFlags.MissingMilestone;
-
-            // Count area labels
-            int areaLabelsCount = issue.Labels.Where(label => label.Name.StartsWith("area-")).Count();
-            if (areaLabelsCount == 0)
-            {
-                triage |= UntriagedFlags.MissingAreaLabel;
-            }
-            else if (areaLabelsCount > 1)
-            {
-                triage |= UntriagedFlags.MultipleAreaLabels;
-            }
-
-            // Count issue labels
-            int issueTypeLabelsCount = issue.Labels.Select(label => label.Name).Intersect(_issueTypeLabels).Count();
-            if (issueTypeLabelsCount == 0)
-            {
-                triage |= UntriagedFlags.MissingIssueTypeLabel;
-            }
-            else if (issueTypeLabelsCount > 1)
-            {
-                triage |= UntriagedFlags.MultipleIssueTypeLabels;
-            }
-
-            return triage;
+            return string.Join(", ", ExpressionUntriaged.EnumerateFlags(flags));
         }
 
-        private string FormatIssueTable_Untriaged(Dictionary<DataModelIssue, UntriagedFlags> issues)
+        private string FormatIssueTable_Untriaged(Dictionary<DataModelIssue, ExpressionUntriaged.Flags> issuesMap)
         {
             StringBuilder text = new StringBuilder();
             text.AppendLine("<table>");
@@ -144,20 +164,20 @@ namespace BugReport.Reports
             text.AppendLine("    <th>Title</th>");
             text.AppendLine("    <th>Assigned To</th>");
             text.AppendLine("  </tr>");
-            foreach (KeyValuePair<DataModelIssue, UntriagedFlags> issue in issues)
+            foreach (KeyValuePair<DataModelIssue, ExpressionUntriaged.Flags> mapEntry in issuesMap)
             {
-                IssueEntry entry = new IssueEntry(issue.Key);
+                IssueEntry issue = new IssueEntry(mapEntry.Key);
                 text.AppendLine("  <tr>");
-                text.AppendLine($"    <td>{entry.IssueId}</td>");
-                text.AppendLine($"    <td>{UntriagedTypeToString(issue.Value)}</td>");
+                text.AppendLine($"    <td>{issue.IssueId}</td>");
+                text.AppendLine($"    <td>{UntriagedTypeToString(mapEntry.Value)}</td>");
                 text.AppendLine("    <td>");
-                text.AppendLine($"      {entry.Title}");
-                if (entry.LabelsText != null)
+                text.AppendLine($"      {issue.Title}");
+                if (issue.LabelsText != null)
                 {
-                    text.AppendLine($"      <br/><div class=\"labels\">Labels: {entry.LabelsText}</div>");
+                    text.AppendLine($"      <br/><div class=\"labels\">Labels: {issue.LabelsText}</div>");
                 }
                 text.AppendLine("    </td>");
-                text.AppendLine($"    <td>{entry.AssignedToText}</td>");
+                text.AppendLine($"    <td>{issue.AssignedToText}</td>");
                 text.AppendLine("  </tr>");
             }
             text.AppendLine("</table>");
