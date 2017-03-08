@@ -10,6 +10,24 @@ using BugReport.DataModel;
 
 namespace BugReport.Reports
 {
+    public class ExpressionUntriaged : Expression
+    {
+        public override bool Evaluate(DataModelIssue issue)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Validate(IssueCollection collection)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override string GetGitHubQueryURL()
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     public class AlertReport_Untriaged : AlertReport
     {
         private readonly string[] _issueTypeLabels = { "bug", "test bug", "enhancement", "test enhancement", "api-needs-work", "api-ready-for-review", "api-approved", "documentation", "question" };

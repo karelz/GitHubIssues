@@ -207,6 +207,10 @@ namespace BugReport.Query
 
         public override string GetGitHubQueryURL()
         {
+            if (labelName.Contains(' '))
+            {
+                return $"label:\"{labelName}\"";
+            }
             return "label:" + labelName;
         }
     }
