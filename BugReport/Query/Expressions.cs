@@ -22,6 +22,8 @@ namespace BugReport.Query
             return Evaluate(issues.Issues);
         }
 
+        public abstract string GetGitHubQueryURL();
+
         protected class Indentation
         {
             public static string Indent(string value)
@@ -68,6 +70,15 @@ namespace BugReport.Query
         {
             return "NOT:\n" + Indentation.Indent(expr.ToString());
         }
+
+        public override string GetGitHubQueryURL()
+        {
+            if ((expr is ExpressionLabel) || (expr is ExpressionMilestone) || (expr is ExpressionAssignee))
+            {
+                return "-" + expr.GetGitHubQueryURL();
+            }
+            return null;
+        }
     }
 
     public class ExpressionAnd : Expression
@@ -105,6 +116,26 @@ namespace BugReport.Query
                 sb.Append(Indentation.Indent(expr.ToString()));
             }
             return sb.ToString();
+        }
+
+        public override string GetGitHubQueryURL()
+        {
+            string query = null;
+            foreach (Expression expr in expressions)
+            {
+                string exprQuery = expr.GetGitHubQueryURL();
+                if (exprQuery == null)
+                {
+                    return null;
+                }
+
+                if (query != null)
+                {
+                    query += " ";
+                }
+                query += exprQuery;
+            }
+            return query;
         }
     }
 
@@ -144,6 +175,11 @@ namespace BugReport.Query
             }
             return sb.ToString();
         }
+
+        public override string GetGitHubQueryURL()
+        {
+            return null;
+        }
     }
 
     public class ExpressionLabel : Expression
@@ -168,6 +204,11 @@ namespace BugReport.Query
         {
             return "label:" + labelName;
         }
+
+        public override string GetGitHubQueryURL()
+        {
+            return "label:" + labelName;
+        }
     }
 
     public class ExpressionIsIssue : Expression
@@ -188,6 +229,11 @@ namespace BugReport.Query
         {
             return "is:" + (isIssue ? "issue" : "pr");
         }
+
+        public override string GetGitHubQueryURL()
+        {
+            return "is:" + (isIssue ? "issue" : "pr");
+        }
     }
 
     public class ExpressionIsOpen : Expression
@@ -205,6 +251,11 @@ namespace BugReport.Query
         {
         }
         public override string ToString()
+        {
+            return "is:" + (isOpen ? "open" : "closed");
+        }
+
+        public override string GetGitHubQueryURL()
         {
             return "is:" + (isOpen ? "open" : "closed");
         }
@@ -232,6 +283,11 @@ namespace BugReport.Query
         {
             return "milestone:" + milestoneName;
         }
+
+        public override string GetGitHubQueryURL()
+        {
+            return "milestone:" + milestoneName;
+        }
     }
 
     public class ExpressionAssignee : Expression
@@ -253,6 +309,11 @@ namespace BugReport.Query
             }
         }
         public override string ToString()
+        {
+            return "assginee:" + assigneeName;
+        }
+
+        public override string GetGitHubQueryURL()
         {
             return "assginee:" + assigneeName;
         }
