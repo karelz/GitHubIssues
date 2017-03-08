@@ -68,16 +68,16 @@ namespace BugReport.Reports
             foreach (IssueEntry issue in issues)
             {
                 text.AppendLine("  <tr>");
-                text.AppendFormat("    <td>{0}</td>", issue.IssueId).AppendLine();
+                text.AppendLine($"    <td>{issue.IssueId}</td>");
                 text.AppendLine("    <td>");
-                text.AppendFormat("      {0}", issue.Title).AppendLine();
+                text.AppendLine($"      {issue.Title}");
                 if (issue.LabelsText != null)
                 {
-                    text.AppendFormat("      <br/><div class=\"labels\">Labels: {0}</div>", issue.LabelsText).AppendLine();
+                    text.AppendLine($"      <br/><div class=\"labels\">Labels: {issue.LabelsText}</div>");
                 }
                 text.AppendLine("    </td>");
-                text.AppendFormat("    <td>{0}</td>", issue.AssignedToText).AppendLine();
-                text.AppendFormat("    <td>{0}</td>", issue.MilestoneText).AppendLine();
+                text.AppendLine($"    <td>{issue.AssignedToText}</td>");
+                text.AppendLine($"    <td>{issue.MilestoneText}</td>");
                 text.AppendLine("  </tr>");
             }
             text.AppendLine("</table>");
