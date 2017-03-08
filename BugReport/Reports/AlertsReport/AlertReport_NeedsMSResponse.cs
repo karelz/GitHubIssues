@@ -99,16 +99,16 @@ namespace BugReport.Reports
             {
                 IssueEntry entry = new IssueEntry(pair.Key);
                 text.AppendLine("  <tr>");
-                text.AppendFormat("    <td>{0}</td>", entry.IssueId).AppendLine();
-                text.AppendFormat("    <td>{0}</td>", pair.Value.Value.Days).AppendLine();
+                text.AppendLine($"    <td>{entry.IssueId}</td>");
+                text.AppendLine($"    <td>{pair.Value.Value.Days}</td>");
                 text.AppendLine("    <td>");
-                text.AppendFormat("      {0}", entry.Title).AppendLine();
+                text.AppendLine($"      {entry.Title}");
                 if (entry.LabelsText != null)
                 {
-                    text.AppendFormat("      <br/><div class=\"labels\">Labels: {0}</div>", entry.LabelsText).AppendLine();
+                    text.AppendLine($"      <br/><div class=\"labels\">Labels: {entry.LabelsText}</div>");
                 }
                 text.AppendLine("    </td>");
-                text.AppendFormat("    <td>{0}</td>", entry.AssignedToText).AppendLine();
+                text.AppendLine($"    <td>{entry.AssignedToText}</td>");
                 text.AppendLine("  </tr>");
             }
             text.AppendLine("</table>");
