@@ -15,7 +15,7 @@ namespace BugReport.Reports
         private readonly string[] _issueTypeLabels = { "bug", "test bug", "enhancement", "test enhancement", "api-needs-work", "api-ready-for-review", "api-approved", "documentation", "question" };
 
         [Flags]
-        private enum UntriagedType
+        private enum UntriagedFlags
         {
             UntriagedLabel = 0x1,
             MissingMilestone = 0x2,
@@ -25,15 +25,25 @@ namespace BugReport.Reports
             MultipleAreaLabels = 0x20
         }
 
-        private string UntriagedTypeToString(UntriagedType type)
+        private string UntriagedTypeToString(UntriagedFlags flags)
         {
             string ret = "";
-            foreach (UntriagedType enumVal in Enum.GetValues(typeof(UntriagedType)))
-                ret += ((type & enumVal) > 0 ? (ret == "" ? enumVal.ToString() : ", " + enumVal.ToString()) : "");
+            foreach (UntriagedFlags untriagedFlag in Enum.GetValues(typeof(UntriagedFlags)))
+            {
+                if ((flags & untriagedFlag) != 0)
+                {
+                    if (ret != "")
+                    {
+                        ret += ", ";
+                    }
+                    ret += untriagedFlag.ToString();
+                }
+            }
             return ret;
         }
 
-        public AlertReport_Untriaged(Alert alert, bool sendEmail, string htmlTemplateFileName) : base(alert, sendEmail, htmlTemplateFileName)
+        public AlertReport_Untriaged(Alert alert, bool sendEmail, string htmlTemplateFileName) : 
+            base(alert, sendEmail, htmlTemplateFileName)
         {
         }
 
@@ -43,10 +53,10 @@ namespace BugReport.Reports
         public override bool FillReportBody(IssueCollection collection1, IssueCollection collection2)
         {
             IEnumerable<DataModelIssue> matchingIssues = _alert.Query.Evaluate(collection1);
-            Dictionary<DataModelIssue, UntriagedType> untriaged = new Dictionary<DataModelIssue, UntriagedType>();
+            Dictionary<DataModelIssue, UntriagedFlags> untriaged = new Dictionary<DataModelIssue, UntriagedFlags>();
             foreach (DataModelIssue issue in matchingIssues)
             {
-                UntriagedType type = IssueIsUntriaged(issue);
+                UntriagedFlags type = IssueIsUntriaged(issue);
                 if (type != 0)
                     untriaged[issue] = type;
             }
@@ -69,44 +79,44 @@ namespace BugReport.Reports
             return true;
         }
 
-        private UntriagedType IssueIsUntriaged(DataModelIssue issue)
+        private UntriagedFlags IssueIsUntriaged(DataModelIssue issue)
         {
-            UntriagedType triage = 0;
+            UntriagedFlags triage = 0;
 
             // Check if this issue is marked as 'untriaged'
             if (issue.Labels.ContainsLabel("untriaged"))
-                triage |= UntriagedType.UntriagedLabel;
+                triage |= UntriagedFlags.UntriagedLabel;
 
             // check if this issue has a Milestone
             if (issue.Milestone == null)
-                triage |= UntriagedType.MissingMilestone;
+                triage |= UntriagedFlags.MissingMilestone;
 
             // Count area labels
             int areaLabelsCount = issue.Labels.Where(label => label.Name.StartsWith("area-")).Count();
             if (areaLabelsCount == 0)
             {
-                triage |= UntriagedType.MissingAreaLabel;
+                triage |= UntriagedFlags.MissingAreaLabel;
             }
             else if (areaLabelsCount > 1)
             {
-                triage |= UntriagedType.MultipleAreaLabels;
+                triage |= UntriagedFlags.MultipleAreaLabels;
             }
 
             // Count issue labels
             int issueTypeLabelsCount = issue.Labels.Select(label => label.Name).Intersect(_issueTypeLabels).Count();
             if (issueTypeLabelsCount == 0)
             {
-                triage |= UntriagedType.MissingIssueTypeLabel;
+                triage |= UntriagedFlags.MissingIssueTypeLabel;
             }
             else if (issueTypeLabelsCount > 1)
             {
-                triage |= UntriagedType.MultipleIssueTypeLabels;
+                triage |= UntriagedFlags.MultipleIssueTypeLabels;
             }
 
             return triage;
         }
 
-        private string FormatIssueTable_Untriaged(Dictionary<DataModelIssue, UntriagedType> issues)
+        private string FormatIssueTable_Untriaged(Dictionary<DataModelIssue, UntriagedFlags> issues)
         {
             StringBuilder text = new StringBuilder();
             text.AppendLine("<table>");
@@ -116,7 +126,7 @@ namespace BugReport.Reports
             text.AppendLine("    <th>Title</th>");
             text.AppendLine("    <th>Assigned To</th>");
             text.AppendLine("  </tr>");
-            foreach (KeyValuePair<DataModelIssue, UntriagedType> issue in issues)
+            foreach (KeyValuePair<DataModelIssue, UntriagedFlags> issue in issues)
             {
                 IssueEntry entry = new IssueEntry(issue.Key);
                 text.AppendLine("  <tr>");

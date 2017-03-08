@@ -33,6 +33,20 @@ namespace BugReport.Query
                 return prefix + value.Replace("\n", "\n" + prefix);
             }
         }
+
+        public static Expression And(Expression ex1, Expression ex2)
+        {
+            return new ExpressionAnd(new Expression[] { ex1, ex2 });
+        }
+        public static Expression Or(Expression ex1, Expression ex2)
+        {
+            return new ExpressionOr(new Expression[] { ex1, ex2 });
+        }
+        public static Expression Not(Expression ex)
+        {
+            return new ExpressionOr(new Expression[] { ex });
+        }
+
     }
 
     public class ExpressionNot : Expression
