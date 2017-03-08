@@ -26,8 +26,8 @@ namespace BugReport.Reports
         public void Write(IssueCollection issuesCollection, string outputHtmlFile)
         {
             List<NamedQuery> columns = new List<NamedQuery>();
-            columns.Add(new NamedQuery("2.0 issues", "is:issue AND milestone:2.0.0"));
-            columns.Add(new NamedQuery("All issues", "is:issue"));
+            columns.Add(new NamedQuery("2.0 issues", "is:issue AND is:open AND milestone:2.0.0"));
+            columns.Add(new NamedQuery("All issues", "is:issue AND is:open"));
 
             IEnumerable<DataModelIssue> issues = issuesCollection.Issues.Where(i => i.IsIssueOrComment);
             using (StreamWriter file = new StreamWriter(outputHtmlFile))
@@ -59,23 +59,35 @@ namespace BugReport.Reports
                 file.WriteLine("<tr>");
                 ReportTableRow(file, "  ",
                     $"<b>{row.Name}</b>",
-                    columns.Select(col => Expression.And(row.Query, col.Query).Evaluate(issues).Count().ToString()));
+                    columns.Select(col => GetQueryCountLinked(Expression.And(row.Query, col.Query), issues)));
                 file.WriteLine("</tr>");
             }
 
             file.WriteLine("<tr>");
             ReportTableRow(file, "  ", 
                 "<b>Total</b>", 
-                columns.Select(col => $"<b>{col.Query.Evaluate(issues).Count()}</b>"));
+                columns.Select(col => $"<b>{GetQueryCountLinked(col.Query, issues)}</b>"));
             file.WriteLine("</tr>");
             file.WriteLine("</table>");
         }
 
-        void ReportTableRow(StreamWriter file, string prefix, string col1, IEnumerable<string> cols)
+        private string GetQueryCountLinked(Expression query, IEnumerable<DataModelIssue> issues)
+        {
+            int count = query.Evaluate(issues).Count();
+
+            string gitHubQueryURL = query.GetGitHubQueryURL();
+            if (gitHubQueryURL != null)
+            {
+                return $"<a href=\"{GitHubQuery.GetHyperLink(gitHubQueryURL)}\">{count}</a>";
+            }
+            return count.ToString();
+        }
+
+        private void ReportTableRow(StreamWriter file, string prefix, string col1, IEnumerable<string> cols)
         {
             ReportTableRow(file, prefix, new string[] { col1 }.Concat(cols));
         }
-        void ReportTableRow(StreamWriter file, string prefix, IEnumerable<string> cols)
+        private void ReportTableRow(StreamWriter file, string prefix, IEnumerable<string> cols)
         {
             foreach (string col in cols)
             {

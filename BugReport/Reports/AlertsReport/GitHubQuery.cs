@@ -9,9 +9,11 @@ namespace BugReport.Reports
 {
     public class GitHubQuery
     {
+        private static string BaseUrl = "https://github.com/dotnet/corefx/issues?q=";
+
         public static void GetHyperLink(StringBuilder sb, IEnumerable<DataModelIssue> issues)
         {
-            sb.Append("https://github.com/dotnet/corefx/issues?q=");
+            sb.Append(BaseUrl);
             foreach (DataModelIssue i in issues)
             {
                 sb.AppendFormat("{0}%20", i.Number);
@@ -22,6 +24,10 @@ namespace BugReport.Reports
             StringBuilder link = new StringBuilder();
             GetHyperLink(link, issues);
             return link.ToString();
+        }
+        public static string GetHyperLink(string query)
+        {
+            return BaseUrl + System.Net.WebUtility.UrlEncode(query);
         }
     }
 }
