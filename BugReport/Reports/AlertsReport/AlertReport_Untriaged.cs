@@ -14,12 +14,15 @@ namespace BugReport.Reports
     {
         private readonly string[] _issueTypeLabels = { "bug", "test bug", "enhancement", "test enhancement", "api-needs-work", "api-ready-for-review", "api-approved", "documentation", "question" };
 
+        [Flags]
         private enum UntriagedType
         {
-            UntriagedLabel = 1,
-            MissingMilestone = 2,
-            MissingAreaLabel = 4,
-            MissingIssueTypeLabel = 8
+            UntriagedLabel = 0x1,
+            MissingMilestone = 0x2,
+            MissingAreaLabel = 0x4,
+            MissingIssueTypeLabel = 0x8,
+            MultipleIssueTypeLabels = 0x10,
+            MultipleAreaLabels = 0x20
         }
 
         private string UntriagedTypeToString(UntriagedType type)
@@ -78,13 +81,27 @@ namespace BugReport.Reports
             if (issue.Milestone == null)
                 triage |= UntriagedType.MissingMilestone;
 
-            // Check if this issue has an area label
-            if (issue.Labels.FirstOrDefault((label) => label.Name.StartsWith("area-")) == default(Label))
+            // Count area labels
+            int areaLabelsCount = issue.Labels.Where(label => label.Name.StartsWith("area-")).Count();
+            if (areaLabelsCount == 0)
+            {
                 triage |= UntriagedType.MissingAreaLabel;
+            }
+            else if (areaLabelsCount > 1)
+            {
+                triage |= UntriagedType.MultipleAreaLabels;
+            }
 
-            // Check if this issue has an issue-type label
-            if (issue.Labels.Select((label) => label.Name).Intersect(_issueTypeLabels).Count() == 0)
+            // Count issue labels
+            int issueTypeLabelsCount = issue.Labels.Select(label => label.Name).Intersect(_issueTypeLabels).Count();
+            if (issueTypeLabelsCount == 0)
+            {
                 triage |= UntriagedType.MissingIssueTypeLabel;
+            }
+            else if (issueTypeLabelsCount > 1)
+            {
+                triage |= UntriagedType.MultipleIssueTypeLabels;
+            }
 
             return triage;
         }
