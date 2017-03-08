@@ -26,10 +26,10 @@ namespace BugReport.Reports
         private IEnumerable<Label> _labels;
         private string _htmlTemplateFileName;
 
-        public AlertReporting(string alertsXmlFileName, bool skipEmail, string htmlTemplateFileName, AlertType type)
+        public AlertReporting(string configFileName, bool skipEmail, string htmlTemplateFileName, AlertType type)
         {
             ConfigLoader loader = new ConfigLoader();
-            loader.Load(alertsXmlFileName, out _alerts, out _labels);
+            loader.Load(configFileName, out _alerts, out _labels);
 
             _type = type;
             _skipEmail = skipEmail;
@@ -185,14 +185,6 @@ namespace BugReport.Reports
                 Console.Write(report.BodyText.Replace("<br/>", ""));
             }
             Console.WriteLine();
-        }
-
-        public IEnumerable<Label> Labels
-        {
-            get
-            {
-                return _labels;
-            }
         }
     }
 }

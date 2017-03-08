@@ -16,9 +16,9 @@ public class Repository
     public string Name { get; private set; }
     public string AuthenticationToken { get; set; }
 
-    public Repository(string alertsXmlFileName)
+    public Repository(string configFileName)
     {
-        XElement root = XElement.Load(alertsXmlFileName);
+        XElement root = XElement.Load(configFileName);
 
         IEnumerable<XElement> repositoryNodes = root.Descendants("repository");
         if (!repositoryNodes.Any())
