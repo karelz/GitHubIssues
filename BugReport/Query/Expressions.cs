@@ -44,7 +44,7 @@ namespace BugReport.Query
         }
         public static Expression Not(Expression ex)
         {
-            return new ExpressionOr(new Expression[] { ex });
+            return new ExpressionNot(ex);
         }
 
     }
