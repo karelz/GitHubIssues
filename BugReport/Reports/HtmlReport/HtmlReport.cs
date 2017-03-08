@@ -12,15 +12,15 @@ namespace BugReport.Reports
     public class HtmlReport
     {
         private IEnumerable<Alert> _alerts;
-        private IEnumerable<NamedQuery> _labels;
+        private IEnumerable<Label> _areaLabels;
+        private IEnumerable<NamedQuery> _areaLabelQueries;
 
         public HtmlReport(string configFileName)
         {
             ConfigLoader loader = new ConfigLoader();
-            IEnumerable<Label> labels;
-            loader.Load(configFileName, out _alerts, out labels);
+            loader.Load(configFileName, out _alerts, out _areaLabels);
 
-            _labels = labels.Select(label => new NamedQuery(label.Name, new ExpressionLabel(label.Name)));
+            _areaLabelQueries = _areaLabels.Select(label => new NamedQuery(label.Name, new ExpressionLabel(label.Name)));
         }
 
         public void Write(IssueCollection issuesCollection, string outputHtmlFile)
@@ -28,6 +28,10 @@ namespace BugReport.Reports
             List<NamedQuery> columns = new List<NamedQuery>();
             columns.Add(new NamedQuery("2.0 issues", "is:issue AND is:open AND milestone:2.0.0"));
             columns.Add(new NamedQuery("All issues", "is:issue AND is:open"));
+            columns.Add(new NamedQuery("Untriaged issues", 
+                new ExpressionUntriaged(AlertReport_Untriaged.IssueTypeLabels, 
+                    _areaLabels, 
+                    AlertReport_Untriaged.UntriagedLabel)));
 
             IEnumerable<DataModelIssue> issues = issuesCollection.Issues.Where(i => i.IsIssueOrComment);
             using (StreamWriter file = new StreamWriter(outputHtmlFile))
@@ -36,7 +40,7 @@ namespace BugReport.Reports
                 file.WriteLine("<h2>Alerts</h2>");
                 Report(file, issues, columns, _alerts.OrderBy(alert => alert.Name));
                 file.WriteLine("<h2>Areas</h2>");
-                Report(file, issues, columns, _labels.OrderBy(labelQuery => labelQuery.Name));
+                Report(file, issues, columns, _areaLabelQueries.OrderBy(labelQuery => labelQuery.Name));
                 file.WriteLine("</body></html>");
             }
         }

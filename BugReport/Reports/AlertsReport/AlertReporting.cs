@@ -82,7 +82,7 @@ namespace BugReport.Reports
             if (_type == AlertType.Diff)
                 report = new AlertReport_Diff(alert, !_skipEmail, _htmlTemplateFileName);
             else if (_type == AlertType.Untriaged)
-                report = new AlertReport_Untriaged(alert, !_skipEmail, _htmlTemplateFileName);
+                report = new AlertReport_Untriaged(alert, !_skipEmail, _htmlTemplateFileName, _labels);
             else if (_type == AlertType.NeedsMSResponse)
                 report = new AlertReport_NeedsMSResponse(alert, !_skipEmail, _htmlTemplateFileName);
             else

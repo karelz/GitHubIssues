@@ -37,6 +37,10 @@ namespace BugReport.DataModel
         {
             return issues.Where(i => !exceptIssues.ContainsIssue(i.Number));
         }
+        public static bool ContainsLabel(this IEnumerable<Label> labels, Label label)
+        {
+            return labels.ContainsLabel(label.Name);
+        }
         public static bool ContainsLabel(this IEnumerable<Label> labels, string labelName)
         {
             return labels.Where(l => l.Name == labelName).Any();
@@ -44,6 +48,14 @@ namespace BugReport.DataModel
         public static bool ContainsLabel(this DataModelIssue issue, IEnumerable<Label> labels)
         {
             return issue.Labels.Intersect(labels).Any();
+        }
+        public static IEnumerable<Label> IntersectByName(this IEnumerable<Label> labels, IEnumerable<Label> labels2)
+        {
+            return labels.Where(label => labels2.ContainsLabel(label.Name));
+        }
+        public static IEnumerable<Label> IntersectByName(this IEnumerable<Label> labels, IEnumerable<string> labelNames2)
+        {
+            return labels.Where(label => labelNames2.Contains(label.Name));
         }
         public static IEnumerable<Label> ExceptByName(this IEnumerable<Label> labels, IEnumerable<Label> exceptLabels)
         {
