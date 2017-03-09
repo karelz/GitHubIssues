@@ -28,6 +28,12 @@ namespace BugReport.Query
             parser = new QuerySyntaxParser(queryString);
         }
 
+        public static Expression Parse(string queryString)
+        {
+            QueryParser queryParser = new QueryParser(queryString);
+            return queryParser.Parse();
+        }
+
         public Expression Parse()
         {
             Expression expr = ParseExpression_Or();

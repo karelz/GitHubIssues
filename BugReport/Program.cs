@@ -15,6 +15,7 @@ class Program
         Console.WriteLine("  cache <config.xml> [<GithubToken>]- will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json");
         Console.WriteLine("  cacheWithComments <alerts.xml> [<GithubToken>] - will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json and Github comments into file Comments_YYY-MM-DD@HH-MM.json");
         Console.WriteLine("  report <input.json> <output.html> <config.xml> - Creates report of GitHub issues from cached .json file");
+        Console.WriteLine("  query <input.json> <output.html> <config.xml> - Creates (hardcoded) query-report of GitHub issues from cached .json file");
         Console.WriteLine("  alerts <input1.json> <input2.json> <emailTemplate.html> <config.xml> [<alert_name>] - Sends alert emails based on .xml config, optinally filtered to just alert_name");
         Console.WriteLine("      alerts_SkipEmail or set SEND_EMAIL=0 - Won't send any emails");
         Console.WriteLine("  untriaged <issues.json> <emailTemplate.html> <config.xml> [<alert_name>] - Sends alert emails based on .xml config, optinally filtered to just alert_name");
@@ -51,6 +52,11 @@ class Program
                 else if (args[0].Equals("report", StringComparison.OrdinalIgnoreCase) && (args.Length == 4))
                 {
                     HtmlReport(args[1], args[2], args[3]);
+                    return (int)ErrorCode.Success;
+                }
+                else if (args[0].Equals("query", StringComparison.OrdinalIgnoreCase) && (args.Length == 4))
+                {
+                    QueryReport(args[1], args[2], args[3]);
                     return (int)ErrorCode.Success;
                 }
                 else if ((args[0].Equals("alerts", StringComparison.OrdinalIgnoreCase)
@@ -112,6 +118,12 @@ class Program
     static void HtmlReport(string inputJsonFileName, string outputHtmlFileName, string configFileName)
     {
         HtmlReport report = new HtmlReport(configFileName);
+        report.Write(IssueCollection.LoadFrom(inputJsonFileName), outputHtmlFileName);
+    }
+
+    static void QueryReport(string inputJsonFileName, string outputHtmlFileName, string configFileName)
+    {
+        QueryReport report = new QueryReport(configFileName);
         report.Write(IssueCollection.LoadFrom(inputJsonFileName), outputHtmlFileName);
     }
 

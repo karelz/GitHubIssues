@@ -18,8 +18,7 @@ namespace BugReport.Reports
         {
             Name = name;
 
-            QueryParser queryParser = new QueryParser(query);
-            Query = queryParser.Parse();
+            Query = QueryParser.Parse(query);
         }
         public NamedQuery(string name, Expression query)
         {

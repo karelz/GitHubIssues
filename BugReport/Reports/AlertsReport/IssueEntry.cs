@@ -28,7 +28,7 @@ namespace BugReport.Reports
                 idPrefix = "PR ";
             }
 
-            IssueId = string.Format("{0}#<a href=\"{1}\">{2}</a>", idPrefix, issue.HtmlUrl, issue.Number);
+            IssueId = $"{idPrefix}#<a href=\"{issue.HtmlUrl}\">{issue.Number}</a>";
 
             Title = issue.Title;
 
@@ -40,7 +40,7 @@ namespace BugReport.Reports
             }
             else if (issue.Assignee != null)
             {
-                AssignedToText = string.Format("<a href=\"{0}\">@{1}</a>", issue.Assignee.HtmlUrl, issue.Assignee.Login);
+                AssignedToText = $"<a href=\"{issue.Assignee.HtmlUrl}\">@{issue.Assignee.Login}</a>";
             }
             else
             {
