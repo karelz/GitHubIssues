@@ -137,7 +137,7 @@ namespace BugReport.Query
             if (token.IsOperatorNot())
             {
                 parser.Skip();
-                Expression expr = new ExpressionNot(Parse());
+                Expression expr = new ExpressionNot(ParseExpression_Single());
                 if (expr == null)
                 {
                     throw new InvalidQueryException("The sub-expression after NOT operator is empty", queryString, token.Position);
@@ -180,7 +180,7 @@ namespace BugReport.Query
                     }
                     else
                     {
-                        throw new InvalidQueryException("Unexpected value in key-value pair, expected: [pr|issue|open|close]", queryString, token.Position);
+                        throw new InvalidQueryException($"Unexpected value '{token}' in key-value pair, expected: [pr|issue|open|close]", queryString, token.Position);
                     }
                 }
                 else if (token.IsKeyValuePair("assignee"))
@@ -199,12 +199,12 @@ namespace BugReport.Query
                     }
                     else
                     {
-                        throw new InvalidQueryException("Unexpected value in key-value pair, expected: [milestone|assignee]", queryString, token.Position);
+                        throw new InvalidQueryException($"Unexpected value '{token}' in key-value pair, expected: [milestone|assignee]", queryString, token.Position);
                     }
                 }
                 else
                 {
-                    throw new InvalidQueryException("Unexpected key in key-value pair, expected: [label|-label|milestone|is|assignee]", queryString, token.Position);
+                    throw new InvalidQueryException($"Unexpected key '{token}' in key-value pair, expected: [label|-label|milestone|is|assignee]", queryString, token.Position);
                 }
                 parser.Skip();
                 return expr;

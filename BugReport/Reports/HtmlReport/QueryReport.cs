@@ -19,12 +19,13 @@ namespace BugReport.Reports
 
         public void Write(IssueCollection issuesCollection, string outputHtmlFile)
         {
-            string queryString = @"is:issue AND is:open AND milestone:2.0.0 AND " +
-                //"-label:os-windows AND (label:os-linux OR label:mac-os-x) AND 
-                @"-label:os-linux AND -label:mac-os-x AND 
-                -label:test-run-core AND 
-                label:area-System.Net.Security";
-                //"(label:area-System.Net OR label:area-System.Net.Sockets OR label:area-System.Net.Security OR label:area-System.Net.Http)";
+            string queryString = @"is:issue AND is:open AND milestone:2.0.0 AND" +
+                //" -label:os-windows AND (label:os-linux OR label:mac-os-x) AND" +
+                //@" -label:os-linux AND -label:mac-os-x AND" +
+                //@" -label:test-run-core AND" +
+                @" !(label:test-run-core OR label:test-run-desktop OR label:disabled-test) AND" +
+                @" label:area-System.IO";
+                //" (label:area-System.Net OR label:area-System.Net.Sockets OR label:area-System.Net.Security OR label:area-System.Net.Http)";
             Expression query = QueryParser.Parse(queryString);
 
             IEnumerable<DataModelIssue> issues = query.Evaluate(issuesCollection.Issues);

@@ -118,10 +118,10 @@ namespace BugReport.Query
         public override string ToString()
         {
             if ((Word1 == null) && (Word2 == null))
-                return String.Format("{0}", TokenType);
+                return $"{TokenType}";
             if (Word2 == null)
-                return String.Format("{0} {1}", TokenType, Word1);
-            return String.Format("{0} {1}:{2}", TokenType, Word1, Word2);
+                return $"{Word1}";
+            return $"{Word1}:{Word2}";
         }
     }
 }
