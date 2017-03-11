@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -57,7 +58,7 @@ namespace BugReport.Reports
                 file.WriteLine("<tr>");
                 ReportTableRow(file, "  ",
                     $"<b>{row.Name}</b>",
-                    columns.Select(col => GetQueryCountLinked(Expression.And(row.Query, col.Query), issues)));
+                    columns.Select(col => GetQueryCountLinked_Multiple(row.Query, col.Query, issues)));
                 file.WriteLine("</tr>");
             }
 
@@ -77,6 +78,41 @@ namespace BugReport.Reports
             if (gitHubQueryURL != null)
             {
                 return $"<a href=\"{GitHubQuery.GetHyperLink(gitHubQueryURL)}\">{count}</a>";
+            }
+            return count.ToString();
+        }
+        private string GetQueryCountLinked_Multiple(Expression rowQuery, Expression colQuery, IEnumerable<DataModelIssue> issues)
+        {
+            Expression query = Expression.And(rowQuery, colQuery);
+            int count = query.Evaluate(issues).Count();
+
+            string gitHubQueryURL = query.GetGitHubQueryURL();
+            if (gitHubQueryURL != null)
+            {
+                return $"<a href=\"{GitHubQuery.GetHyperLink(gitHubQueryURL)}\">{count}</a>";
+            }
+            else
+            {
+                if ((colQuery.GetGitHubQueryURL() != null) && (rowQuery is ExpressionOr))
+                {
+                    IEnumerable<Expression> expressions = ((ExpressionOr)rowQuery.Simplify()).Expressions;
+                    if ((expressions.Count() <= 4) && 
+                        !expressions.Where(e => e.GetGitHubQueryURL() == null).Any())
+                    {
+                        return 
+                            $"{count} <small>(" +
+                            string.Join("+", expressions.Select(
+                                expr =>
+                                {
+                                    Expression subQuery = Expression.And(expr, colQuery);
+                                    int subCount = subQuery.Evaluate(issues).Count();
+                                    string subQueryURL = subQuery.GetGitHubQueryURL();
+                                    Debug.Assert(subQueryURL != null);
+                                    return $"<a href=\"{GitHubQuery.GetHyperLink(subQueryURL)}\">{subCount}</a>";
+                                })) +
+                            ")</small>";
+                    }
+                }
             }
             return count.ToString();
         }
