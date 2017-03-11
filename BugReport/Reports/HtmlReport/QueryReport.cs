@@ -11,24 +11,15 @@ namespace BugReport.Reports
 {
     public class QueryReport
     {
+        Config _config;
+
         public QueryReport(string configFileName)
         {
-            ConfigLoader loader = new ConfigLoader();
-            loader.Load(configFileName, out _, out _);
+            _config = new Config(configFileName);
         }
 
         public void Write(IssueCollection issuesCollection, string outputHtmlFile)
         {
-            string queryString = @"is:issue AND is:open AND milestone:2.0.0 AND" +
-                //" -label:os-windows AND (label:os-linux OR label:mac-os-x) AND" +
-                //@" -label:os-linux AND -label:mac-os-x AND" +
-                //@" -label:test-run-core AND" +
-                @" !(label:test-run-core OR label:test-run-desktop OR label:disabled-test) AND" +
-                @" label:area-System.IO";
-                //" (label:area-System.Net OR label:area-System.Net.Sockets OR label:area-System.Net.Security OR label:area-System.Net.Http)";
-            Expression query = QueryParser.Parse(queryString);
-
-            IEnumerable<DataModelIssue> issues = query.Evaluate(issuesCollection.Issues);
             using (StreamWriter file = new StreamWriter(outputHtmlFile))
             {
                 file.WriteLine(
@@ -57,10 +48,17 @@ namespace BugReport.Reports
     </style>
 </head>
 <body>");
-                file.WriteLine("<h2>Query</h2>");
-                file.WriteLine($"<p>{queryString}</p>");
-                file.WriteLine($"Count: {issues.Count()}<br/>");
-                file.WriteLine(FormatIssueTable(issues.Select(issue => new IssueEntry(issue))));
+
+                foreach (NamedQuery query in _config.Queries)
+                {
+                    IEnumerable<DataModelIssue> issues = query.Query.Evaluate(issuesCollection.Issues);
+
+                    file.WriteLine($"<h2>Query: {query.Name}</h2>");
+                    file.WriteLine($"<p>{query.ToString()}</p>");
+                    file.WriteLine($"Count: {issues.Count()}<br/>");
+                    file.WriteLine(FormatIssueTable(issues.Select(issue => new IssueEntry(issue))));
+                }
+
                 file.WriteLine("</body></html>");
             }
         }

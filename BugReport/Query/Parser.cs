@@ -11,26 +11,28 @@ namespace BugReport.Query
 {
     public class InvalidQueryException : Exception
     {
-        public InvalidQueryException(string message, string queryString, int position) :
-            base(String.Format("{0} at position {1}", message, position))
+        public InvalidQueryException(string message, string queryString, int position)
+            : base(String.Format("{0} at position {1}", message, position))
         {
         }
     }
 
     public class QueryParser : IDisposable
     {
-        QuerySyntaxParser parser;
-        string queryString;
+        QuerySyntaxParser _parser;
+        string _queryString;
+        IReadOnlyDictionary<string, Expression> _customIsValues;
 
-        public QueryParser(string queryString)
+        public QueryParser(string queryString, IReadOnlyDictionary<string, Expression> customIsValues)
         {
-            this.queryString = queryString;
-            parser = new QuerySyntaxParser(queryString);
+            _queryString = queryString;
+            _customIsValues = customIsValues ?? new Dictionary<string, Expression>();
+            _parser = new QuerySyntaxParser(queryString);
         }
 
-        public static Expression Parse(string queryString)
+        public static Expression Parse(string queryString, IReadOnlyDictionary<string, Expression> customIsValues)
         {
-            QueryParser queryParser = new QueryParser(queryString);
+            QueryParser queryParser = new QueryParser(queryString, customIsValues);
             return queryParser.Parse();
         }
 
@@ -39,7 +41,7 @@ namespace BugReport.Query
             Expression expr = ParseExpression_Or();
             if (expr == null)
             {
-                throw new InvalidQueryException("The query is empty", queryString, 0);
+                throw new InvalidQueryException("The query is empty", _queryString, 0);
             }
             return expr;
         }
@@ -47,16 +49,16 @@ namespace BugReport.Query
         Expression ParseExpression_Or()
         {
             Expression expr = ParseExpression_And();
-            Token token = parser.Peek();
+            Token token = _parser.Peek();
             if (!token.IsOperatorOr())
             {
                 return expr;
             }
-            parser.Skip();
+            _parser.Skip();
 
             if (expr == null)
             {
-                throw new InvalidQueryException("Expression expected before OR operator", queryString, token.Position);
+                throw new InvalidQueryException("Expression expected before OR operator", _queryString, token.Position);
             }
 
             List<Expression> expressions = new List<Expression>();
@@ -68,31 +70,31 @@ namespace BugReport.Query
                 expressions.Add(expr);
                 if (expr == null)
                 {
-                    throw new InvalidQueryException("Expression expected after OR operator", queryString, token.Position);
+                    throw new InvalidQueryException("Expression expected after OR operator", _queryString, token.Position);
                 }
-                token = parser.Peek();
+                token = _parser.Peek();
                 if (!token.IsOperatorOr())
                 {
                     return new ExpressionOr(expressions);
                 }
-                parser.Skip();
+                _parser.Skip();
             }
         }
 
         Expression ParseExpression_And()
         {
-            Token token = parser.Peek();
+            Token token = _parser.Peek();
             if (token.IsEndOfQuery() || token.IsOperatorOr() || token.IsBracketRight())
             {
                 return null;
             }
             if (token.IsOperatorAnd())
             {
-                throw new InvalidQueryException("Expression expected before AND operator", queryString, token.Position);
+                throw new InvalidQueryException("Expression expected before AND operator", _queryString, token.Position);
             }
 
             Expression expr = ParseExpression_Single();
-            token = parser.Peek();
+            token = _parser.Peek();
             if (token.IsEndOfQuery() || token.IsOperatorOr() || token.IsBracketRight())
             {
                 return expr;
@@ -104,11 +106,11 @@ namespace BugReport.Query
             for (;;)
             {
                 bool hasOperatorAnd = false;
-                token = parser.Peek();
+                token = _parser.Peek();
                 if (token.IsOperatorAnd())
                 {
                     hasOperatorAnd = true;
-                    parser.Skip();
+                    _parser.Skip();
                 }
 
                 expr = ParseExpression_Single();
@@ -116,7 +118,7 @@ namespace BugReport.Query
                 {
                     if (hasOperatorAnd)
                     {
-                        throw new InvalidQueryException("Expression expected after AND operator", queryString, token.Position);
+                        throw new InvalidQueryException("Expression expected after AND operator", _queryString, token.Position);
                     }
                     Debug.Assert(expressions.Count > 1);
                     return new ExpressionAnd(expressions);
@@ -127,7 +129,7 @@ namespace BugReport.Query
 
         Expression ParseExpression_Single()
         {
-            Token token = parser.Peek();
+            Token token = _parser.Peek();
 
             if (token.IsEndOfQuery() || token.IsOperatorOr() || token.IsOperatorAnd() || token.IsBracketRight())
             {
@@ -136,11 +138,11 @@ namespace BugReport.Query
 
             if (token.IsOperatorNot())
             {
-                parser.Skip();
+                _parser.Skip();
                 Expression expr = new ExpressionNot(ParseExpression_Single());
                 if (expr == null)
                 {
-                    throw new InvalidQueryException("The sub-expression after NOT operator is empty", queryString, token.Position);
+                    throw new InvalidQueryException("The sub-expression after NOT operator is empty", _queryString, token.Position);
                 }
                 return expr;
             }
@@ -178,9 +180,12 @@ namespace BugReport.Query
                     {
                         expr = new ExpressionIsOpen(false);
                     }
+                    else if (_customIsValues.TryGetValue(token.Word2, out expr))
+                    {
+                    }
                     else
                     {
-                        throw new InvalidQueryException($"Unexpected value '{token}' in key-value pair, expected: [pr|issue|open|close]", queryString, token.Position);
+                        throw new InvalidQueryException($"Unexpected value '{token}' in key-value pair, expected: [pr|issue|open|close]", _queryString, token.Position);
                     }
                 }
                 else if (token.IsKeyValuePair("assignee"))
@@ -199,50 +204,50 @@ namespace BugReport.Query
                     }
                     else
                     {
-                        throw new InvalidQueryException($"Unexpected value '{token}' in key-value pair, expected: [milestone|assignee]", queryString, token.Position);
+                        throw new InvalidQueryException($"Unexpected value '{token}' in key-value pair, expected: [milestone|assignee]", _queryString, token.Position);
                     }
                 }
                 else
                 {
-                    throw new InvalidQueryException($"Unexpected key '{token}' in key-value pair, expected: [label|-label|milestone|is|assignee]", queryString, token.Position);
+                    throw new InvalidQueryException($"Unexpected key '{token}' in key-value pair, expected: [label|-label|milestone|is|assignee]", _queryString, token.Position);
                 }
-                parser.Skip();
+                _parser.Skip();
                 return expr;
             }
 
             if (token.IsBracketLeft())
             {
-                parser.Skip();
+                _parser.Skip();
                 Expression expr = Parse();
                 if (expr == null)
                 {
-                    throw new InvalidQueryException("The sub-expression in brackets is empty", queryString, token.Position);
+                    throw new InvalidQueryException("The sub-expression in brackets is empty", _queryString, token.Position);
                 }
 
-                Token rightBracketToken = parser.Read();
+                Token rightBracketToken = _parser.Read();
                 if (!rightBracketToken.IsBracketRight())
                 {
-                    throw new InvalidQueryException("Cannot find matching bracket ')'", queryString, token.Position);
+                    throw new InvalidQueryException("Cannot find matching bracket ')'", _queryString, token.Position);
                 }
                 return expr;
             }
 
-            throw new InvalidQueryException("Unexpected expression -- expected ! or ( or key-value pair", queryString, token.Position);
+            throw new InvalidQueryException("Unexpected expression -- expected ! or ( or key-value pair", _queryString, token.Position);
         }
 
         public void Close()
         {
-            if (parser != null)
+            if (_parser != null)
             {
-                parser.Close();
+                _parser.Close();
             }
         }
         public void Dispose()
         {
-            if (parser != null)
+            if (_parser != null)
             {
-                parser.Dispose();
-                parser = null;
+                _parser.Dispose();
+                _parser = null;
             }
         }
     }

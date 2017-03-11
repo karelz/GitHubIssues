@@ -11,9 +11,18 @@ using BugReport.DataModel;
 
 namespace BugReport.Reports
 {
-    public class ConfigLoader
+    public class Config
     {
-        private List<Alert.User> Users = new List<Alert.User>();
+        private List<ConfigFile> _configFiles;
+
+        private List<Alert.User> _users = new List<Alert.User>();
+
+        public IEnumerable<Alert> Alerts { get; private set; }
+        public IEnumerable<NamedQuery> Queries { get; private set; }
+        public IEnumerable<Label> AreaLabels { get; private set; }
+        public IEnumerable<Label> IssueTypeLabels { get; private set; }
+        public IEnumerable<Label> UntriagedLabels { get; private set; }
+        public ExpressionUntriaged UntriagedExpression { get; private set; }
 
         private struct ConfigFile
         {
@@ -27,20 +36,20 @@ namespace BugReport.Reports
             }
         }
 
-        public void Load(string configXmlFileName, out IEnumerable<Alert> alerts, out IEnumerable<Label> labels)
+        public Config(string configXmlFileName)
         {
             // List of XML config files to load
             Queue<string> configFilesToLoad = new Queue<string>();
             configFilesToLoad.Enqueue(configXmlFileName);
 
             // List of all XML roots to from all XML config files
-            List<ConfigFile> configFiles = new List<ConfigFile>();
+            _configFiles = new List<ConfigFile>();
 
             while (configFilesToLoad.Count > 0)
             {
                 string fileName = configFilesToLoad.Dequeue();
                 XElement root = XElement.Load(fileName);
-                configFiles.Add(new ConfigFile(fileName, root));
+                _configFiles.Add(new ConfigFile(fileName, root));
 
                 string directoryName = Path.GetDirectoryName(fileName);
 
@@ -50,14 +59,25 @@ namespace BugReport.Reports
                 }
             }
 
-            LoadUsers(configFiles);
-            alerts = LoadAlerts(configFiles);
-            labels = LoadLabels(configFiles);
+            LoadUsers();
+
+            AreaLabels = LoadLabels("area").ToList();
+            IssueTypeLabels = LoadLabels("issueType").ToList();
+            UntriagedLabels = LoadLabels("untriaged").ToList();
+
+            UntriagedExpression = new ExpressionUntriaged(
+                IssueTypeLabels,
+                AreaLabels,
+                UntriagedLabels);
+            var customIsValues = new Dictionary<string, Expression>() { { "untriaged", UntriagedExpression } };
+
+            Alerts = LoadAlerts(customIsValues).ToList();
+            Queries = LoadQueries(customIsValues).ToList();
         }
 
-        private void LoadUsers(IEnumerable<ConfigFile> configFiles)
+        private void LoadUsers()
         {
-            foreach (ConfigFile configFile in configFiles)
+            foreach (ConfigFile configFile in _configFiles)
             {
                 foreach (XElement usersNode in configFile.Root.Descendants("users"))
                 {
@@ -107,15 +127,15 @@ namespace BugReport.Reports
                             email = emailAlias + defaultEmailServer;
                         }
 
-                        Users.Add(new Alert.User(name, email, emailAlias, gitHubLogin));
+                        _users.Add(new Alert.User(name, email, emailAlias, gitHubLogin));
                     }
                 }
             }
         }
 
-        private IEnumerable<Alert> LoadAlerts(IEnumerable<ConfigFile> configFiles)
+        private IEnumerable<Alert> LoadAlerts(IReadOnlyDictionary<string, Expression> customIsValues)
         {
-            foreach (ConfigFile configFile in configFiles)
+            foreach (ConfigFile configFile in _configFiles)
             {
                 foreach (XElement alertsNode in configFile.Root.Descendants("alerts"))
                 {
@@ -130,7 +150,7 @@ namespace BugReport.Reports
                         Alert alert;
                         try
                         {
-                            alert = new Alert(alertName, query, owners, ccUsers);
+                            alert = new Alert(alertName, query, customIsValues, owners, ccUsers);
                         }
                         catch (InvalidQueryException ex)
                         {
@@ -142,11 +162,39 @@ namespace BugReport.Reports
             }
         }
 
-        private IEnumerable<Label> LoadLabels(IEnumerable<ConfigFile> configFiles)
+        private IEnumerable<NamedQuery> LoadQueries(IReadOnlyDictionary<string, Expression> customIsValues)
         {
-            foreach (ConfigFile configFile in configFiles)
+            foreach (ConfigFile configFile in _configFiles)
             {
-                foreach (XElement labelsNode in configFile.Root.Descendants("labels"))
+                foreach (XElement reportNode in configFile.Root.Descendants("report"))
+                {
+                    foreach (XElement queryNode in reportNode.Descendants("query"))
+                    {
+                        string queryName = queryNode.Attribute("name").Value;
+
+                        string queryString = queryNode.Value.ToString();
+
+                        NamedQuery query;
+                        try
+                        {
+                            query = new NamedQuery(queryName, queryString, customIsValues);
+                        }
+                        catch (InvalidQueryException ex)
+                        {
+                            throw new InvalidDataException($"Invalid query '{queryName}'", ex);
+                        }
+                        yield return query;
+                    }
+                }
+            }
+        }
+
+        private IEnumerable<Label> LoadLabels(string kind)
+        {
+            foreach (ConfigFile configFile in _configFiles)
+            {
+                foreach (XElement labelsNode in 
+                    configFile.Root.Descendants("labels").Where(n => n.Attribute("kind")?.Value == kind))
                 {
                     foreach (XElement labelNode in labelsNode.Descendants("label"))
                     {
@@ -155,10 +203,10 @@ namespace BugReport.Reports
                 }
             }
         }
-
+ 
         private Alert.User FindUser(string id)
         {
-            foreach (Alert.User user in Users)
+            foreach (Alert.User user in _users)
             {
                 if ((user.EmailAlias == id) || (user.GitHubLogin == id) || (user.EmailAddress == id))
                 {
