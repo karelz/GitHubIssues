@@ -14,12 +14,11 @@ namespace BugReport.Reports
         public string Name { get; private set; }
         public Expression Query { get; private set; }
 
-        public NamedQuery(string name, string query)
+        public NamedQuery(string name, string query, IReadOnlyDictionary<string, Expression> customIsValues)
         {
             Name = name;
 
-            QueryParser queryParser = new QueryParser(query);
-            Query = queryParser.Parse();
+            Query = QueryParser.Parse(query, customIsValues);
         }
         public NamedQuery(string name, Expression query)
         {
@@ -49,8 +48,13 @@ namespace BugReport.Reports
         public IEnumerable<User> Owners { get; private set; }
         public IEnumerable<User> CCs { get; private set; }
 
-        public Alert(string name, string query, IEnumerable<User> owners, IEnumerable<User> ccList) : 
-            base(name, query)
+        public Alert(
+            string name, 
+            string query, 
+            IReadOnlyDictionary<string, Expression> customIsValues, 
+            IEnumerable<User> owners, 
+            IEnumerable<User> ccList) 
+            : base(name, query, customIsValues)
         {
             Owners = owners;
             CCs = ccList;

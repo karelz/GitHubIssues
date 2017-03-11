@@ -22,14 +22,12 @@ namespace BugReport.Reports
     {
         private bool _skipEmail;
         private AlertType _type;
-        private IEnumerable<Alert> _alerts;
-        private IEnumerable<Label> _labels;
+        Config _config;
         private string _htmlTemplateFileName;
 
         public AlertReporting(string configFileName, bool skipEmail, string htmlTemplateFileName, AlertType type)
         {
-            ConfigLoader loader = new ConfigLoader();
-            loader.Load(configFileName, out _alerts, out _labels);
+            _config = new Config(configFileName);
 
             _type = type;
             _skipEmail = skipEmail;
@@ -54,7 +52,7 @@ namespace BugReport.Reports
                 smtpClient = new SmtpClient("smtphost");
                 smtpClient.UseDefaultCredentials = true;
             }
-            foreach (Alert alert in _alerts)
+            foreach (Alert alert in _config.Alerts)
             {
                 Console.WriteLine("Alert: {0}", alert.Name);
                 if ((filteredAlertName != null) && (filteredAlertName != alert.Name))
@@ -82,7 +80,7 @@ namespace BugReport.Reports
             if (_type == AlertType.Diff)
                 report = new AlertReport_Diff(alert, !_skipEmail, _htmlTemplateFileName);
             else if (_type == AlertType.Untriaged)
-                report = new AlertReport_Untriaged(alert, !_skipEmail, _htmlTemplateFileName, _labels);
+                report = new AlertReport_Untriaged(alert, !_skipEmail, _htmlTemplateFileName, _config.UntriagedExpression);
             else if (_type == AlertType.NeedsMSResponse)
                 report = new AlertReport_NeedsMSResponse(alert, !_skipEmail, _htmlTemplateFileName);
             else

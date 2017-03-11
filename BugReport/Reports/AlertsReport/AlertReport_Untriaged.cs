@@ -12,15 +12,18 @@ namespace BugReport.Reports
 {
     public class ExpressionUntriaged : Expression
     {
-        private IEnumerable<string> _issueTypeLabels;
+        private IEnumerable<Label> _issueTypeLabels;
         private IEnumerable<Label> _areaLabels;
-        private string _untriagedLabel;
+        private IEnumerable<Label> _untriagedLabels;
 
-        public ExpressionUntriaged(IEnumerable<string> issueTypeLabels, IEnumerable<Label> areaLabels, string untriagedLabel)
+        public ExpressionUntriaged(
+            IEnumerable<Label> issueTypeLabels, 
+            IEnumerable<Label> areaLabels, 
+            IEnumerable<Label> untriagedLabels)
         {
             _issueTypeLabels = issueTypeLabels;
             _areaLabels = areaLabels;
-            _untriagedLabel = untriagedLabel;
+            _untriagedLabels = untriagedLabels;
         }
 
         [Flags]
@@ -50,7 +53,7 @@ namespace BugReport.Reports
             Flags triageFlags = 0;
 
             // Check if this issue is marked as 'untriaged'
-            if (issue.Labels.ContainsLabel(_untriagedLabel))
+            if (issue.Labels.IntersectByName(_untriagedLabels).Any())
             {
                 triageFlags |= Flags.UntriagedLabel;
             }
@@ -104,15 +107,16 @@ namespace BugReport.Reports
 
     public class AlertReport_Untriaged : AlertReport
     {
-        public static readonly string[] IssueTypeLabels = { "bug", "test bug", "enhancement", "test enhancement", "api-needs-work", "api-ready-for-review", "api-approved", "documentation", "question" };
-        public static readonly string UntriagedLabel = "untriaged";
+        private ExpressionUntriaged _untriagedExpression;
 
-        private ExpressionUntriaged _untriagedQuery;
-
-        public AlertReport_Untriaged(Alert alert, bool sendEmail, string htmlTemplateFileName, IEnumerable<Label> areaLabels) : 
-            base(alert, sendEmail, htmlTemplateFileName)
+        public AlertReport_Untriaged(
+            Alert alert, 
+            bool sendEmail, 
+            string htmlTemplateFileName, 
+            ExpressionUntriaged untriagedExpression)
+            : base(alert, sendEmail, htmlTemplateFileName)
         {
-            _untriagedQuery = new ExpressionUntriaged(IssueTypeLabels, areaLabels, UntriagedLabel);
+            _untriagedExpression = untriagedExpression;
         }
 
         /// <summary>
@@ -124,7 +128,7 @@ namespace BugReport.Reports
             var untriagedFlagsMap = new Dictionary<DataModelIssue, ExpressionUntriaged.Flags>();
             foreach (DataModelIssue issue in matchingIssues)
             {
-                ExpressionUntriaged.Flags flags = _untriagedQuery.GetUntriagedFlags(issue);
+                ExpressionUntriaged.Flags flags = _untriagedExpression.GetUntriagedFlags(issue);
                 if (flags != 0)
                 {
                     untriagedFlagsMap[issue] = flags;
