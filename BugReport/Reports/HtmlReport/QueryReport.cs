@@ -54,7 +54,7 @@ namespace BugReport.Reports
                     IEnumerable<DataModelIssue> issues = query.Query.Evaluate(issuesCollection.Issues);
 
                     file.WriteLine($"<h2>Query: {query.Name}</h2>");
-                    file.WriteLine($"<p>{query.ToString()}</p>");
+                    file.WriteLine($"<p>{query.Query}</p>");
                     file.WriteLine($"Count: {issues.Count()}<br/>");
                     file.WriteLine(FormatIssueTable(issues.Select(issue => new IssueEntry(issue))));
                 }

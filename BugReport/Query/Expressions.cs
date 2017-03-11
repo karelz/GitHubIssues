@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -23,6 +24,11 @@ namespace BugReport.Query
         }
 
         public abstract string GetGitHubQueryURL();
+
+        public virtual Expression Simplify()
+        {
+            return this;
+        }
 
         protected class Indentation
         {
@@ -50,50 +56,62 @@ namespace BugReport.Query
         {
             return new ExpressionNot(ex);
         }
-
     }
 
     public class ExpressionNot : Expression
     {
-        Expression expr;
+        Expression _expr;
         public ExpressionNot(Expression expr)
         {
-            this.expr = expr;
+            _expr = expr;
         }
         public override bool Evaluate(DataModelIssue issue)
         {
-            return !expr.Evaluate(issue);
+            return !_expr.Evaluate(issue);
         }
         public override void Validate(IssueCollection collection)
         {
-            expr.Validate(collection);
+            _expr.Validate(collection);
         }
         public override string ToString()
         {
-            return "NOT:\n" + Indentation.Indent(expr.ToString());
+            if ((_expr is ExpressionAnd) || (_expr is ExpressionOr))
+            {
+                return $"!({_expr})";
+            }
+            return $"-{_expr}";
         }
 
         public override string GetGitHubQueryURL()
         {
-            if ((expr is ExpressionLabel) || (expr is ExpressionMilestone) || (expr is ExpressionAssignee))
+            if ((_expr is ExpressionLabel) || (_expr is ExpressionMilestone) || (_expr is ExpressionAssignee))
             {
-                return "-" + expr.GetGitHubQueryURL();
+                return "-" + _expr.GetGitHubQueryURL();
             }
             return null;
+        }
+
+        public override Expression Simplify()
+        {
+            if (_expr is ExpressionNot)
+            {
+                return ((ExpressionNot)_expr)._expr.Simplify();
+            }
+            return this;
         }
     }
 
     public class ExpressionAnd : Expression
     {
-        IEnumerable<Expression> expressions;
+        IEnumerable<Expression> _expressions;
 
         public ExpressionAnd(IEnumerable<Expression> expressions)
         {
-            this.expressions = expressions;
+            this._expressions = expressions;
         }
         public override bool Evaluate(DataModelIssue issue)
         {
-            foreach (Expression expr in expressions)
+            foreach (Expression expr in _expressions)
             {
                 if (!expr.Evaluate(issue))
                 {
@@ -104,38 +122,64 @@ namespace BugReport.Query
         }
         public override void Validate(IssueCollection collection)
         {
-            foreach (Expression expr in expressions)
+            foreach (Expression expr in _expressions)
             {
                 expr.Validate(collection);
             }
         }
         public override string ToString()
         {
-            return "AND:\n" + string.Join("\n", expressions.Select(expr => Indentation.Indent(expr.ToString())));
+            return string.Join(" ", _expressions.Select(e => (e is ExpressionOr) ? $"({e})" : e.ToString()));
         }
 
         public override string GetGitHubQueryURL()
         {
-            IEnumerable<string> subQueries = expressions.Select(expr => expr.GetGitHubQueryURL());
+            IEnumerable<string> subQueries = _expressions.Select(expr => expr.GetGitHubQueryURL());
             if (subQueries.Contains(null))
             {
                 return null;
             }
             return string.Join(" ", subQueries);
         }
+
+        public override Expression Simplify()
+        {
+            List<Expression> expressions = new List<Expression>();
+            foreach (Expression expr in _expressions)
+            {
+                if (expr is ExpressionAnd)
+                {   // Fold all inner AND operands into this one
+                    foreach (Expression expr2 in ((ExpressionAnd)expr)._expressions)
+                    {
+                        expressions.Add(expr2.Simplify());
+                    }
+                }
+                else
+                {
+                    expressions.Add(expr.Simplify());
+                }
+            }
+            _expressions = expressions;
+            return this;
+        }
     }
 
     public class ExpressionOr : Expression
     {
-        IEnumerable<Expression> expressions;
+        IEnumerable<Expression> _expressions;
+
+        public IEnumerable<Expression> Expressions
+        {
+            get { return _expressions; }
+        }
 
         public ExpressionOr(IEnumerable<Expression> expressions)
         {
-            this.expressions = expressions;
+            this._expressions = expressions;
         }
         public override bool Evaluate(DataModelIssue issue)
         {
-            foreach (Expression expr in expressions)
+            foreach (Expression expr in _expressions)
             {
                 if (expr.Evaluate(issue))
                 {
@@ -146,19 +190,40 @@ namespace BugReport.Query
         }
         public override void Validate(IssueCollection collection)
         {
-            foreach (Expression expr in expressions)
+            foreach (Expression expr in _expressions)
             {
                 expr.Validate(collection);
             }
         }
         public override string ToString()
         {
-            return "OR:\n" + string.Join("\n", expressions.Select(expr => Indentation.Indent(expr.ToString())));
+            return string.Join(" OR ", _expressions.Select(e => (e is ExpressionAnd) ? $"({e})" : e.ToString()));
         }
 
         public override string GetGitHubQueryURL()
         {
             return null;
+        }
+
+        public override Expression Simplify()
+        {
+            List<Expression> expressions = new List<Expression>();
+            foreach (Expression expr in _expressions)
+            {
+                if (expr is ExpressionOr)
+                {   // Fold all inner OR operands into this one
+                    foreach (Expression expr2 in ((ExpressionOr)expr)._expressions)
+                    {
+                        expressions.Add(expr2.Simplify());
+                    }
+                }
+                else
+                {
+                    expressions.Add(expr.Simplify());
+                }
+            }
+            _expressions = expressions;
+            return this;
         }
     }
 
@@ -182,7 +247,7 @@ namespace BugReport.Query
         }
         public override string ToString()
         {
-            return "label:" + labelName;
+            return GetGitHubQueryURL();
         }
 
         public override string GetGitHubQueryURL()
@@ -211,12 +276,12 @@ namespace BugReport.Query
         }
         public override string ToString()
         {
-            return "is:" + (isIssue ? "issue" : "pr");
+            return GetGitHubQueryURL();
         }
 
         public override string GetGitHubQueryURL()
         {
-            return "is:" + (isIssue ? "issue" : "pr");
+            return isIssue ? "is:issue" : "is:pr";
         }
     }
 
@@ -236,12 +301,12 @@ namespace BugReport.Query
         }
         public override string ToString()
         {
-            return "is:" + (isOpen ? "open" : "closed");
+            return GetGitHubQueryURL();
         }
 
         public override string GetGitHubQueryURL()
         {
-            return "is:" + (isOpen ? "open" : "closed");
+            return isOpen ? "is:open" : "is:closed";
         }
     }
 
@@ -265,7 +330,7 @@ namespace BugReport.Query
         }
         public override string ToString()
         {
-            return "milestone:" + milestoneName;
+            return GetGitHubQueryURL();
         }
 
         public override string GetGitHubQueryURL()
@@ -294,7 +359,7 @@ namespace BugReport.Query
         }
         public override string ToString()
         {
-            return "assginee:" + assigneeName;
+            return GetGitHubQueryURL();
         }
 
         public override string GetGitHubQueryURL()
