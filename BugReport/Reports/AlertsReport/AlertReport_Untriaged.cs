@@ -99,6 +99,11 @@ namespace BugReport.Reports
             // Nothing to validate
         }
 
+        public override string ToString()
+        {
+            return "is:untriaged";
+        }
+
         public override string GetGitHubQueryURL()
         {
             return null;
