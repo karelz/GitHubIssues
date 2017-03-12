@@ -178,7 +178,8 @@ class Program
                             configFiles, 
                             templateFile, 
                             skipEmail, 
-                            outputFile);
+                            outputFile, 
+                            alertFilters);
 
                         IEnumerable<DataModelIssue> beginIssues = IssueCollection.LoadIssues(
                             beginFiles, 
@@ -187,7 +188,7 @@ class Program
                             endFiles,
                             IssueKindFlags.Issue | IssueKindFlags.PullRequest);
 
-                        bool isAllEmailSendSuccessful = report.SendEmails(beginIssues, endIssues, alertFilters);
+                        bool isAllEmailSendSuccessful = report.SendEmails(beginIssues, endIssues);
                         return isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure;
                     }
                 case ActionCommand.untriaged:
@@ -211,11 +212,12 @@ class Program
                             configFiles,
                             templateFile,
                             skipEmail,
-                            outputFile);
+                            outputFile, 
+                            alertFilters);
 
                         IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(inputFiles, IssueKindFlags.Issue);
 
-                        bool isAllEmailSendSuccessful = report.SendEmails(issues, null, alertFilters);
+                        bool isAllEmailSendSuccessful = report.SendEmails(issues, null);
                         return isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure;
                     }
                 case ActionCommand.needsResponse:
@@ -240,12 +242,13 @@ class Program
                             configFiles,
                             templateFile,
                             skipEmail,
-                            outputFile);
+                            outputFile, 
+                            alertFilters);
 
                         IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(inputFiles, IssueKindFlags.Issue);
                         IEnumerable<DataModelIssue> comments = IssueCollection.LoadIssues(commentsFiles, IssueKindFlags.Comment);
 
-                        bool isAllEmailSendSuccessful = report.SendEmails(issues, comments, alertFilters);
+                        bool isAllEmailSendSuccessful = report.SendEmails(issues, comments);
                         return isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure;
                     }
                 default:

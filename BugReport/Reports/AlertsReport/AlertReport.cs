@@ -12,11 +12,13 @@ namespace BugReport.Reports
 {
     public abstract class AlertReport
     {
-        protected string _htmlTemplateFileName;
-        protected Alert _alert;
         public virtual string Subject { get; protected set; }
         public virtual string AlertName { get; protected set; }
         public virtual string BodyText { get; protected set; }
+
+        protected Alert _alert;
+
+        private string _htmlTemplateFileName;
 
         public AlertReport(Alert alert, string htmlTemplateFileName)
         {

@@ -27,13 +27,15 @@ namespace BugReport.Reports
         private Config _config;
         private string _htmlTemplateFileName;
         private string _outputHtmlFileName;
+        private IEnumerable<string> _filteredAlertNames;
 
         public AlertReporting(
             AlertType alertType,
             IEnumerable<string> configFiles,
             string htmlTemplateFileName,
             bool skipEmail, 
-            string outputHtmlFileName)
+            string outputHtmlFileName,
+            IEnumerable<string> filteredAlertNames)
         {
             _config = new Config(configFiles);
 
@@ -41,6 +43,7 @@ namespace BugReport.Reports
             _skipEmail = skipEmail;
             _htmlTemplateFileName = htmlTemplateFileName;
             _outputHtmlFileName = outputHtmlFileName;
+            _filteredAlertNames = filteredAlertNames;
 
             // Environment variable override of sending emails
             string sendEmailEnvironmentVariable = Environment.GetEnvironmentVariable("SEND_EMAIL");
@@ -56,8 +59,7 @@ namespace BugReport.Reports
         /// <returns>True if all emails successfully sent</returns>
         public bool SendEmails(
             IEnumerable<DataModelIssue> issues1, 
-            IEnumerable<DataModelIssue> issues2, 
-            IEnumerable<string> filteredAlertNames)
+            IEnumerable<DataModelIssue> issues2)
         {
             bool isAllEmailsSendSuccessful = true;
             SmtpClient smtpClient = null;
@@ -69,7 +71,7 @@ namespace BugReport.Reports
             foreach (Alert alert in _config.Alerts)
             {
                 Console.WriteLine("Alert: {0}", alert.Name);
-                if ((filteredAlertNames != null) && !filteredAlertNames.ContainsIgnoreCase(alert.Name))
+                if ((_filteredAlertNames != null) && !_filteredAlertNames.ContainsIgnoreCase(alert.Name))
                 {
                     Console.WriteLine("    Filtered alert");
                     Console.WriteLine();
