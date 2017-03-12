@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using BugReport.Query;
 using BugReport.DataModel;
+using BugReport.Util;
 
 namespace BugReport.Reports
 {
@@ -15,23 +16,32 @@ namespace BugReport.Reports
     {
         Diff,
         Untriaged,
-        NeedsMSResponse
+        NeedsResponse
     }
 
     public class AlertReporting
     {
         private bool _skipEmail;
-        private AlertType _type;
-        Config _config;
+        private AlertType _alertType;
+        private Config _config;
         private string _htmlTemplateFileName;
+        private string _outputHtmlFileName;
 
-        public AlertReporting(string configFileName, bool skipEmail, string htmlTemplateFileName, AlertType type)
+        public AlertReporting(
+            AlertType alertType,
+            IEnumerable<string> configFiles,
+            string htmlTemplateFileName,
+            bool skipEmail, 
+            string outputHtmlFileName)
         {
-            _config = new Config(configFileName);
+            _config = new Config(configFiles);
 
-            _type = type;
+            _alertType = alertType;
             _skipEmail = skipEmail;
             _htmlTemplateFileName = htmlTemplateFileName;
+            _outputHtmlFileName = outputHtmlFileName;
+
+            // Environment variable override of sending emails
             string sendEmailEnvironmentVariable = Environment.GetEnvironmentVariable("SEND_EMAIL");
             if (sendEmailEnvironmentVariable == "0")
             {
@@ -43,7 +53,10 @@ namespace BugReport.Reports
         /// Sends all of the emails for the diffs of the given IssueCollections that match the filter.
         /// </summary>
         /// <returns>True if all emails successfully sent</returns>
-        public bool SendEmails(IssueCollection collection1, IssueCollection collection2, string filteredAlertName)
+        public bool SendEmails(
+            IEnumerable<DataModelIssue> beginIssues, 
+            IEnumerable<DataModelIssue> endIssues, 
+            IEnumerable<string> filteredAlertNames)
         {
             bool isAllEmailsSendSuccessful = true;
             SmtpClient smtpClient = null;
@@ -55,14 +68,14 @@ namespace BugReport.Reports
             foreach (Alert alert in _config.Alerts)
             {
                 Console.WriteLine("Alert: {0}", alert.Name);
-                if ((filteredAlertName != null) && (filteredAlertName != alert.Name))
+                if ((filteredAlertNames != null) && !filteredAlertNames.ContainsIgnoreCase(alert.Name))
                 {
                     Console.WriteLine("    Filtered alert");
                     Console.WriteLine();
                 }
                 else
                 {
-                    isAllEmailsSendSuccessful &= SendEmail(collection1, collection2, alert, smtpClient);
+                    isAllEmailsSendSuccessful &= SendEmail(beginIssues, endIssues, alert, smtpClient);
                 }
             }
 
@@ -74,28 +87,42 @@ namespace BugReport.Reports
         /// it to a file depending on the html template.
         /// </summary>
         /// <returns>True if the email was successfully sent or if it didn't need to be sent</returns>
-        private bool SendEmail(IssueCollection collection1, IssueCollection collection2, Alert alert, SmtpClient smtpClient)
+        private bool SendEmail(
+            IEnumerable<DataModelIssue> issues1, 
+            IEnumerable<DataModelIssue> issues2, 
+            Alert alert, 
+            SmtpClient smtpClient)
         {
             AlertReport report;
-            if (_type == AlertType.Diff)
-                report = new AlertReport_Diff(alert, !_skipEmail, _htmlTemplateFileName);
-            else if (_type == AlertType.Untriaged)
-                report = new AlertReport_Untriaged(alert, !_skipEmail, _htmlTemplateFileName, _config.UntriagedExpression);
-            else if (_type == AlertType.NeedsMSResponse)
-                report = new AlertReport_NeedsMSResponse(alert, !_skipEmail, _htmlTemplateFileName);
+            if (_alertType == AlertType.Diff)
+            {
+                report = new AlertReport_Diff(alert, !_skipEmail, _htmlTemplateFileName, _outputHtmlFileName);
+            }
+            else if (_alertType == AlertType.Untriaged)
+            {
+                report = new AlertReport_Untriaged(alert, !_skipEmail, _htmlTemplateFileName, _outputHtmlFileName, _config.UntriagedExpression);
+            }
+            else if (_alertType == AlertType.NeedsResponse)
+            {
+                report = new AlertReport_NeedsResponse(alert, !_skipEmail, _htmlTemplateFileName, _outputHtmlFileName);
+            }
             else
+            {
                 throw new Exception("Invalid Alert Type for reporting");
+            }
 
             // Create the report and send the email for it
-            if (report.FillReportBody(collection1, collection2))
+            if (report.FillReportBody(issues1, issues2))
             {
-                bool fileWritten = report.FileName != "" ? WriteReportFile(alert, report) : true;
-                bool emailSent = report.SendEmail ? SendEmail(alert, report, smtpClient) : false;
+                bool fileWritten = string.IsNullOrEmpty(report.OutputHtmlFileName) ? WriteReportFile(alert, report) : true;
+                bool emailSent = report.ShouldSendEmail ? SendEmail(alert, report, smtpClient) : false;
                 PrintLogs(report, alert, fileWritten, emailSent);
                 return emailSent;
             }
             else
+            {
                 return true;
+            }
         }
 
         /// <summary>
@@ -106,12 +133,12 @@ namespace BugReport.Reports
         {
             try
             {
-                File.WriteAllText(report.FileName, report.BodyText);
+                File.WriteAllText(report.OutputHtmlFileName, report.BodyText);
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine("ERROR writing alert {0} into file {1}", alert.Name, report.FileName);
+                Console.WriteLine("ERROR writing alert {0} into file {1}", alert.Name, report.OutputHtmlFileName);
                 Console.WriteLine(ex);
                 return false;
             }
@@ -158,15 +185,15 @@ namespace BugReport.Reports
         public void PrintLogs(AlertReport report, Alert alert, bool fileWritten, bool emailSent)
         {
             // Logging
-            if (report.FileName != "")
+            if (report.OutputHtmlFileName != "")
             {
-                Console.WriteLine("    Report: {0}", report.FileName);
+                Console.WriteLine("    Report: {0}", report.OutputHtmlFileName);
                 if (!fileWritten)
                 {
                     Console.WriteLine("        FAILED!!!");
                 }
             }
-            Console.WriteLine("    Email: {0}", emailSent ? "sent" : (report.SendEmail ? "FAILED!!!" : "skipped"));
+            Console.WriteLine("    Email: {0}", emailSent ? "sent" : (report.ShouldSendEmail ? "FAILED!!!" : "skipped"));
             Console.WriteLine("        Subject: {0}", report.Subject);
             Console.WriteLine("        To:");
             foreach (Alert.User user in alert.Owners)
@@ -178,7 +205,7 @@ namespace BugReport.Reports
             {
                 Console.WriteLine("            {0} - {1}", user.Name, user.EmailAddress);
             }
-            if (report.FileName == "")
+            if (report.OutputHtmlFileName == "")
             {
                 Console.Write(report.BodyText.Replace("<br/>", ""));
             }

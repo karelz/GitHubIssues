@@ -10,24 +10,25 @@ using BugReport.DataModel;
 
 namespace BugReport.Reports
 {
-    public class AlertReport_NeedsMSResponse : AlertReport
+    public class AlertReport_NeedsResponse : AlertReport
     {
+        // TODO - define in config
         private TimeSpan _acceptableResponseDelay = new TimeSpan(5, 0, 0, 0, 0); // 5 days
 
-        public AlertReport_NeedsMSResponse(Alert alert, bool sendEmail, string htmlTemplateFileName) 
-            : base(alert, sendEmail, htmlTemplateFileName)
+        public AlertReport_NeedsResponse(Alert alert, bool sendEmail, string htmlTemplateFileName, string outputHtmlFileName) 
+            : base(alert, sendEmail, htmlTemplateFileName, outputHtmlFileName)
         {
         }
 
         /// <summary>
         /// Returns true if the body is filled from this method
         /// </summary>
-        public override bool FillReportBody(IssueCollection collection1, IssueCollection collection2)
+        public override bool FillReportBody(IEnumerable<DataModelIssue> issues, IEnumerable<DataModelIssue> comments)
         {
             // Create a Dictionary mapping issues to comments for that issue
             Dictionary<int, List<DataModelIssue>> issueComments = new Dictionary<int, List<DataModelIssue>>();
-            Dictionary<int, DataModelIssue> issues = new Dictionary<int, DataModelIssue>();
-            IEnumerable<DataModelIssue> matchingIssues = _alert.Query.Evaluate(collection1);
+            Dictionary<int, DataModelIssue> issuesMap = new Dictionary<int, DataModelIssue>();
+            IEnumerable<DataModelIssue> matchingIssues = _alert.Query.Evaluate(issues);
             if (!matchingIssues.Any())
             {
                 Console.WriteLine("    No changes to the query, skipping.");
@@ -37,18 +38,23 @@ namespace BugReport.Reports
             foreach (DataModelIssue issue in matchingIssues)
             {
                 issueComments.Add(issue.Number, new List<DataModelIssue>());
-                issues.Add(issue.Number, issue);
+                issuesMap.Add(issue.Number, issue);
             }
-            foreach (DataModelIssue comment in collection2.Issues)
+            foreach (DataModelIssue comment in comments)
             {
                 int startIndex = comment.HtmlUrl.IndexOf("/issues/") + 8;
                 if (startIndex < 8)
+                {
                     startIndex = comment.HtmlUrl.IndexOf("/pull/") + 6;
+                }
                 int endIndex = comment.HtmlUrl.IndexOf("#");
+
                 string issueString = comment.HtmlUrl.Substring(startIndex, endIndex - startIndex);
                 int issueID = int.Parse(issueString);
                 if (issueComments.ContainsKey(issueID))
+                {
                     issueComments[issueID].Add(comment);
+                }
             }
 
             // Filter our issues to ones that haven't had an owner response after our grace waiting period
@@ -57,12 +63,12 @@ namespace BugReport.Reports
             {
                 TimeSpan? lastComment;
                 // First check if there are no comments and the issue was opened past the threshold.
-                if (pair.Value.Count == 0 && ((lastComment = (DateTime.Now - issues[pair.Key].CreatedAt)) > _acceptableResponseDelay))
-                    needsResponse.Add(issues[pair.Key], lastComment);
+                if (pair.Value.Count == 0 && ((lastComment = (DateTime.Now - issuesMap[pair.Key].CreatedAt)) > _acceptableResponseDelay))
+                    needsResponse.Add(issuesMap[pair.Key], lastComment);
 
                 // Next check if the last issue occurred past the threshold
                 else if (pair.Value.Count > 0 && ((lastComment = (DateTime.Now - pair.Value.Max((issue) => issue.CreatedAt))) > _acceptableResponseDelay))
-                    needsResponse.Add(issues[pair.Key], lastComment);
+                    needsResponse.Add(issuesMap[pair.Key], lastComment);
             }
 
             if (!needsResponse.Any())

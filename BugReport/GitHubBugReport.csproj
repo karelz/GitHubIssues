@@ -52,9 +52,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Util\CommandLine\Option.cs" />
+    <Compile Include="Util\CommandLine\Parser.cs" />
     <Compile Include="DataModel\IssueCollection.cs" />
     <Compile Include="DataModel\DataModelIssue.cs" />
     <Compile Include="DataModel\Extensions.cs" />
+    <Compile Include="Util\Extensions.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Query\Expressions.cs" />
     <Compile Include="Query\Parser.cs" />

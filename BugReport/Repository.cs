@@ -16,31 +16,14 @@ public class Repository
     public string Name { get; private set; }
     public string AuthenticationToken { get; set; }
 
-    public Repository(string configFileName)
+    public Repository(string owner, string name)
     {
-        XElement root = XElement.Load(configFileName);
-
-        IEnumerable<XElement> repositoryNodes = root.Descendants("repository");
-        if (!repositoryNodes.Any())
-        {
-            throw new InvalidDataException("Missing 'repository' node");
-        }
-        if (repositoryNodes.Count() > 1)
-        {
-            throw new InvalidDataException("Duplicate 'repository' node defined");
-        }
-
-        string repoName = repositoryNodes.First().Attribute("name").Value;
-        string[] repoNameParts = repoName.Split('/');
-        if (repoNameParts.Length != 2)
-        {
-            throw new InvalidDataException("Invalid repository name format: " + repoName);
-        }
-        Owner = repoNameParts[0];
-        Name = repoNameParts[1];
+        Owner = owner;
+        Name = name;
     }
 
-    public static string s_GitHubProductIdentifier = "GitHubBugReporter";
+    // TODO - Move to config
+    private static string s_GitHubProductIdentifier = "GitHubBugReporter";
 
     public IReadOnlyList<Issue> Issues;
     public ConcurrentBag<IssueComment> IssueComments;
@@ -52,7 +35,9 @@ public class Repository
     {
         GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
         if (AuthenticationToken != null)
+        {
             client.Credentials = new Credentials(AuthenticationToken);
+        }
         RepositoryIssueRequest issueRequest = new RepositoryIssueRequest
         {
             State = ItemStateFilter.Open,

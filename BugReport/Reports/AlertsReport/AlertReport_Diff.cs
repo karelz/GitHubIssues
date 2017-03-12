@@ -7,25 +7,26 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using BugReport.Query;
 using BugReport.DataModel;
+using System.Diagnostics;
 
 namespace BugReport.Reports
 {
     public class AlertReport_Diff : AlertReport
     {
-        public AlertReport_Diff(Alert alert, bool sendEmail, string htmlTemplateFileName) 
-            : base(alert, sendEmail, htmlTemplateFileName)
+        public AlertReport_Diff(Alert alert, bool sendEmail, string htmlTemplateFileName, string outputHtmlFileName) 
+            : base(alert, sendEmail, htmlTemplateFileName, outputHtmlFileName)
         {
         }
 
         /// <summary>
         /// Returns true if the body is filled from this method
         /// </summary>
-        public override bool FillReportBody(IssueCollection collection1, IssueCollection collection2)
+        public override bool FillReportBody(IEnumerable<DataModelIssue> beginIssues, IEnumerable<DataModelIssue> endIssues)
         {
-            IEnumerable<DataModelIssue> queryStart = _alert.Query.Evaluate(collection1);
-            IEnumerable<DataModelIssue> queryEnd = _alert.Query.Evaluate(collection2);
-            IEnumerable<DataModelIssue> goneIssues = queryStart.Except(queryEnd);
-            IEnumerable<DataModelIssue> newIssues = queryEnd.Except(queryStart);
+            IEnumerable<DataModelIssue> beginQuery = _alert.Query.Evaluate(beginIssues);
+            IEnumerable<DataModelIssue> endQuery = _alert.Query.Evaluate(endIssues);
+            IEnumerable<DataModelIssue> goneIssues = beginQuery.Except(endQuery);
+            IEnumerable<DataModelIssue> newIssues = endQuery.Except(beginQuery);
 
             if (!goneIssues.Any() && !newIssues.Any())
             {
@@ -68,12 +69,13 @@ namespace BugReport.Reports
             BodyText = BodyText.Replace("%NEW_ISSUES_TABLE%", FormatIssueTable(newIssueEntries));
             IEnumerable<IssueEntry> goneIssueEntries = goneIssues.Select(issue =>
             {
-                DataModelIssue newIssue = collection2.GetIssue(issue.Number);
-                if (newIssue == null)
+                IEnumerable<DataModelIssue> matchedIssues = endIssues.SelectByNumber(issue.Number);
+                if (!matchedIssues.Any())
                 {   // Closed issue
                     return new IssueEntry(issue, "Closed");
                 }
-                return new IssueEntry(newIssue);
+                Debug.Assert(matchedIssues.Count() == 1);
+                return new IssueEntry(matchedIssues.First());
             });
             BodyText = BodyText.Replace("%GONE_ISSUES_TABLE%", FormatIssueTable(goneIssueEntries));
             return true;

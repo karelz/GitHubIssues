@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using BugReport.Query;
 using BugReport.DataModel;
+using System.Diagnostics;
 
 namespace BugReport.Reports
 {
@@ -118,8 +119,9 @@ namespace BugReport.Reports
             Alert alert, 
             bool sendEmail, 
             string htmlTemplateFileName, 
+            string outputHtmlFileName, 
             ExpressionUntriaged untriagedExpression)
-            : base(alert, sendEmail, htmlTemplateFileName)
+            : base(alert, sendEmail, htmlTemplateFileName, outputHtmlFileName)
         {
             _untriagedExpression = untriagedExpression;
         }
@@ -127,9 +129,11 @@ namespace BugReport.Reports
         /// <summary>
         /// Returns true if the body is filled from this method
         /// </summary>
-        public override bool FillReportBody(IssueCollection collection1, IssueCollection collection2)
+        public override bool FillReportBody(IEnumerable<DataModelIssue> issues, IEnumerable<DataModelIssue> issues2)
         {
-            IEnumerable<DataModelIssue> matchingIssues = _alert.Query.Evaluate(collection1);
+            Debug.Assert(issues2 == null);
+
+            IEnumerable<DataModelIssue> matchingIssues = _alert.Query.Evaluate(issues);
             var untriagedFlagsMap = new Dictionary<DataModelIssue, ExpressionUntriaged.Flags>();
             foreach (DataModelIssue issue in matchingIssues)
             {

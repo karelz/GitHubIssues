@@ -41,11 +41,15 @@ namespace BugReport.DataModel
             if (IsIssueOrComment)
             {
                 if (HtmlUrl.Contains("issuecomment"))
+                {
                     return ((flags & IssueKindFlags.Comment) != 0);
+                }
                 else
+                {
                     return ((flags & IssueKindFlags.Issue) != 0);
+                }
             }
-            // IsPullRequest
+            Debug.Assert(IsPullRequest);
             return ((flags & IssueKindFlags.PullRequest) != 0);
         }
 

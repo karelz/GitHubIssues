@@ -103,16 +103,22 @@ namespace BugReport.DataModel
             }
         }
 
-        public static IssueCollection LoadFrom(string fileName, IssueKindFlags issueKind = IssueKindFlags.All, IEnumerable<Label> labels = null)
+        public static IEnumerable<DataModelIssue> LoadFrom(
+            IEnumerable<string> fileNames, 
+            IssueKindFlags issueKind = IssueKindFlags.All)
         {
-            JsonSerializer serializer = new JsonSerializer();
-            using (StreamReader sr = new StreamReader(fileName))
-            using (JsonReader reader = new JsonTextReader(sr))
+            IEnumerable<DataModelIssue> issues = new DataModelIssue[] {};
+            foreach (string fileName in fileNames)
             {
-                IssueCollection issues = new IssueCollection(serializer.Deserialize<List<DataModelIssue>>(reader).Where(i => i.IsIssueKind(issueKind)));
-                issues.LoadLabels(labels);
-                return issues;
+                JsonSerializer serializer = new JsonSerializer();
+                using (StreamReader sr = new StreamReader(fileName))
+                using (JsonReader reader = new JsonTextReader(sr))
+                {
+                    issues = issues.Concat(serializer.Deserialize<List<DataModelIssue>>(reader)
+                                                        .Where(i => i.IsIssueKind(issueKind)));
+                }
             }
+            return issues;
         }
 
         void LoadLabels(IEnumerable<Label> labels)

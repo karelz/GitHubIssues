@@ -14,29 +14,29 @@ namespace BugReport.Reports
     {
         protected string _htmlTemplateFileName;
         protected Alert _alert;
-        public virtual bool SendEmail { get; protected set; }
-        public virtual string FileName { get; protected set; }
+        public virtual bool ShouldSendEmail { get; protected set; }
+        public virtual string OutputHtmlFileName { get; protected set; }
         public virtual string Subject { get; protected set; }
         public virtual string AlertName { get; protected set; }
         public virtual string BodyText { get; protected set; }
 
-        public AlertReport(Alert alert, bool sendEmail, string htmlTemplateFileName)
+        public AlertReport(Alert alert, bool sendEmail, string htmlTemplateFileName, string outputHtmlFileName)
         {
             _alert = alert;
             _htmlTemplateFileName = htmlTemplateFileName;
-            SendEmail = sendEmail;
+            ShouldSendEmail = sendEmail;
             BodyText = File.ReadAllText(_htmlTemplateFileName);
             AlertName = alert.Name;
             BodyText = BodyText.Replace("%ALERT_NAME%", alert.Name);
-            SendEmail = ParseForValue("%SEND_EMAIL%") == "1" && sendEmail;
-            FileName = ParseForValue("%FILE_NAME%");
+            ShouldSendEmail = sendEmail;
+            OutputHtmlFileName = outputHtmlFileName;
             Subject = ParseForValue("%SUBJECT%");
         }
 
         /// <summary>
         /// Returns true if the body is filled from this method
         /// </summary>
-        public abstract bool FillReportBody(IssueCollection collection1, IssueCollection collection2);
+        public abstract bool FillReportBody(IEnumerable<DataModelIssue> issues1, IEnumerable<DataModelIssue> issues2);
 
         protected string ParseForValue(string tagToParseFor)
         {

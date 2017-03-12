@@ -15,16 +15,16 @@ namespace BugReport.Reports
         private Config _config;
         private IEnumerable<NamedQuery> _areaLabelQueries;
 
-        public HtmlReport(string configFileName)
+        public HtmlReport(IEnumerable<string> configFiles)
         {
-            _config = new Config(configFileName);
+            _config = new Config(configFiles);
 
             _areaLabelQueries = _config.AreaLabels.Select(label => new NamedQuery(label.Name, new ExpressionLabel(label.Name))).ToList();
         }
 
-        public void Write(IssueCollection issuesCollection, string outputHtmlFile)
+        public void Write(IEnumerable<DataModelIssue> allIssues, string outputHtmlFile)
         {
-            IEnumerable<DataModelIssue> issues = issuesCollection.Issues.Where(i => i.IsIssueOrComment);
+            IEnumerable<DataModelIssue> issues = allIssues.Where(i => i.IsIssueOrComment);
             using (StreamWriter file = new StreamWriter(outputHtmlFile))
             {
                 file.WriteLine("<html><body>");
