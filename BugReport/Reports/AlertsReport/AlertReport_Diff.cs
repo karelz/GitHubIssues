@@ -13,8 +13,8 @@ namespace BugReport.Reports
 {
     public class AlertReport_Diff : AlertReport
     {
-        public AlertReport_Diff(Alert alert, bool sendEmail, string htmlTemplateFileName) 
-            : base(alert, sendEmail, htmlTemplateFileName)
+        public AlertReport_Diff(Alert alert, string htmlTemplateFileName) 
+            : base(alert, htmlTemplateFileName)
         {
         }
 

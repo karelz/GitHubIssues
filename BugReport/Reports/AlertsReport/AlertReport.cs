@@ -14,21 +14,17 @@ namespace BugReport.Reports
     {
         protected string _htmlTemplateFileName;
         protected Alert _alert;
-        public virtual bool ShouldSendEmail { get; protected set; }
-        public virtual string OutputHtmlFileName { get; protected set; }
         public virtual string Subject { get; protected set; }
         public virtual string AlertName { get; protected set; }
         public virtual string BodyText { get; protected set; }
 
-        public AlertReport(Alert alert, bool sendEmail, string htmlTemplateFileName)
+        public AlertReport(Alert alert, string htmlTemplateFileName)
         {
             _alert = alert;
             _htmlTemplateFileName = htmlTemplateFileName;
-            ShouldSendEmail = sendEmail;
             BodyText = File.ReadAllText(_htmlTemplateFileName);
             AlertName = alert.Name;
             BodyText = BodyText.Replace("%ALERT_NAME%", alert.Name);
-            ShouldSendEmail = sendEmail;
             Subject = ParseForValue("%SUBJECT%");
         }
 

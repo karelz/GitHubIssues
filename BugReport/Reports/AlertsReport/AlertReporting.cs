@@ -97,15 +97,15 @@ namespace BugReport.Reports
             AlertReport report;
             if (_alertType == AlertType.Diff)
             {
-                report = new AlertReport_Diff(alert, !_skipEmail, _htmlTemplateFileName);
+                report = new AlertReport_Diff(alert, _htmlTemplateFileName);
             }
             else if (_alertType == AlertType.Untriaged)
             {
-                report = new AlertReport_Untriaged(alert, !_skipEmail, _htmlTemplateFileName, _config.UntriagedExpression);
+                report = new AlertReport_Untriaged(alert, _htmlTemplateFileName, _config.UntriagedExpression);
             }
             else if (_alertType == AlertType.NeedsResponse)
             {
-                report = new AlertReport_NeedsResponse(alert, !_skipEmail, _htmlTemplateFileName);
+                report = new AlertReport_NeedsResponse(alert, _htmlTemplateFileName);
             }
             else
             {
@@ -116,7 +116,7 @@ namespace BugReport.Reports
             if (report.FillReportBody(issues1, issues2))
             {
                 bool fileWritten = WriteReportFile(alert, report);
-                bool emailSent = report.ShouldSendEmail ? SendEmail(alert, report, smtpClient) : false;
+                bool emailSent = _skipEmail ? false : SendEmail(alert, report, smtpClient);
                 PrintLogs(report, alert, fileWritten, emailSent);
                 return emailSent;
             }
@@ -198,7 +198,7 @@ namespace BugReport.Reports
                     Console.WriteLine("        FAILED!!!");
                 }
             }
-            Console.WriteLine("    Email: {0}", emailSent ? "sent" : (report.ShouldSendEmail ? "FAILED!!!" : "skipped"));
+            Console.WriteLine("    Email: {0}", emailSent ? "sent" : (_skipEmail ? "skipped" : "FAILED!!!"));
             Console.WriteLine("        Subject: {0}", report.Subject);
             Console.WriteLine("        To:");
             foreach (Alert.User user in alert.Owners)

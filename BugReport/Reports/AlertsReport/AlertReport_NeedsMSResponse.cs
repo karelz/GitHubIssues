@@ -15,8 +15,8 @@ namespace BugReport.Reports
         // TODO - define in config
         private TimeSpan _acceptableResponseDelay = new TimeSpan(5, 0, 0, 0, 0); // 5 days
 
-        public AlertReport_NeedsResponse(Alert alert, bool sendEmail, string htmlTemplateFileName) 
-            : base(alert, sendEmail, htmlTemplateFileName)
+        public AlertReport_NeedsResponse(Alert alert, string htmlTemplateFileName) 
+            : base(alert, htmlTemplateFileName)
         {
         }
 

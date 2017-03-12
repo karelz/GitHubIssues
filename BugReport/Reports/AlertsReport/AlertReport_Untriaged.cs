@@ -117,10 +117,9 @@ namespace BugReport.Reports
 
         public AlertReport_Untriaged(
             Alert alert, 
-            bool sendEmail, 
             string htmlTemplateFileName, 
             ExpressionUntriaged untriagedExpression)
-            : base(alert, sendEmail, htmlTemplateFileName)
+            : base(alert, htmlTemplateFileName)
         {
             _untriagedExpression = untriagedExpression;
         }
