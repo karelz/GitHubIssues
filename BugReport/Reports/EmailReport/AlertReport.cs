@@ -11,63 +11,93 @@ using BugReport.Query;
 using BugReport.DataModel;
 using BugReport.Util;
 
-namespace BugReport.Reports
+namespace BugReport.Reports.EmailReports
 {
-    public enum AlertType
-    {
-        Diff,
-        Untriaged,
-        NeedsResponse
-    }
-
-    public class AlertReporting
+    public class AlertReport
     {
         private bool _skipEmail;
-        private AlertType _alertType;
         private Config _config;
         private string _htmlTemplateFileName;
         private string _outputHtmlFileName;
         private IEnumerable<string> _filteredAlertNames;
+        private GenerateReport _generateReport;
 
-        public AlertReporting(
-            AlertType alertType,
-            IEnumerable<string> configFiles,
+        public delegate string GenerateReport(Alert alert, string htmlTemplate);
+
+        private AlertReport(
+            Config config,
             string htmlTemplateFileName,
             bool skipEmail, 
             string outputHtmlFileName,
-            IEnumerable<string> filteredAlertNames)
+            IEnumerable<string> filteredAlertNames,
+            GenerateReport generateReport)
         {
-            _config = new Config(configFiles);
+            _config = config;
 
-            _alertType = alertType;
-            _skipEmail = skipEmail;
             _htmlTemplateFileName = htmlTemplateFileName;
+            _skipEmail = skipEmail;
             _outputHtmlFileName = outputHtmlFileName;
             _filteredAlertNames = filteredAlertNames;
+            _generateReport = generateReport;
 
             // Environment variable override of sending emails
             string sendEmailEnvironmentVariable = Environment.GetEnvironmentVariable("SEND_EMAIL");
             if (sendEmailEnvironmentVariable == "0")
             {
-                skipEmail = true;
+                _skipEmail = true;
             }
         }
 
+        public static bool SendEmails(
+            Config config,
+            string htmlTemplateFileName,
+            bool skipEmail,
+            string outputHtmlFileName,
+            IEnumerable<string> filteredAlertNames,
+            GenerateReport generateReport)
+        {
+            AlertReport report = new AlertReport(
+                config,
+                htmlTemplateFileName,
+                skipEmail,
+                outputHtmlFileName,
+                filteredAlertNames,
+                generateReport);
+            return report.SendEmails();
+        }
+
+        public static bool SendEmails(
+            IEnumerable<string> configFiles,
+            string htmlTemplateFileName,
+            bool skipEmail,
+            string outputHtmlFileName,
+            IEnumerable<string> filteredAlertNames,
+            GenerateReport generateReport)
+        {
+            return SendEmails(
+                new Config(configFiles),
+                htmlTemplateFileName,
+                skipEmail,
+                outputHtmlFileName,
+                filteredAlertNames,
+                generateReport);
+        }
+
         /// <summary>
-        /// Sends all of the emails for the diffs of the given IssueCollections that match the filter.
+        /// Sends all of the emails for the diffs of the given issues that match the filter.
         /// </summary>
         /// <returns>True if all emails successfully sent</returns>
-        public bool SendEmails(
-            IEnumerable<DataModelIssue> issues1, 
-            IEnumerable<DataModelIssue> issues2)
+        private bool SendEmails()
         {
             bool isAllEmailsSendSuccessful = true;
+
             SmtpClient smtpClient = null;
             if (!_skipEmail)
             {
                 smtpClient = new SmtpClient("smtphost");
                 smtpClient.UseDefaultCredentials = true;
             }
+
             foreach (Alert alert in _config.Alerts)
             {
                 Console.WriteLine("Alert: {0}", alert.Name);
@@ -78,7 +108,17 @@ namespace BugReport.Reports
                 }
                 else
                 {
-                    isAllEmailsSendSuccessful &= SendEmail(issues1, issues2, alert, smtpClient);
+                    // Create the email report
+                    ReportEmail reportEmail = CreateReportEmail(alert, _htmlTemplateFileName);
+
+                    if (reportEmail.HasContent)
+                    {   // Send the email
+                        bool fileWritten = WriteReportFile(alert, reportEmail);
+                        bool isEmailSendSuccessful = _skipEmail ? false : SendEmail(alert, reportEmail, smtpClient);
+                        PrintLogs(reportEmail, alert, fileWritten, isEmailSendSuccessful);
+
+                        isAllEmailsSendSuccessful &= SendEmail(alert, reportEmail, smtpClient);
+                    }
                 }
             }
 
@@ -86,53 +126,10 @@ namespace BugReport.Reports
         }
 
         /// <summary>
-        /// Produces a report for the given alert and optionally sends it using the smptclient or writes
-        /// it to a file depending on the html template.
-        /// </summary>
-        /// <returns>True if the email was successfully sent or if it didn't need to be sent</returns>
-        private bool SendEmail(
-            IEnumerable<DataModelIssue> issues1, 
-            IEnumerable<DataModelIssue> issues2, 
-            Alert alert, 
-            SmtpClient smtpClient)
-        {
-            AlertReport report;
-            if (_alertType == AlertType.Diff)
-            {
-                report = new AlertReport_Diff(alert, _htmlTemplateFileName);
-            }
-            else if (_alertType == AlertType.Untriaged)
-            {
-                report = new AlertReport_Untriaged(alert, _htmlTemplateFileName, _config.UntriagedExpression);
-            }
-            else if (_alertType == AlertType.NeedsResponse)
-            {
-                report = new AlertReport_NeedsResponse(alert, _htmlTemplateFileName);
-            }
-            else
-            {
-                throw new Exception("Invalid Alert Type for reporting");
-            }
-
-            // Create the report and send the email for it
-            if (report.FillReportBody(issues1, issues2))
-            {
-                bool fileWritten = WriteReportFile(alert, report);
-                bool emailSent = _skipEmail ? false : SendEmail(alert, report, smtpClient);
-                PrintLogs(report, alert, fileWritten, emailSent);
-                return emailSent;
-            }
-            else
-            {
-                return true;
-            }
-        }
-
-        /// <summary>
         /// Writes the full body text of the given report to the filename specified in the reporting template.
         /// </summary>
         /// <returns>true if succeeded</returns>
-        private bool WriteReportFile(Alert alert, AlertReport report)
+        private bool WriteReportFile(Alert alert, ReportEmail report)
         {
             if (string.IsNullOrEmpty(_outputHtmlFileName))
             {   // No file needs to be written - skipping
@@ -155,7 +152,7 @@ namespace BugReport.Reports
         /// Generates and sends an email for the given alert and report using the smtpClient.
         /// </summary>
         /// <returns>true if the email is generated and sent successfully</returns>
-        private bool SendEmail(Alert alert, AlertReport report, SmtpClient smtpClient)
+        private bool SendEmail(Alert alert, ReportEmail reportEmail, SmtpClient smtpClient)
         {
             // Prepare email
             MailMessage message = new MailMessage();
@@ -169,8 +166,8 @@ namespace BugReport.Reports
                 message.CC.Add(user.EmailAddress);
             }
             message.IsBodyHtml = true;
-            message.Subject = report.Subject;
-            message.Body = report.BodyText;
+            message.Subject = reportEmail.Subject;
+            message.Body = reportEmail.BodyText;
 
             // Send email
             try
@@ -189,7 +186,7 @@ namespace BugReport.Reports
         /// <summary>
         /// Prints the status of the full report generation and completion
         /// </summary>
-        public void PrintLogs(AlertReport report, Alert alert, bool fileWritten, bool emailSent)
+        private void PrintLogs(ReportEmail reportEmail, Alert alert, bool fileWritten, bool emailSent)
         {
             // Logging
             if (string.IsNullOrEmpty(_outputHtmlFileName))
@@ -201,7 +198,7 @@ namespace BugReport.Reports
                 }
             }
             Console.WriteLine("    Email: {0}", emailSent ? "sent" : (_skipEmail ? "skipped" : "FAILED!!!"));
-            Console.WriteLine("        Subject: {0}", report.Subject);
+            Console.WriteLine("        Subject: {0}", reportEmail.Subject);
             Console.WriteLine("        To:");
             foreach (Alert.User user in alert.Owners)
             {
@@ -214,9 +211,53 @@ namespace BugReport.Reports
             }
             if (string.IsNullOrEmpty(_outputHtmlFileName))
             {
-                Console.Write(report.BodyText.Replace("<br/>", ""));
+                Console.Write(reportEmail.BodyText.Replace("<br/>", ""));
             }
             Console.WriteLine();
+        }
+
+        private struct ReportEmail
+        {
+            public string Subject;
+            public string BodyText;
+
+            public ReportEmail(string subject, string bodyText)
+            {
+                Subject = subject;
+                BodyText = bodyText;
+            }
+
+            public bool HasContent { get => (BodyText != null); }
+        }
+
+        private ReportEmail CreateReportEmail(Alert alert, string htmlTemplateFileName)
+        {
+            string bodyText = File.ReadAllText(htmlTemplateFileName);
+            bodyText = bodyText.Replace("%ALERT_NAME%", alert.Name);
+
+            string subject = ExtractTag("%SUBJECT%", ref bodyText, htmlTemplateFileName);
+
+            bodyText = _generateReport(alert, bodyText);
+            
+            return new ReportEmail(subject, bodyText);
+        }
+
+        // Returns value from tag (e.g. %SUBJECT%=<value>), extracts the entire line from the bodyText
+        private static string ExtractTag(string tag, ref string bodyText, string htmlTemplateFileName)
+        {
+            Regex regex = new Regex(tag + "=(.*)\r\n");
+            Match match = regex.Match(bodyText);
+            if (!match.Success)
+            {
+                throw new InvalidDataException(string.Format("Missing {0} entry in email template {1}", tag, htmlTemplateFileName));
+            }
+            string foundValue = match.Groups[1].Value;
+            if (match.NextMatch().Success)
+            {
+                throw new InvalidDataException(string.Format("Multiple {0} entries in email template {1}", tag, htmlTemplateFileName));
+            }
+            bodyText = regex.Replace(bodyText, "");
+            return foundValue;
         }
     }
 }

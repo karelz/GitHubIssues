@@ -5,6 +5,7 @@ using System.Linq;
 using BugReport.CommandLine;
 using BugReport.DataModel;
 using BugReport.Reports;
+using BugReport.Reports.EmailReports;
 using BugReport.Util;
 
 class Program
@@ -173,14 +174,6 @@ class Program
                         bool skipEmail = _skipEmailOption.IsDefined(optionsParser);
                         string outputFile = _outputOption.GetValue(optionsParser);
 
-                        AlertReporting report = new AlertReporting(
-                            AlertType.Diff, 
-                            configFiles, 
-                            templateFile, 
-                            skipEmail, 
-                            outputFile, 
-                            alertFilters);
-
                         IEnumerable<DataModelIssue> beginIssues = IssueCollection.LoadIssues(
                             beginFiles, 
                             IssueKindFlags.Issue | IssueKindFlags.PullRequest);
@@ -188,8 +181,14 @@ class Program
                             endFiles,
                             IssueKindFlags.Issue | IssueKindFlags.PullRequest);
 
-                        bool isAllEmailSendSuccessful = report.SendEmails(beginIssues, endIssues);
-                        return isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure;
+                        return GetSendEmailErrorCode(AlertReport_Diff.SendEmails(
+                            configFiles,
+                            templateFile,
+                            skipEmail,
+                            outputFile,
+                            alertFilters,
+                            beginIssues,
+                            endIssues));
                     }
                 case ActionCommand.untriaged:
                     {
@@ -207,18 +206,15 @@ class Program
                         bool skipEmail = _skipEmailOption.IsDefined(optionsParser);
                         string outputFile = _outputOption.GetValue(optionsParser);
 
-                        AlertReporting report = new AlertReporting(
-                            AlertType.Untriaged,
+                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(inputFiles, IssueKindFlags.Issue);
+
+                        return GetSendEmailErrorCode(AlertReport_Untriaged.SendEmails(
                             configFiles,
                             templateFile,
                             skipEmail,
-                            outputFile, 
-                            alertFilters);
-
-                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(inputFiles, IssueKindFlags.Issue);
-
-                        bool isAllEmailSendSuccessful = report.SendEmails(issues, null);
-                        return isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure;
+                            outputFile,
+                            alertFilters,
+                            issues));
                     }
                 case ActionCommand.needsResponse:
                     {
@@ -237,19 +233,17 @@ class Program
                         bool skipEmail = _skipEmailOption.IsDefined(optionsParser);
                         string outputFile = _outputOption.GetValue(optionsParser);
 
-                        AlertReporting report = new AlertReporting(
-                            AlertType.NeedsResponse,
-                            configFiles,
-                            templateFile,
-                            skipEmail,
-                            outputFile, 
-                            alertFilters);
-
                         IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(inputFiles, IssueKindFlags.Issue);
                         IEnumerable<DataModelIssue> comments = IssueCollection.LoadIssues(commentsFiles, IssueKindFlags.Comment);
 
-                        bool isAllEmailSendSuccessful = report.SendEmails(issues, comments);
-                        return isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure;
+                        return GetSendEmailErrorCode(AlertReport_NeedsResponse.SendEmails(
+                            configFiles,
+                            templateFile,
+                            skipEmail,
+                            outputFile,
+                            alertFilters,
+                            issues,
+                            comments));
                     }
                 default:
                     Debug.Assert(false);
@@ -265,6 +259,11 @@ class Program
             Console.Error.WriteLine(ex);
             return ErrorCode.CatastrophicFailure;
         }
+    }
+
+    private static ErrorCode GetSendEmailErrorCode(bool isAllEmailSendSuccessful)
+    {
+        return isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure;
     }
 
     static ErrorCode CacheGitHubIssues(

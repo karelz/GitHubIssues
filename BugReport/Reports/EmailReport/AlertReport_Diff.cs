@@ -9,22 +9,39 @@ using BugReport.Query;
 using BugReport.DataModel;
 using System.Diagnostics;
 
-namespace BugReport.Reports
+namespace BugReport.Reports.EmailReports
 {
-    public class AlertReport_Diff : AlertReport
+    public class AlertReport_Diff
     {
-        public AlertReport_Diff(Alert alert, string htmlTemplateFileName) 
-            : base(alert, htmlTemplateFileName)
+        public static bool SendEmails(
+            IEnumerable<string> configFiles,
+            string htmlTemplateFileName,
+            bool skipEmail,
+            string outputHtmlFileName,
+            IEnumerable<string> filteredAlertNames,
+            IEnumerable<DataModelIssue> beginIssues,
+            IEnumerable<DataModelIssue> endIssues)
         {
+            return AlertReport.SendEmails(
+                configFiles,
+                htmlTemplateFileName,
+                skipEmail,
+                outputHtmlFileName,
+                filteredAlertNames,
+                (Alert alert, string htmlTemplate) => 
+                    GenerateReport(alert, htmlTemplate, beginIssues, endIssues));
         }
 
-        /// <summary>
-        /// Returns true if the body is filled from this method
-        /// </summary>
-        public override bool FillReportBody(IEnumerable<DataModelIssue> beginIssues, IEnumerable<DataModelIssue> endIssues)
+        // Returns null if the report is empty
+        protected static string GenerateReport(
+            Alert alert, 
+            string htmlTemplate, 
+            IEnumerable<DataModelIssue> beginIssues, 
+            IEnumerable<DataModelIssue> endIssues)
         {
-            IEnumerable<DataModelIssue> beginQuery = _alert.Query.Evaluate(beginIssues);
-            IEnumerable<DataModelIssue> endQuery = _alert.Query.Evaluate(endIssues);
+            IEnumerable<DataModelIssue> beginQuery = alert.Query.Evaluate(beginIssues);
+            IEnumerable<DataModelIssue> endQuery = alert.Query.Evaluate(endIssues);
+
             IEnumerable<DataModelIssue> goneIssues = beginQuery.Except_ByIssueNumber(endQuery);
             IEnumerable<DataModelIssue> newIssues = endQuery.Except_ByIssueNumber(beginQuery);
 
@@ -32,41 +49,43 @@ namespace BugReport.Reports
             {
                 Console.WriteLine("    No changes to the query, skipping.");
                 Console.WriteLine();
-                return false;
+                return null;
             }
+
+            string text = htmlTemplate;
 
             if (!goneIssues.Any() || !newIssues.Any())
             {
                 Regex regex = new Regex("%ALL_ISSUES_START%(.|\n)*%ALL_ISSUES_END%");
-                BodyText = regex.Replace(BodyText, "");
+                text = regex.Replace(text, "");
 
                 if (!goneIssues.Any())
                 {
                     regex = new Regex("%GONE_ISSUES_START%(.|\n)*%GONE_ISSUES_END%");
-                    BodyText = regex.Replace(BodyText, "");
+                    text = regex.Replace(text, "");
                 }
                 if (!newIssues.Any())
                 {
                     regex = new Regex("%NEW_ISSUES_START%(.|\n)*%NEW_ISSUES_END%");
-                    BodyText = regex.Replace(BodyText, "");
+                    text = regex.Replace(text, "");
                 }
             }
-            BodyText = BodyText.Replace("%ALL_ISSUES_START%", "");
-            BodyText = BodyText.Replace("%ALL_ISSUES_END%", "");
-            BodyText = BodyText.Replace("%GONE_ISSUES_START%", "");
-            BodyText = BodyText.Replace("%GONE_ISSUES_END%", "");
-            BodyText = BodyText.Replace("%NEW_ISSUES_START%", "");
-            BodyText = BodyText.Replace("%NEW_ISSUES_END%", "");
+            text = text.Replace("%ALL_ISSUES_START%", "");
+            text = text.Replace("%ALL_ISSUES_END%", "");
+            text = text.Replace("%GONE_ISSUES_START%", "");
+            text = text.Replace("%GONE_ISSUES_END%", "");
+            text = text.Replace("%NEW_ISSUES_START%", "");
+            text = text.Replace("%NEW_ISSUES_END%", "");
 
-            BodyText = BodyText.Replace("%ALL_ISSUES_LINK%", GitHubQuery.GetHyperLink(newIssues.Concat(goneIssues)));
-            BodyText = BodyText.Replace("%ALL_ISSUES_COUNT%", (goneIssues.Count() + newIssues.Count()).ToString());
-            BodyText = BodyText.Replace("%GONE_ISSUES_LINK%", GitHubQuery.GetHyperLink(goneIssues));
-            BodyText = BodyText.Replace("%GONE_ISSUES_COUNT%", goneIssues.Count().ToString());
-            BodyText = BodyText.Replace("%NEW_ISSUES_LINK%", GitHubQuery.GetHyperLink(newIssues));
-            BodyText = BodyText.Replace("%NEW_ISSUES_COUNT%", newIssues.Count().ToString());
+            text = text.Replace("%ALL_ISSUES_LINK%", GitHubQuery.GetHyperLink(newIssues.Concat(goneIssues)));
+            text = text.Replace("%ALL_ISSUES_COUNT%", (goneIssues.Count() + newIssues.Count()).ToString());
+            text = text.Replace("%GONE_ISSUES_LINK%", GitHubQuery.GetHyperLink(goneIssues));
+            text = text.Replace("%GONE_ISSUES_COUNT%", goneIssues.Count().ToString());
+            text = text.Replace("%NEW_ISSUES_LINK%", GitHubQuery.GetHyperLink(newIssues));
+            text = text.Replace("%NEW_ISSUES_COUNT%", newIssues.Count().ToString());
 
             IEnumerable<IssueEntry> newIssueEntries = newIssues.Select(issue => new IssueEntry(issue));
-            BodyText = BodyText.Replace("%NEW_ISSUES_TABLE%", FormatIssueTable(newIssueEntries));
+            text = text.Replace("%NEW_ISSUES_TABLE%", FormatIssueTable(newIssueEntries));
             IEnumerable<IssueEntry> goneIssueEntries = goneIssues.Select(issue =>
             {
                 DataModelIssue newIssue = endIssues.FirstOrNull_ByIssueNumber(issue);
@@ -76,8 +95,9 @@ namespace BugReport.Reports
                 }
                 return new IssueEntry(newIssue);
             });
-            BodyText = BodyText.Replace("%GONE_ISSUES_TABLE%", FormatIssueTable(goneIssueEntries));
-            return true;
+            text = text.Replace("%GONE_ISSUES_TABLE%", FormatIssueTable(goneIssueEntries));
+
+            return text;
         }
 
         private static string FormatIssueTable(IEnumerable<IssueEntry> issues)

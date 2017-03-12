@@ -8,32 +8,48 @@ using System.Xml.Linq;
 using BugReport.Query;
 using BugReport.DataModel;
 
-namespace BugReport.Reports
+namespace BugReport.Reports.EmailReports
 {
-    public class AlertReport_NeedsResponse : AlertReport
+    public class AlertReport_NeedsResponse
     {
         // TODO - define in config
-        private TimeSpan _acceptableResponseDelay = new TimeSpan(5, 0, 0, 0, 0); // 5 days
+        private static TimeSpan _acceptableResponseDelay = new TimeSpan(5, 0, 0, 0, 0); // 5 days
 
-        public AlertReport_NeedsResponse(Alert alert, string htmlTemplateFileName) 
-            : base(alert, htmlTemplateFileName)
+        public static bool SendEmails(
+            IEnumerable<string> configFiles,
+            string htmlTemplateFileName,
+            bool skipEmail,
+            string outputHtmlFileName,
+            IEnumerable<string> filteredAlertNames,
+            IEnumerable<DataModelIssue> issues,
+            IEnumerable<DataModelIssue> comments)
         {
+            return AlertReport.SendEmails(
+                configFiles,
+                htmlTemplateFileName,
+                skipEmail,
+                outputHtmlFileName,
+                filteredAlertNames,
+                (Alert alert, string htmlTemplate) =>
+                    GenerateReport(alert, htmlTemplate, issues, comments));
         }
 
-        /// <summary>
-        /// Returns true if the body is filled from this method
-        /// </summary>
-        public override bool FillReportBody(IEnumerable<DataModelIssue> issues, IEnumerable<DataModelIssue> comments)
+        // Returns null if the report is empty
+        protected static string GenerateReport(
+            Alert alert,
+            string htmlTemplate,
+            IEnumerable<DataModelIssue> issues,
+            IEnumerable<DataModelIssue> comments)
         {
             // Create a Dictionary mapping issues to comments for that issue
             Dictionary<int, List<DataModelIssue>> issueComments = new Dictionary<int, List<DataModelIssue>>();
             Dictionary<int, DataModelIssue> issuesMap = new Dictionary<int, DataModelIssue>();
-            IEnumerable<DataModelIssue> matchingIssues = _alert.Query.Evaluate(issues);
+            IEnumerable<DataModelIssue> matchingIssues = alert.Query.Evaluate(issues);
             if (!matchingIssues.Any())
             {
                 Console.WriteLine("    No changes to the query, skipping.");
                 Console.WriteLine();
-                return false;
+                return null;
             }
             foreach (DataModelIssue issue in matchingIssues)
             {
@@ -75,21 +91,22 @@ namespace BugReport.Reports
             {
                 Console.WriteLine("    No changes to the query, skipping.");
                 Console.WriteLine();
-                return false;
+                return null;
             }
-            else
-            {
-                BodyText = BodyText.Replace("%NEEDSMSRESPONSE_ACCEPTABLE_RESPONSE_DELAY%", _acceptableResponseDelay.Days.ToString());
 
-                BodyText = BodyText.Replace("%NEEDSMSRESPONSE_ISSUES_START%", "");
-                BodyText = BodyText.Replace("%NEEDSMSRESPONSE_ISSUES_END%", "");
+            string text = htmlTemplate;
 
-                BodyText = BodyText.Replace("%NEEDSMSRESPONSE_ISSUES_LINK%", GitHubQuery.GetHyperLink(needsResponse.Keys));
-                BodyText = BodyText.Replace("%NEEDSMSRESPONSE_ISSUES_COUNT%", needsResponse.Count().ToString());
+            text = text.Replace("%NEEDSMSRESPONSE_ACCEPTABLE_RESPONSE_DELAY%", _acceptableResponseDelay.Days.ToString());
 
-                BodyText = BodyText.Replace("%NEEDSMSRESPONSE_ISSUES_TABLE%", FormatIssueTable(needsResponse.OrderByDescending((pair) => pair.Value.Value.Days)));
-                return true;
-            }
+            text = text.Replace("%NEEDSMSRESPONSE_ISSUES_START%", "");
+            text = text.Replace("%NEEDSMSRESPONSE_ISSUES_END%", "");
+
+            text = text.Replace("%NEEDSMSRESPONSE_ISSUES_LINK%", GitHubQuery.GetHyperLink(needsResponse.Keys));
+            text = text.Replace("%NEEDSMSRESPONSE_ISSUES_COUNT%", needsResponse.Count().ToString());
+
+            text = text.Replace("%NEEDSMSRESPONSE_ISSUES_TABLE%", FormatIssueTable(needsResponse.OrderByDescending((pair) => pair.Value.Value.Days)));
+
+            return text;
         }
 
         private static string FormatIssueTable(IEnumerable<KeyValuePair<DataModelIssue, TimeSpan?>> issues)
