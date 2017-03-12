@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Mail;
@@ -54,8 +55,8 @@ namespace BugReport.Reports
         /// </summary>
         /// <returns>True if all emails successfully sent</returns>
         public bool SendEmails(
-            IEnumerable<DataModelIssue> beginIssues, 
-            IEnumerable<DataModelIssue> endIssues, 
+            IEnumerable<DataModelIssue> issues1, 
+            IEnumerable<DataModelIssue> issues2, 
             IEnumerable<string> filteredAlertNames)
         {
             bool isAllEmailsSendSuccessful = true;
@@ -75,7 +76,7 @@ namespace BugReport.Reports
                 }
                 else
                 {
-                    isAllEmailsSendSuccessful &= SendEmail(beginIssues, endIssues, alert, smtpClient);
+                    isAllEmailsSendSuccessful &= SendEmail(issues1, issues2, alert, smtpClient);
                 }
             }
 
@@ -96,15 +97,15 @@ namespace BugReport.Reports
             AlertReport report;
             if (_alertType == AlertType.Diff)
             {
-                report = new AlertReport_Diff(alert, !_skipEmail, _htmlTemplateFileName, _outputHtmlFileName);
+                report = new AlertReport_Diff(alert, !_skipEmail, _htmlTemplateFileName);
             }
             else if (_alertType == AlertType.Untriaged)
             {
-                report = new AlertReport_Untriaged(alert, !_skipEmail, _htmlTemplateFileName, _outputHtmlFileName, _config.UntriagedExpression);
+                report = new AlertReport_Untriaged(alert, !_skipEmail, _htmlTemplateFileName, _config.UntriagedExpression);
             }
             else if (_alertType == AlertType.NeedsResponse)
             {
-                report = new AlertReport_NeedsResponse(alert, !_skipEmail, _htmlTemplateFileName, _outputHtmlFileName);
+                report = new AlertReport_NeedsResponse(alert, !_skipEmail, _htmlTemplateFileName);
             }
             else
             {
@@ -114,7 +115,7 @@ namespace BugReport.Reports
             // Create the report and send the email for it
             if (report.FillReportBody(issues1, issues2))
             {
-                bool fileWritten = string.IsNullOrEmpty(report.OutputHtmlFileName) ? WriteReportFile(alert, report) : true;
+                bool fileWritten = WriteReportFile(alert, report);
                 bool emailSent = report.ShouldSendEmail ? SendEmail(alert, report, smtpClient) : false;
                 PrintLogs(report, alert, fileWritten, emailSent);
                 return emailSent;
@@ -131,14 +132,18 @@ namespace BugReport.Reports
         /// <returns>true if succeeded</returns>
         private bool WriteReportFile(Alert alert, AlertReport report)
         {
+            if (string.IsNullOrEmpty(_outputHtmlFileName))
+            {   // No file needs to be written - skipping
+                return true;
+            }
             try
             {
-                File.WriteAllText(report.OutputHtmlFileName, report.BodyText);
+                File.WriteAllText(_outputHtmlFileName, report.BodyText);
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine("ERROR writing alert {0} into file {1}", alert.Name, report.OutputHtmlFileName);
+                Console.WriteLine("ERROR writing alert {0} into file {1}", alert.Name, _outputHtmlFileName);
                 Console.WriteLine(ex);
                 return false;
             }
@@ -185,9 +190,9 @@ namespace BugReport.Reports
         public void PrintLogs(AlertReport report, Alert alert, bool fileWritten, bool emailSent)
         {
             // Logging
-            if (report.OutputHtmlFileName != "")
+            if (string.IsNullOrEmpty(_outputHtmlFileName))
             {
-                Console.WriteLine("    Report: {0}", report.OutputHtmlFileName);
+                Console.WriteLine("    Report: {0}", _outputHtmlFileName);
                 if (!fileWritten)
                 {
                     Console.WriteLine("        FAILED!!!");
@@ -205,7 +210,7 @@ namespace BugReport.Reports
             {
                 Console.WriteLine("            {0} - {1}", user.Name, user.EmailAddress);
             }
-            if (report.OutputHtmlFileName == "")
+            if (string.IsNullOrEmpty(_outputHtmlFileName))
             {
                 Console.Write(report.BodyText.Replace("<br/>", ""));
             }

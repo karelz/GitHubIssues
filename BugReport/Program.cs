@@ -147,12 +147,12 @@ class Program
                         if (action == ActionCommand.query)
                         {
                             QueryReport report = new QueryReport(configFiles);
-                            report.Write(IssueCollection.LoadFrom(inputFiles), outputFile);
+                            report.Write(IssueCollection.LoadIssues(inputFiles), outputFile);
                         }
                         else
                         {   // ActionCommand.report
                             HtmlReport report = new HtmlReport(configFiles);
-                            report.Write(IssueCollection.LoadFrom(inputFiles), outputFile);
+                            report.Write(IssueCollection.LoadIssues(inputFiles), outputFile);
                         }
                         return ErrorCode.Success;
                     }
@@ -180,10 +180,10 @@ class Program
                             skipEmail, 
                             outputFile);
 
-                        IEnumerable<DataModelIssue> beginIssues = IssueCollection.LoadFrom(
+                        IEnumerable<DataModelIssue> beginIssues = IssueCollection.LoadIssues(
                             beginFiles, 
                             IssueKindFlags.Issue | IssueKindFlags.PullRequest);
-                        IEnumerable<DataModelIssue> endIssues = IssueCollection.LoadFrom(
+                        IEnumerable<DataModelIssue> endIssues = IssueCollection.LoadIssues(
                             endFiles,
                             IssueKindFlags.Issue | IssueKindFlags.PullRequest);
 
@@ -213,7 +213,7 @@ class Program
                             skipEmail,
                             outputFile);
 
-                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadFrom(inputFiles, IssueKindFlags.Issue);
+                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(inputFiles, IssueKindFlags.Issue);
 
                         bool isAllEmailSendSuccessful = report.SendEmails(issues, null, alertFilters);
                         return isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure;
@@ -242,12 +242,8 @@ class Program
                             skipEmail,
                             outputFile);
 
-                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadFrom(
-                            inputFiles, 
-                            IssueKindFlags.Issue);
-                        IEnumerable<DataModelIssue> comments = IssueCollection.LoadFrom(
-                            commentsFiles, 
-                            IssueKindFlags.Comment);
+                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(inputFiles, IssueKindFlags.Issue);
+                        IEnumerable<DataModelIssue> comments = IssueCollection.LoadIssues(commentsFiles, IssueKindFlags.Comment);
 
                         bool isAllEmailSendSuccessful = report.SendEmails(issues, comments, alertFilters);
                         return isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure;

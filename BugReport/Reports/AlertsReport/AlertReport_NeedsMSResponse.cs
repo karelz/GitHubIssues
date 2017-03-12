@@ -15,8 +15,8 @@ namespace BugReport.Reports
         // TODO - define in config
         private TimeSpan _acceptableResponseDelay = new TimeSpan(5, 0, 0, 0, 0); // 5 days
 
-        public AlertReport_NeedsResponse(Alert alert, bool sendEmail, string htmlTemplateFileName, string outputHtmlFileName) 
-            : base(alert, sendEmail, htmlTemplateFileName, outputHtmlFileName)
+        public AlertReport_NeedsResponse(Alert alert, bool sendEmail, string htmlTemplateFileName) 
+            : base(alert, sendEmail, htmlTemplateFileName)
         {
         }
 
@@ -92,7 +92,7 @@ namespace BugReport.Reports
             }
         }
 
-        protected string FormatIssueTable(IEnumerable<KeyValuePair<DataModelIssue, TimeSpan?>> issues)
+        private static string FormatIssueTable(IEnumerable<KeyValuePair<DataModelIssue, TimeSpan?>> issues)
         {
             StringBuilder text = new StringBuilder();
             text.AppendLine("<table>");

@@ -69,12 +69,12 @@
     <Compile Include="Reports\AlertsReport\AlertReport.cs" />
     <Compile Include="Reports\AlertsReport\AlertReport_Untriaged.cs" />
     <Compile Include="Reports\AlertsReport\AlertReport_Diff.cs" />
-    <Compile Include="Reports\AlertsReport\IssueEntry.cs" />
-    <Compile Include="Reports\AlertsReport\Config.cs" />
+    <Compile Include="Reports\IssueEntry.cs" />
+    <Compile Include="Reports\Config.cs" />
     <Compile Include="Reports\AlertsReport\AlertReporting.cs" />
     <Compile Include="Reports\HtmlReport\QueryReport.cs" />
     <Compile Include="Reports\HtmlReport\HtmlReport.cs" />
-    <Compile Include="Reports\AlertsReport\GitHubQuery.cs" />
+    <Compile Include="Reports\GitHubQuery.cs" />
     <Compile Include="Repository.cs" />
   </ItemGroup>
   <ItemGroup>

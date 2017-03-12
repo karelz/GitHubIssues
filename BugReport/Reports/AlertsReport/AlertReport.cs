@@ -20,7 +20,7 @@ namespace BugReport.Reports
         public virtual string AlertName { get; protected set; }
         public virtual string BodyText { get; protected set; }
 
-        public AlertReport(Alert alert, bool sendEmail, string htmlTemplateFileName, string outputHtmlFileName)
+        public AlertReport(Alert alert, bool sendEmail, string htmlTemplateFileName)
         {
             _alert = alert;
             _htmlTemplateFileName = htmlTemplateFileName;
@@ -29,7 +29,6 @@ namespace BugReport.Reports
             AlertName = alert.Name;
             BodyText = BodyText.Replace("%ALERT_NAME%", alert.Name);
             ShouldSendEmail = sendEmail;
-            OutputHtmlFileName = outputHtmlFileName;
             Subject = ParseForValue("%SUBJECT%");
         }
 
@@ -53,36 +52,6 @@ namespace BugReport.Reports
             }
             BodyText = titleRegex.Replace(BodyText, "");
             return foundValue;
-        }
-
-        protected string FormatIssueTable(IEnumerable<IssueEntry> issues)
-        {
-            StringBuilder text = new StringBuilder();
-            text.AppendLine("<table>");
-            text.AppendLine("  <tr>");
-            text.AppendLine("    <th>Issue #</th>");
-            text.AppendLine("    <th>Title</th>");
-            text.AppendLine("    <th>Assigned To</th>");
-            text.AppendLine("    <th>Milestone</th>");
-            text.AppendLine("  </tr>");
-            foreach (IssueEntry issue in issues)
-            {
-                text.AppendLine("  <tr>");
-                text.AppendLine($"    <td>{issue.IssueId}</td>");
-                text.AppendLine("    <td>");
-                text.AppendLine($"      {issue.Title}");
-                if (issue.LabelsText != null)
-                {
-                    text.AppendLine($"      <br/><div class=\"labels\">Labels: {issue.LabelsText}</div>");
-                }
-                text.AppendLine("    </td>");
-                text.AppendLine($"    <td>{issue.AssignedToText}</td>");
-                text.AppendLine($"    <td>{issue.MilestoneText}</td>");
-                text.AppendLine("  </tr>");
-            }
-            text.AppendLine("</table>");
-
-            return text.ToString();
         }
     }
 }

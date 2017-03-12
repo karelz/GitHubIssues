@@ -14,6 +14,7 @@ namespace BugReport.Reports
         public string Name { get; private set; }
         public Expression Query { get; private set; }
 
+        // customIsValues - customization of is:* (e.g. is:untriaged) syntax in queries
         public NamedQuery(string name, string query, IReadOnlyDictionary<string, Expression> customIsValues)
         {
             Name = name;
@@ -48,6 +49,7 @@ namespace BugReport.Reports
         public IEnumerable<User> Owners { get; private set; }
         public IEnumerable<User> CCs { get; private set; }
 
+        // customIsValues - customization of is:* (e.g. is:untriaged) syntax in queries
         public Alert(
             string name, 
             string query, 

@@ -54,7 +54,7 @@ namespace BugReport.Reports
             Flags triageFlags = 0;
 
             // Check if this issue is marked as 'untriaged'
-            if (issue.Labels.IntersectByName(_untriagedLabels).Any())
+            if (issue.Labels.Intersect_ByName(_untriagedLabels).Any())
             {
                 triageFlags |= Flags.UntriagedLabel;
             }
@@ -66,7 +66,7 @@ namespace BugReport.Reports
             }
 
             // Count area labels
-            int areaLabelsCount = issue.Labels.IntersectByName(_areaLabels).Count();
+            int areaLabelsCount = issue.Labels.Intersect_ByName(_areaLabels).Count();
             if (areaLabelsCount == 0)
             {
                 triageFlags |= Flags.MissingAreaLabel;
@@ -77,7 +77,7 @@ namespace BugReport.Reports
             }
 
             // Count issue labels
-            int issueTypeLabelsCount = issue.Labels.IntersectByName(_issueTypeLabels).Count();
+            int issueTypeLabelsCount = issue.Labels.Intersect_ByName(_issueTypeLabels).Count();
             if (issueTypeLabelsCount == 0)
             {
                 triageFlags |= Flags.MissingIssueTypeLabel;
@@ -119,9 +119,8 @@ namespace BugReport.Reports
             Alert alert, 
             bool sendEmail, 
             string htmlTemplateFileName, 
-            string outputHtmlFileName, 
             ExpressionUntriaged untriagedExpression)
-            : base(alert, sendEmail, htmlTemplateFileName, outputHtmlFileName)
+            : base(alert, sendEmail, htmlTemplateFileName)
         {
             _untriagedExpression = untriagedExpression;
         }
@@ -158,16 +157,16 @@ namespace BugReport.Reports
             BodyText = BodyText.Replace("%UNTRIAGED_ISSUES_COUNT%", untriagedFlagsMap.Count().ToString());
 
             IEnumerable<IssueEntry> untriagedIssueEntries = untriagedFlagsMap.Keys.Select(issue => new IssueEntry(issue));
-            BodyText = BodyText.Replace("%UNTRIAGED_ISSUES_TABLE%", FormatIssueTable_Untriaged(untriagedFlagsMap));
+            BodyText = BodyText.Replace("%UNTRIAGED_ISSUES_TABLE%", FormatIssueTable(untriagedFlagsMap));
             return true;
         }
 
-        private string UntriagedTypeToString(ExpressionUntriaged.Flags flags)
+        private static string UntriagedTypeToString(ExpressionUntriaged.Flags flags)
         {
             return string.Join(", ", ExpressionUntriaged.EnumerateFlags(flags));
         }
 
-        private string FormatIssueTable_Untriaged(Dictionary<DataModelIssue, ExpressionUntriaged.Flags> issuesMap)
+        private static string FormatIssueTable(Dictionary<DataModelIssue, ExpressionUntriaged.Flags> issuesMap)
         {
             StringBuilder text = new StringBuilder();
             text.AppendLine("<table>");

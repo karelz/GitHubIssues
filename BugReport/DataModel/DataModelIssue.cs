@@ -113,6 +113,13 @@ namespace BugReport.DataModel
             sw.Close();
             return text;
         }
+
+        // Returns true only if the issues represent the same issue number in the same repo
+        public bool EqualsByNumber(DataModelIssue issue)
+        {
+            // Check also HtmlUrl which encodes repo
+            return ((Number == issue.Number) && (HtmlUrl == issue.HtmlUrl));
+        }
     }
 
     [FlagsAttribute]

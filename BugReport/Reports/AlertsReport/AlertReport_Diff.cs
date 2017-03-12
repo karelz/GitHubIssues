@@ -13,8 +13,8 @@ namespace BugReport.Reports
 {
     public class AlertReport_Diff : AlertReport
     {
-        public AlertReport_Diff(Alert alert, bool sendEmail, string htmlTemplateFileName, string outputHtmlFileName) 
-            : base(alert, sendEmail, htmlTemplateFileName, outputHtmlFileName)
+        public AlertReport_Diff(Alert alert, bool sendEmail, string htmlTemplateFileName) 
+            : base(alert, sendEmail, htmlTemplateFileName)
         {
         }
 
@@ -25,8 +25,8 @@ namespace BugReport.Reports
         {
             IEnumerable<DataModelIssue> beginQuery = _alert.Query.Evaluate(beginIssues);
             IEnumerable<DataModelIssue> endQuery = _alert.Query.Evaluate(endIssues);
-            IEnumerable<DataModelIssue> goneIssues = beginQuery.Except(endQuery);
-            IEnumerable<DataModelIssue> newIssues = endQuery.Except(beginQuery);
+            IEnumerable<DataModelIssue> goneIssues = beginQuery.Except_ByIssueNumber(endQuery);
+            IEnumerable<DataModelIssue> newIssues = endQuery.Except_ByIssueNumber(beginQuery);
 
             if (!goneIssues.Any() && !newIssues.Any())
             {
@@ -69,16 +69,45 @@ namespace BugReport.Reports
             BodyText = BodyText.Replace("%NEW_ISSUES_TABLE%", FormatIssueTable(newIssueEntries));
             IEnumerable<IssueEntry> goneIssueEntries = goneIssues.Select(issue =>
             {
-                IEnumerable<DataModelIssue> matchedIssues = endIssues.SelectByNumber(issue.Number);
-                if (!matchedIssues.Any())
+                DataModelIssue newIssue = endIssues.FirstOrNull_ByIssueNumber(issue);
+                if (newIssue == null)
                 {   // Closed issue
                     return new IssueEntry(issue, "Closed");
                 }
-                Debug.Assert(matchedIssues.Count() == 1);
-                return new IssueEntry(matchedIssues.First());
+                return new IssueEntry(newIssue);
             });
             BodyText = BodyText.Replace("%GONE_ISSUES_TABLE%", FormatIssueTable(goneIssueEntries));
             return true;
+        }
+
+        private static string FormatIssueTable(IEnumerable<IssueEntry> issues)
+        {
+            StringBuilder text = new StringBuilder();
+            text.AppendLine("<table>");
+            text.AppendLine("  <tr>");
+            text.AppendLine("    <th>Issue #</th>");
+            text.AppendLine("    <th>Title</th>");
+            text.AppendLine("    <th>Assigned To</th>");
+            text.AppendLine("    <th>Milestone</th>");
+            text.AppendLine("  </tr>");
+            foreach (IssueEntry issue in issues)
+            {
+                text.AppendLine("  <tr>");
+                text.AppendLine($"    <td>{issue.IssueId}</td>");
+                text.AppendLine("    <td>");
+                text.AppendLine($"      {issue.Title}");
+                if (issue.LabelsText != null)
+                {
+                    text.AppendLine($"      <br/><div class=\"labels\">Labels: {issue.LabelsText}</div>");
+                }
+                text.AppendLine("    </td>");
+                text.AppendLine($"    <td>{issue.AssignedToText}</td>");
+                text.AppendLine($"    <td>{issue.MilestoneText}</td>");
+                text.AppendLine("  </tr>");
+            }
+            text.AppendLine("</table>");
+
+            return text.ToString();
         }
     }
 }
