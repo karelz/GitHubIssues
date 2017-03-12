@@ -1,29 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Diagnostics;
 using System.Linq;
-using System.Xml.Linq;
-using BugReport.Query;
+using BugReport.CommandLine;
 using BugReport.DataModel;
 using BugReport.Reports;
+using BugReport.Reports.EmailReports;
+using BugReport.Util;
 
 class Program
 {
-    static void PrintUsage()
-    {
-        Console.WriteLine("Usage:");
-        Console.WriteLine("  cache <config.xml> [<GithubToken>]- will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json");
-        Console.WriteLine("  cacheWithComments <alerts.xml> [<GithubToken>] - will cache all GitHub issues into file Issues_YYY-MM-DD@HH-MM.json and Github comments into file Comments_YYY-MM-DD@HH-MM.json");
-        Console.WriteLine("  report <input.json> <output.html> <config.xml> - Creates report of GitHub issues from cached .json file");
-        Console.WriteLine("  query <input.json> <output.html> <config.xml> - Creates (hardcoded) query-report of GitHub issues from cached .json file");
-        Console.WriteLine("  alerts <input1.json> <input2.json> <emailTemplate.html> <config.xml> [<alert_name>] - Sends alert emails based on .xml config, optinally filtered to just alert_name");
-        Console.WriteLine("      alerts_SkipEmail or set SEND_EMAIL=0 - Won't send any emails");
-        Console.WriteLine("  untriaged <issues.json> <emailTemplate.html> <config.xml> [<alert_name>] - Sends alert emails based on .xml config, optinally filtered to just alert_name");
-        Console.WriteLine("      untriaged_SkipEmail or set SEND_EMAIL=0 - Won't send any emails");
-        Console.WriteLine("  needsMSResponse <issues.json> <comments.json> <emailTemplate.html> <config.xml> [<alert_name>] - Sends digest emails based on .xml config, optinally filtered to just alert_name");
-        Console.WriteLine("     needsMSResponse_SkipEmail or set SEND_EMAIL=0 - Won't send any emails");
-    }
-
     enum ErrorCode
     {
         Success = 0,
@@ -32,124 +18,292 @@ class Program
         CatastrophicFailure = -100
     }
 
-    static int Main(string[] args)
+    enum ActionCommand
+    {
+        cache,
+        report,
+        query,
+        alerts,
+        untriaged,
+        needsResponse
+    }
+
+    static readonly IEnumerable<string> _helpActions = new List<string>() { "?", "help", "h" };
+    // Prefixed with option prefix /, -, or --, see code:Parser._optionPrefixes
+    static readonly IEnumerable<string> _helpOptions = new List<string>() { "?", "help", "h" };
+
+    static readonly OptionMultipleValues _configOption = new OptionMultipleValues("config");
+    static readonly OptionSingleValue _prefixOption = new OptionSingleValue("prefix");
+    static readonly OptionSingleValue _authenticationTokenOption = new OptionSingleValue("authToken", "authenticationToken", "gitHubToken", "token");
+    static readonly OptionSingleValue _commentsPrefixOption = new OptionSingleValue("comments_prefix");
+    static readonly OptionMultipleValues _inputOption = new OptionMultipleValues("in", "input");
+    static readonly OptionSingleValue _outputOption = new OptionSingleValue("out", "output");
+    static readonly OptionMultipleValues _beginOption = new OptionMultipleValues("begin");
+    static readonly OptionMultipleValues _endOption = new OptionMultipleValues("end");
+    static readonly OptionSingleValue _templateOption = new OptionSingleValue("template");
+    static readonly OptionMultipleValues _filterOption = new OptionMultipleValues("filter");
+    static readonly OptionWithoutValue _skipEmailOption = new OptionWithoutValue("skipEmail", "noEmail", "skipMail", "noMail");
+    static readonly OptionMultipleValues _commentsOption = new OptionMultipleValues("comments");
+
+    static void PrintUsage()
+    {
+        Console.WriteLine(
+@"Usage:
+  cache /config <.xml> /prefix <name> [/comments_prefix <comments>] [/authToken <token>]
+    * Will cache all GitHub issues into file <name>YYYY-MM-DD@HH-MM.json
+    * If /comments is set, will also cache all GitHub comments into file <comments>YYY-MM-DD@HH-MM.json
+  report /in <issues.json> [...] /out <.html> /config <.xml>
+    * Creates report with alerts/areas as rows and queries as columns from cached .json file
+  query /in <issues.json> [...] /out <.html> /config <.xml>
+    * Creates query report (list of issues) from cached .json file
+  alerts /begin <issues1.json> [...] /end <issues1_end.json> [...] /template <.html> /config <.xml> 
+        [/filter <alert_name> [...]] [/skipEmail] [/out <out.html>]
+    * Sends alert emails based on config.xml, optinally filtered to just alert_name
+  untriaged /in <issues.json> [...] /template <.html> /config <.xml> 
+        [/filter <alert_name> [...]] [/skipEmail] [/out <out.html>]
+    * Sends alert emails based on config.xml, optinally filtered to just alert_name
+  needsResponse /in <issues.json> [...] /comments <.json> [...] /template <.html> /config <.xml> 
+        [/fitler:<alert_name>] [/skipEmail] [/out <out.html>]
+    * Sends digest emails based on config.xml, optinally filtered to just alert_name");
+    }
+
+    static void ReportError(string error)
+    {
+        Console.Error.WriteLine(error);
+        Console.Error.WriteLine();
+
+        PrintUsage();
+    }
+
+    static int Main(string[] args) => (int)Main_Internal(args);
+
+    static ErrorCode Main_Internal(string[] args)
     {
         try
         {
-            if (args.Length >= 1)
-            {
-                if ((args[0].Equals("cache", StringComparison.OrdinalIgnoreCase) ||
-                    args[0].Equals("cacheWithComments", StringComparison.OrdinalIgnoreCase))
-                    && (args.Length == 2 || args.Length == 3))
-                {
-                    if (args.Length == 2)
-                        CacheGitHubIssues(args[1], authenticationToken: null, includeComments: args[0].Equals("cacheWithComments"));
-                    else
-                        CacheGitHubIssues(args[1], authenticationToken: args[2], includeComments: args[0].Equals("cacheWithComments"));
+            if ((args.Length == 0)
+                || Parser.IsOption(args[0], _helpOptions)
+                || _helpActions.ContainsIgnoreCase(args[0]))
+            {   // Print help
+                PrintUsage();
+                return (int)ErrorCode.Success;
+            }
 
-                    return (int)ErrorCode.Success;
-                }
-                else if (args[0].Equals("report", StringComparison.OrdinalIgnoreCase) && (args.Length == 4))
+            // Parse first 'action' argument
+            string actionArg = args[0];
+            ActionCommand action = 0;
+            {
+                bool isValidActionArg = false;
+                foreach (ActionCommand actionCommand in Enum.GetValues(typeof(ActionCommand)))
                 {
-                    HtmlReport(args[1], args[2], args[3]);
-                    return (int)ErrorCode.Success;
+                    if (actionArg.Equals(actionCommand.ToString(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        action = actionCommand;
+                        isValidActionArg = true;
+                        break;
+                    }
                 }
-                else if (args[0].Equals("query", StringComparison.OrdinalIgnoreCase) && (args.Length == 4))
+                if (!isValidActionArg)
                 {
-                    QueryReport(args[1], args[2], args[3]);
-                    return (int)ErrorCode.Success;
-                }
-                else if ((args[0].Equals("alerts", StringComparison.OrdinalIgnoreCase)
-                     || args[0].Equals("alerts_SkipEmail", StringComparison.OrdinalIgnoreCase))
-                     && ((args.Length == 5) || (args.Length == 6)))
-                {
-                    bool skipEmail = args[0].Equals("alerts_SkipEmail", StringComparison.OrdinalIgnoreCase);
-                    string alertName = (args.Length == 6) ? args[5] : null;
-                    bool isAllEmailSendSuccessful = SendAlerts_Diff(args[1], args[2], args[3], args[4], alertName, skipEmail);
-                    return (int)(isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure);
-                }
-                else if ((args[0].Equals("untriaged", StringComparison.OrdinalIgnoreCase)
-                     || args[0].Equals("untriaged_SkipEmail", StringComparison.OrdinalIgnoreCase))
-                     && ((args.Length == 4) || (args.Length == 5)))
-                {
-                    bool skipEmail = args[0].Equals("untriaged_SkipEmail", StringComparison.OrdinalIgnoreCase);
-                    string alertName = (args.Length == 5) ? args[4] : null;
-                    bool isAllEmailSendSuccessful = SendAlerts_Untriaged(args[1], args[2], args[3], alertName, skipEmail);
-                    return (int)(isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure);
-                }
-                else if ((args[0].Equals("needsMSResponse", StringComparison.OrdinalIgnoreCase)
-                     || args[0].Equals("needsMSResponse_SkipEmail", StringComparison.OrdinalIgnoreCase))
-                     && ((args.Length == 5) || (args.Length == 6)))
-                {
-                    bool skipEmail = args[0].Equals("needsMSResponse_SkipEmail", StringComparison.OrdinalIgnoreCase);
-                    string alertName = (args.Length == 6) ? args[5] : null;
-                    bool isAllEmailSendSuccessful = SendAlerts_NeedsMSResponse(args[1], args[2], args[3], args[4], alertName, skipEmail);
-                    return (int)(isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure);
+                    ReportError($"Error: unrecognized action '{actionArg}' - command line argument #1");
+                    return ErrorCode.InvalidCommand;
                 }
             }
-            PrintUsage();
-            return (int)ErrorCode.InvalidCommand;
+
+            Parser optionsParser = new Parser(
+                args.Skip(1).ToArray(),
+                PrintUsage);
+
+            switch (action)
+            {
+                case ActionCommand.cache:
+                    {
+                        if (!optionsParser.Parse(
+                            new Option[] { _configOption, _prefixOption },
+                            new Option[] { _authenticationTokenOption, _commentsPrefixOption }))
+                        {
+                            return ErrorCode.InvalidCommand;
+                        }
+                        IEnumerable<string> configFiles = _configOption.GetValues(optionsParser);
+                        string filePrefix = _prefixOption.GetValue(optionsParser);
+                        // Optional args
+                        string authenticationToken = _authenticationTokenOption.GetValue(optionsParser);
+                        string commentsFilePrefix = _commentsPrefixOption.GetValue(optionsParser);
+
+                        return CacheGitHubIssues(configFiles, filePrefix, commentsFilePrefix, authenticationToken);
+                    }
+                case ActionCommand.query:
+                case ActionCommand.report:
+                    {
+                        if (!optionsParser.Parse(
+                            new Option[] { _configOption, _inputOption, _outputOption },
+                            Option.EmptyList))
+                        {
+                            return ErrorCode.InvalidCommand;
+                        }
+                        IEnumerable<string> configFiles = _configOption.GetValues(optionsParser);
+                        IEnumerable<string> inputFiles = _inputOption.GetValues(optionsParser);
+                        string outputFile = _outputOption.GetValue(optionsParser);
+
+                        if (action == ActionCommand.query)
+                        {
+                            QueryReport report = new QueryReport(configFiles);
+                            report.Write(IssueCollection.LoadIssues(inputFiles), outputFile);
+                        }
+                        else
+                        {   // ActionCommand.report
+                            HtmlReport report = new HtmlReport(configFiles);
+                            report.Write(IssueCollection.LoadIssues(inputFiles), outputFile);
+                        }
+                        return ErrorCode.Success;
+                    }
+                case ActionCommand.alerts:
+                    {
+                        if (!optionsParser.Parse(
+                            new Option[] { _configOption, _beginOption, _endOption, _templateOption },
+                            new Option[] { _filterOption, _skipEmailOption, _outputOption }))
+                        {
+                            return ErrorCode.InvalidCommand;
+                        }
+                        IEnumerable<string> configFiles = _configOption.GetValues(optionsParser);
+                        IEnumerable<string> beginFiles = _beginOption.GetValues(optionsParser);
+                        IEnumerable<string> endFiles = _endOption.GetValues(optionsParser);
+                        string templateFile = _templateOption.GetValue(optionsParser);
+                        // Optional args
+                        IEnumerable<string> alertFilters = _filterOption.GetValues(optionsParser);
+                        bool skipEmail = _skipEmailOption.IsDefined(optionsParser);
+                        string outputFile = _outputOption.GetValue(optionsParser);
+
+                        IEnumerable<DataModelIssue> beginIssues = IssueCollection.LoadIssues(
+                            beginFiles, 
+                            IssueKindFlags.Issue | IssueKindFlags.PullRequest);
+                        IEnumerable<DataModelIssue> endIssues = IssueCollection.LoadIssues(
+                            endFiles,
+                            IssueKindFlags.Issue | IssueKindFlags.PullRequest);
+
+                        return GetSendEmailErrorCode(AlertReport_Diff.SendEmails(
+                            configFiles,
+                            templateFile,
+                            skipEmail,
+                            outputFile,
+                            alertFilters,
+                            beginIssues,
+                            endIssues));
+                    }
+                case ActionCommand.untriaged:
+                    {
+                        if (!optionsParser.Parse(
+                            new Option[] { _configOption, _inputOption, _templateOption },
+                            new Option[] { _filterOption, _skipEmailOption, _outputOption }))
+                        {
+                            return ErrorCode.InvalidCommand;
+                        }
+                        IEnumerable<string> configFiles = _configOption.GetValues(optionsParser);
+                        IEnumerable<string> inputFiles = _inputOption.GetValues(optionsParser);
+                        string templateFile = _templateOption.GetValue(optionsParser);
+                        // Optional args
+                        IEnumerable<string> alertFilters = _filterOption.GetValues(optionsParser);
+                        bool skipEmail = _skipEmailOption.IsDefined(optionsParser);
+                        string outputFile = _outputOption.GetValue(optionsParser);
+
+                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(inputFiles, IssueKindFlags.Issue);
+
+                        return GetSendEmailErrorCode(AlertReport_Untriaged.SendEmails(
+                            configFiles,
+                            templateFile,
+                            skipEmail,
+                            outputFile,
+                            alertFilters,
+                            issues));
+                    }
+                case ActionCommand.needsResponse:
+                    {
+                        if (!optionsParser.Parse(
+                            new Option[] { _configOption, _inputOption, _commentsOption, _templateOption },
+                            new Option[] { _filterOption, _skipEmailOption, _outputOption }))
+                        {
+                            return ErrorCode.InvalidCommand;
+                        }
+                        IEnumerable<string> configFiles = _configOption.GetValues(optionsParser);
+                        IEnumerable<string> inputFiles = _inputOption.GetValues(optionsParser);
+                        IEnumerable<string> commentsFiles = _commentsOption.GetValues(optionsParser);
+                        string templateFile = _templateOption.GetValue(optionsParser);
+                        // Optional args
+                        IEnumerable<string> alertFilters = _filterOption.GetValues(optionsParser);
+                        bool skipEmail = _skipEmailOption.IsDefined(optionsParser);
+                        string outputFile = _outputOption.GetValue(optionsParser);
+
+                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(inputFiles, IssueKindFlags.Issue);
+                        IEnumerable<DataModelIssue> comments = IssueCollection.LoadIssues(commentsFiles, IssueKindFlags.Comment);
+
+                        return GetSendEmailErrorCode(AlertReport_NeedsResponse.SendEmails(
+                            configFiles,
+                            templateFile,
+                            skipEmail,
+                            outputFile,
+                            alertFilters,
+                            issues,
+                            comments));
+                    }
+                default:
+                    Debug.Assert(false);
+                    return ErrorCode.CatastrophicFailure;
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine("Catastrophic failure:");
-            Console.WriteLine(ex);
-            return (int)ErrorCode.CatastrophicFailure;
+            Console.Error.WriteLine();
+            Console.Error.WriteLine();
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("Catastrophic failure:");
+            Console.Error.WriteLine(ex);
+            return ErrorCode.CatastrophicFailure;
         }
     }
 
-    static void CacheGitHubIssues(string configFileName, string authenticationToken, bool includeComments)
+    private static ErrorCode GetSendEmailErrorCode(bool isAllEmailSendSuccessful)
     {
-        Repository repo = new Repository(configFileName);
-        DateTime currentTime = DateTime.Now;
+        return isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure;
+    }
+
+    static ErrorCode CacheGitHubIssues(
+        IEnumerable<string> configFiles, 
+        string prefix, 
+        string commentsPrefix, 
+        string authenticationToken)
+    {
+        Config config = new Config(configFiles);
+        if (config.Repositories.Count() != 1)
+        {
+            if (config.Repositories.Count() == 0)
+            {
+                ReportError("No repository definition found in config file(s).");
+                return ErrorCode.InvalidCommand;
+            }
+            else
+            {
+                ReportError("Multiple repositories found in config file(s).");
+                return ErrorCode.InvalidCommand;
+            }
+        }
+
+        Repository repo = config.Repositories.First();
         repo.AuthenticationToken = authenticationToken;
+
+        DateTime currentTime = DateTime.Now;
         repo.LoadIssues();
-        repo.SerializeToFile(string.Format("Issues_{0:yyyy-MM-dd@HH-mm}.json", currentTime), repo.Issues);
-        if (includeComments)
+        repo.SerializeToFile(
+            string.Format("{0}{1:yyyy-MM-dd@HH-mm}.json", prefix, currentTime), 
+            repo.Issues);
+
+        if (commentsPrefix != null)
         {
             repo.LoadIssueComments();
-            repo.SerializeToFile(string.Format("Comments_{0:yyyy-MM-dd@HH-mm}.json", currentTime), repo.IssueComments);
+            repo.SerializeToFile(
+                string.Format("{0}{1:yyyy-MM-dd@HH-mm}.json", commentsPrefix, currentTime), 
+                repo.IssueComments);
         }
-    }
 
-    static void HtmlReport(string inputJsonFileName, string outputHtmlFileName, string configFileName)
-    {
-        HtmlReport report = new HtmlReport(configFileName);
-        report.Write(IssueCollection.LoadFrom(inputJsonFileName), outputHtmlFileName);
-    }
-
-    static void QueryReport(string inputJsonFileName, string outputHtmlFileName, string configFileName)
-    {
-        QueryReport report = new QueryReport(configFileName);
-        report.Write(IssueCollection.LoadFrom(inputJsonFileName), outputHtmlFileName);
-    }
-
-    // Returns false if any of the emails failed to be sent
-    static bool SendAlerts_Diff(string input1JsonFileName, string input2JsonFileName, string htmlTemplateFileName, string configFileName, string alertName, bool skipEmail)
-    {
-        AlertReporting report = new AlertReporting(configFileName, skipEmail, htmlTemplateFileName, AlertType.Diff);
-        IssueCollection collection1 = IssueCollection.LoadFrom(input1JsonFileName, issueKind: IssueKindFlags.Issue);
-        IssueCollection collection2 = IssueCollection.LoadFrom(input2JsonFileName, issueKind: IssueKindFlags.Issue);
-        return report.SendEmails(collection1, collection2, alertName);
-    }
-
-    // Returns false if any of the emails failed to be sent
-    static bool SendAlerts_Untriaged(string inputJsonFileName, string htmlTemplateFileName, string configFileName, string alertName, bool skipEmail)
-    {
-        AlertReporting report = new AlertReporting(configFileName, skipEmail, htmlTemplateFileName, AlertType.Untriaged);
-        IssueCollection collection1 = IssueCollection.LoadFrom(inputJsonFileName, issueKind: IssueKindFlags.Issue);
-        return report.SendEmails(collection1, null, alertName);
-    }
-
-    // Returns false if any of the emails failed to be sent
-    static bool SendAlerts_NeedsMSResponse(string issueJsonFile, string commentJsonFile, string htmlTemplateFileName, string configFileName, string alertName, bool skipEmail)
-    {
-        AlertReporting report = new AlertReporting(configFileName, skipEmail, htmlTemplateFileName, AlertType.NeedsMSResponse);
-        IssueCollection collection1 = IssueCollection.LoadFrom(issueJsonFile, issueKind: IssueKindFlags.Issue);
-        IssueCollection collection2 = IssueCollection.LoadFrom(commentJsonFile, issueKind: IssueKindFlags.Comment);
-        return report.SendEmails(collection1, collection2, alertName);
+        return ErrorCode.Success;
     }
 }

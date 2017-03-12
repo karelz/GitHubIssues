@@ -11,26 +11,7 @@ namespace BugReport.DataModel
 {
     public class IssueCollection
     {
-        public IEnumerable<DataModelIssue> Issues { get; private set; }
-
-        public DataModelIssue GetIssue(int id)
-        {
-            foreach (DataModelIssue issue in Issues)
-            {
-                if (issue.Number == id)
-                {
-                    return issue;
-                }
-            }
-            return null;
-        }
-
-        public bool HasIssue(int id)
-        {
-            return GetIssue(id) != null;
-        }
-
-        Dictionary<string, Label> LabelsMap;
+        private Dictionary<string, Label> LabelsMap;
         public IEnumerable<Label> Labels
         {
             get { return LabelsMap.Values; }
@@ -55,7 +36,7 @@ namespace BugReport.DataModel
             return true;
         }
 
-        Dictionary<string, Milestone> MilestonesMap;
+        private Dictionary<string, Milestone> MilestonesMap;
         public bool HasMilestone(string milestoneName)
         {
             return MilestonesMap.ContainsKey(milestoneName);
@@ -63,8 +44,6 @@ namespace BugReport.DataModel
 
         public IssueCollection(IEnumerable<DataModelIssue> issues)
         {
-            Issues = issues;
-
             LabelsMap = new Dictionary<string, Label>();
             MilestonesMap = new Dictionary<string, Milestone>();
 
@@ -103,30 +82,22 @@ namespace BugReport.DataModel
             }
         }
 
-        public static IssueCollection LoadFrom(string fileName, IssueKindFlags issueKind = IssueKindFlags.All, IEnumerable<Label> labels = null)
+        public static IEnumerable<DataModelIssue> LoadIssues(
+            IEnumerable<string> fileNames, 
+            IssueKindFlags issueKind = IssueKindFlags.All)
         {
-            JsonSerializer serializer = new JsonSerializer();
-            using (StreamReader sr = new StreamReader(fileName))
-            using (JsonReader reader = new JsonTextReader(sr))
+            IEnumerable<DataModelIssue> issues = new DataModelIssue[] {};
+            foreach (string fileName in fileNames)
             {
-                IssueCollection issues = new IssueCollection(serializer.Deserialize<List<DataModelIssue>>(reader).Where(i => i.IsIssueKind(issueKind)));
-                issues.LoadLabels(labels);
-                return issues;
-            }
-        }
-
-        void LoadLabels(IEnumerable<Label> labels)
-        {
-            if (labels != null)
-            {
-                foreach (Label label in labels)
+                JsonSerializer serializer = new JsonSerializer();
+                using (StreamReader sr = new StreamReader(fileName))
+                using (JsonReader reader = new JsonTextReader(sr))
                 {
-                    if (!LabelsMap.ContainsKey(label.Name))
-                    {
-                        LabelsMap[label.Name] = label;
-                    }
+                    issues = issues.Concat(serializer.Deserialize<List<DataModelIssue>>(reader)
+                                                        .Where(i => i.IsIssueKind(issueKind)));
                 }
             }
+            return issues;
         }
     }
 }

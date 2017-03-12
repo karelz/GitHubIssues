@@ -18,11 +18,6 @@ namespace BugReport.Query
         {
             return issues.Where(i => Evaluate(i));
         }
-        public IEnumerable<DataModelIssue> Evaluate(IssueCollection issues)
-        {
-            return Evaluate(issues.Issues);
-        }
-
         public abstract string GetGitHubQueryURL();
 
         public virtual Expression Simplify()

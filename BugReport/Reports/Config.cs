@@ -24,6 +24,19 @@ namespace BugReport.Reports
         public IEnumerable<Label> UntriagedLabels { get; private set; }
         public ExpressionUntriaged UntriagedExpression { get; private set; }
 
+        private List<Repository> _repositories;
+        public IEnumerable<Repository> Repositories
+        {
+            get
+            {
+                if (_repositories == null)
+                {
+                    _repositories = LoadRepositories().ToList();
+                }
+                return _repositories;
+            }
+        }
+
         private struct ConfigFile
         {
             public string FileName;
@@ -36,13 +49,16 @@ namespace BugReport.Reports
             }
         }
 
-        public Config(string configXmlFileName)
+        public Config(IEnumerable<string> configFiles)
         {
             // List of XML config files to load
             Queue<string> configFilesToLoad = new Queue<string>();
-            configFilesToLoad.Enqueue(configXmlFileName);
+            foreach (string configFile in configFiles)
+            {
+                configFilesToLoad.Enqueue(configFile);
+            }
 
-            // List of all XML roots to from all XML config files
+            // List of all XML roots from all XML config files
             _configFiles = new List<ConfigFile>();
 
             while (configFilesToLoad.Count > 0)
@@ -185,6 +201,23 @@ namespace BugReport.Reports
                         }
                         yield return query;
                     }
+                }
+            }
+        }
+
+        private IEnumerable<Repository> LoadRepositories()
+        {
+            foreach (ConfigFile configFile in _configFiles)
+            {
+                foreach (XElement repoNode in configFile.Root.Descendants("repository"))
+                {
+                    string repoName = repoNode.Attribute("name").Value;
+                    string[] repoNameParts = repoName.Split('/');
+                    if (repoNameParts.Length != 2)
+                    {
+                        throw new InvalidDataException($"Invalid repository name format in repo '{repoName}'");
+                    }
+                    yield return new Repository(repoNameParts[0], repoNameParts[1]);
                 }
             }
         }

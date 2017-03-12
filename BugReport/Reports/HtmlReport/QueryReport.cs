@@ -13,12 +13,12 @@ namespace BugReport.Reports
     {
         Config _config;
 
-        public QueryReport(string configFileName)
+        public QueryReport(IEnumerable<string> configFiles)
         {
-            _config = new Config(configFileName);
+            _config = new Config(configFiles);
         }
 
-        public void Write(IssueCollection issuesCollection, string outputHtmlFile)
+        public void Write(IEnumerable<DataModelIssue> issues, string outputHtmlFile)
         {
             using (StreamWriter file = new StreamWriter(outputHtmlFile))
             {
@@ -51,12 +51,12 @@ namespace BugReport.Reports
 
                 foreach (NamedQuery query in _config.Queries)
                 {
-                    IEnumerable<DataModelIssue> issues = query.Query.Evaluate(issuesCollection.Issues);
+                    IEnumerable<DataModelIssue> queryIssues = query.Query.Evaluate(issues);
 
                     file.WriteLine($"<h2>Query: {query.Name}</h2>");
                     file.WriteLine($"<p>{query.Query}</p>");
-                    file.WriteLine($"Count: {issues.Count()}<br/>");
-                    file.WriteLine(FormatIssueTable(issues.Select(issue => new IssueEntry(issue))));
+                    file.WriteLine($"Count: {queryIssues.Count()}<br/>");
+                    file.WriteLine(FormatIssueTable(queryIssues.Select(issue => new IssueEntry(issue))));
                 }
 
                 file.WriteLine("</body></html>");

@@ -41,11 +41,15 @@ namespace BugReport.DataModel
             if (IsIssueOrComment)
             {
                 if (HtmlUrl.Contains("issuecomment"))
+                {
                     return ((flags & IssueKindFlags.Comment) != 0);
+                }
                 else
+                {
                     return ((flags & IssueKindFlags.Issue) != 0);
+                }
             }
-            // IsPullRequest
+            Debug.Assert(IsPullRequest);
             return ((flags & IssueKindFlags.PullRequest) != 0);
         }
 
@@ -108,6 +112,13 @@ namespace BugReport.DataModel
             string text = sw.ToString();
             sw.Close();
             return text;
+        }
+
+        // Returns true only if the issues represent the same issue number in the same repo
+        public bool EqualsByNumber(DataModelIssue issue)
+        {
+            // Check also HtmlUrl which encodes repo
+            return ((Number == issue.Number) && (HtmlUrl == issue.HtmlUrl));
         }
     }
 

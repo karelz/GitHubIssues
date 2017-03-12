@@ -52,27 +52,30 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Repository.cs" />
     <Compile Include="DataModel\IssueCollection.cs" />
     <Compile Include="DataModel\DataModelIssue.cs" />
     <Compile Include="DataModel\Extensions.cs" />
-    <Compile Include="Program.cs" />
+    <Compile Include="Util\CommandLine\Option.cs" />
+    <Compile Include="Util\CommandLine\Parser.cs" />
+    <Compile Include="Util\Extensions.cs" />
     <Compile Include="Query\Expressions.cs" />
     <Compile Include="Query\Parser.cs" />
     <Compile Include="Query\SyntaxParser.cs" />
     <Compile Include="Query\Token.cs" />
     <Compile Include="Query\Tokenizer.cs" />
-    <Compile Include="Reports\AlertsReport\Alert.cs" />
-    <Compile Include="Reports\AlertsReport\AlertReport_NeedsMSResponse.cs" />
-    <Compile Include="Reports\AlertsReport\AlertReport.cs" />
-    <Compile Include="Reports\AlertsReport\AlertReport_Untriaged.cs" />
-    <Compile Include="Reports\AlertsReport\AlertReport_Diff.cs" />
-    <Compile Include="Reports\AlertsReport\IssueEntry.cs" />
-    <Compile Include="Reports\AlertsReport\Config.cs" />
-    <Compile Include="Reports\AlertsReport\AlertReporting.cs" />
+    <Compile Include="Reports\Alert.cs" />
+    <Compile Include="Reports\IssueEntry.cs" />
+    <Compile Include="Reports\Config.cs" />
+    <Compile Include="Reports\GitHubQuery.cs" />
+    <Compile Include="Reports\UntriagedExpression.cs" />
+    <Compile Include="Reports\EmailReport\AlertReport.cs" />
+    <Compile Include="Reports\EmailReport\AlertReport_NeedsMSResponse.cs" />
+    <Compile Include="Reports\EmailReport\AlertReport_Diff.cs" />
+    <Compile Include="Reports\EmailReport\AlertReport_Untriaged.cs" />
     <Compile Include="Reports\HtmlReport\QueryReport.cs" />
     <Compile Include="Reports\HtmlReport\HtmlReport.cs" />
-    <Compile Include="Reports\AlertsReport\GitHubQuery.cs" />
-    <Compile Include="Repository.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
