@@ -114,10 +114,10 @@ namespace BugReport.Reports.EmailReports
                     if (reportEmail.HasContent)
                     {   // Send the email
                         bool fileWritten = WriteReportFile(alert, reportEmail);
-                        bool isEmailSendSuccessful = _skipEmail ? false : SendEmail(alert, reportEmail, smtpClient);
+                        bool isEmailSendSuccessful = _skipEmail ? true : SendEmail(alert, reportEmail, smtpClient);
                         PrintLogs(reportEmail, alert, fileWritten, isEmailSendSuccessful);
 
-                        isAllEmailsSendSuccessful &= SendEmail(alert, reportEmail, smtpClient);
+                        isAllEmailsSendSuccessful &= isEmailSendSuccessful;
                     }
                 }
             }
