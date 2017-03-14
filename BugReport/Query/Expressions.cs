@@ -100,6 +100,11 @@ namespace BugReport.Query
     {
         IEnumerable<Expression> _expressions;
 
+        public IEnumerable<Expression> Expressions
+        {
+            get { return _expressions; }
+        }
+
         public ExpressionAnd(IEnumerable<Expression> expressions)
         {
             this._expressions = expressions;

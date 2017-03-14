@@ -22,27 +22,29 @@ namespace BugReport.Reports
             _areaLabelQueries = _config.AreaLabels.Select(label => new NamedQuery(label.Name, new ExpressionLabel(label.Name))).ToList();
         }
 
-        public void Write(IEnumerable<DataModelIssue> allIssues, string outputHtmlFile)
+        public void Write(IEnumerable<DataModelIssue> beginIssuesAll, IEnumerable<DataModelIssue> endIssuesAll, string outputHtmlFile)
         {
-            IEnumerable<DataModelIssue> issues = allIssues.Where(i => i.IsIssueOrComment);
+            IEnumerable<DataModelIssue> beginIssues = beginIssuesAll.Where(i => i.IsIssueOrComment).ToArray();
+            IEnumerable<DataModelIssue> endIssues = endIssuesAll.Where(i => i.IsIssueOrComment).ToArray();
             using (StreamWriter file = new StreamWriter(outputHtmlFile))
             {
                 file.WriteLine("<html><body>");
                 file.WriteLine("<h2>Alerts - sorted by issue count</h2>");
                 NamedQuery firstQuery = _config.Queries.First();
-                Report(file, issues, _config.Queries, 
-                    _config.Alerts.OrderByDescending(alert => Expression.And(alert.Query, firstQuery.Query).Evaluate(issues).Count()));
+                Report(file, beginIssues, endIssues, _config.Queries, 
+                    _config.Alerts.OrderByDescending(alert => Expression.And(alert.Query, firstQuery.Query).Evaluate(endIssues).Count()));
                 file.WriteLine("<h2>Alerts - sorted alphabetically</h2>");
-                Report(file, issues, _config.Queries, _config.Alerts.OrderBy(alert => alert.Name));
+                Report(file, beginIssues, endIssues, _config.Queries, _config.Alerts.OrderBy(alert => alert.Name));
                 file.WriteLine("<h2>Areas - sorted alphabetically</h2>");
-                Report(file, issues, _config.Queries, _areaLabelQueries.OrderBy(labelQuery => labelQuery.Name));
+                Report(file, beginIssues, endIssues, _config.Queries, _areaLabelQueries.OrderBy(labelQuery => labelQuery.Name));
                 file.WriteLine("</body></html>");
             }
         }
 
         public void Report(
-            StreamWriter file, 
-            IEnumerable<DataModelIssue> issues,
+            StreamWriter file,
+            IEnumerable<DataModelIssue> beginIssues,
+            IEnumerable<DataModelIssue> endIssues,
             IEnumerable<NamedQuery> columns,
             IEnumerable<NamedQuery> rows)
         {
@@ -50,7 +52,11 @@ namespace BugReport.Reports
             file.WriteLine("<tr>");
             ReportTableRow(file, "  ", 
                 "&nbsp;", 
-                columns.Select(col => $"<b>{col.Name}</b"));
+                columns.SelectMany(col => new string[] {
+                    $"<b>{col.Name}</b>",
+                    "<i>(diff)</i>",
+                    "<i>(new)</i>",
+                    "<i>(gone)</i>" } ));
             file.WriteLine("</tr>");
 
             foreach (NamedQuery row in rows)
@@ -58,7 +64,18 @@ namespace BugReport.Reports
                 file.WriteLine("<tr>");
                 ReportTableRow(file, "  ",
                     $"<b>{row.Name}</b>",
-                    columns.Select(col => GetQueryCountLinked_Multiple(row.Query, col.Query, issues)));
+                    columns.SelectMany(col =>
+                    {
+                        FilteredIssues filteredIssues = new FilteredIssues(
+                            Expression.And(row.Query, col.Query),
+                            beginIssues,
+                            endIssues);
+                        return new string[] {
+                            GetQueryCountLinked_Multiple(filteredIssues.Query, filteredIssues.End),
+                            $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
+                            $"<i>+{filteredIssues.EndOnly.Count()}</i>",
+                            $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
+                    }));
                 file.WriteLine("</tr>");
             }
 
@@ -66,20 +83,62 @@ namespace BugReport.Reports
             file.WriteLine("<tr>");
             ReportTableRow(file, "  ",
                 "<b>Other (missing)</b>",
-                columns.Select(col => GetQueryCountLinked(Expression.And(noRowQuery, col.Query), issues)));
+                columns.SelectMany(col =>
+                {
+                    FilteredIssues filteredIssues = new FilteredIssues(
+                        Expression.And(noRowQuery, col.Query),
+                        beginIssues,
+                        endIssues);
+                    return new string[] {
+                        GetQueryCountLinked(filteredIssues.Query, filteredIssues.End.Count()),
+                        $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
+                        $"<i>+{filteredIssues.EndOnly.Count()}</i>",
+                        $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
+                }));
             file.WriteLine("</tr>");
             file.WriteLine("<tr>");
             ReportTableRow(file, "  ", 
                 "<b>Total</b>", 
-                columns.Select(col => $"<b>{GetQueryCountLinked(col.Query, issues)}</b>"));
+                columns.SelectMany(col =>
+                {
+                    FilteredIssues filteredIssues = new FilteredIssues(
+                        col.Query,
+                        beginIssues,
+                        endIssues);
+                    return new string[] {
+                        $"<b>{GetQueryCountLinked(filteredIssues.Query, filteredIssues.End.Count())}</b>",
+                        $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
+                        $"<i>+{filteredIssues.EndOnly.Count()}</i>",
+                        $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
+                }));
             file.WriteLine("</tr>");
             file.WriteLine("</table>");
         }
 
-        private string GetQueryCountLinked(Expression query, IEnumerable<DataModelIssue> issues)
+        private class FilteredIssues
         {
-            int count = query.Evaluate(issues).Count();
+            public Expression Query { get; private set; }
+            public IEnumerable<DataModelIssue> BeginOnly
+            {
+                get => Begin.Except_ByIssueNumber(End);
+            }
+            public IEnumerable<DataModelIssue> EndOnly
+            {
+                get => End.Except_ByIssueNumber(Begin);
+            }
+            public IEnumerable<DataModelIssue> Begin { get; private set; }
+            public IEnumerable<DataModelIssue> End { get; private set; }
 
+            public FilteredIssues(Expression query, IEnumerable<DataModelIssue> beginIssues, IEnumerable<DataModelIssue> endIssues)
+            {
+                Query = query;
+                Begin = query.Evaluate(beginIssues).ToArray();
+                End = query.Evaluate(endIssues).ToArray();
+            }
+        }
+
+        private static string GetQueryCountLinked(Expression query, int count)
+        {
             string gitHubQueryURL = query.GetGitHubQueryURL();
             if (gitHubQueryURL != null)
             {
@@ -87,47 +146,54 @@ namespace BugReport.Reports
             }
             return count.ToString();
         }
-        private string GetQueryCountLinked_Multiple(Expression rowQuery, Expression colQuery, IEnumerable<DataModelIssue> issues)
+
+        private static string GetQueryCountLinked_Multiple(Expression query, IEnumerable<DataModelIssue> issues)
         {
-            Expression query = Expression.And(rowQuery, colQuery);
-            int count = query.Evaluate(issues).Count();
+            int count = issues.Count();
 
             string gitHubQueryURL = query.GetGitHubQueryURL();
             if (gitHubQueryURL != null)
             {
                 return $"<a href=\"{GitHubQuery.GetHyperLink(gitHubQueryURL)}\">{count}</a>";
             }
-            else
+            if (query is ExpressionAnd)
             {
-                if ((colQuery.GetGitHubQueryURL() != null) && (rowQuery is ExpressionOr))
+                Expression[] andExpressions = (query as ExpressionAnd).Expressions.ToArray();
+                if (andExpressions.Length == 2)
                 {
-                    IEnumerable<Expression> expressions = ((ExpressionOr)rowQuery.Simplify()).Expressions;
-                    if ((expressions.Count() <= 4) && 
-                        !expressions.Where(e => e.GetGitHubQueryURL() == null).Any())
+                    Expression rowQuery = andExpressions[0];
+                    Expression colQuery = andExpressions[1];
+                    if ((colQuery.GetGitHubQueryURL() != null) &&
+                        (rowQuery is ExpressionOr))
                     {
-                        return 
-                            $"{count} <small>(" +
-                            string.Join("+", expressions.Select(
-                                expr =>
-                                {
-                                    Expression subQuery = Expression.And(expr, colQuery);
-                                    int subCount = subQuery.Evaluate(issues).Count();
-                                    string subQueryURL = subQuery.GetGitHubQueryURL();
-                                    Debug.Assert(subQueryURL != null);
-                                    return $"<a href=\"{GitHubQuery.GetHyperLink(subQueryURL)}\">{subCount}</a>";
-                                })) +
-                            ")</small>";
+                        IEnumerable<Expression> orExpressions = ((ExpressionOr)(rowQuery.Simplify())).Expressions;
+                        if ((orExpressions.Count() <= 4) &&
+                            !orExpressions.Where(e => e.GetGitHubQueryURL() == null).Any())
+                        {
+                            return
+                                $"{count} <small>(" +
+                                string.Join("+", orExpressions.Select(
+                                    expr =>
+                                    {
+                                        Expression subQuery = Expression.And(expr, colQuery);
+                                        int subCount = subQuery.Evaluate(issues).Count();
+                                        string subQueryURL = subQuery.GetGitHubQueryURL();
+                                        Debug.Assert(subQueryURL != null);
+                                        return $"<a href=\"{GitHubQuery.GetHyperLink(subQueryURL)}\">{subCount}</a>";
+                                    })) +
+                                ")</small>";
+                        }
                     }
                 }
             }
             return count.ToString();
         }
 
-        private void ReportTableRow(StreamWriter file, string prefix, string col1, IEnumerable<string> cols)
+        private static void ReportTableRow(StreamWriter file, string prefix, string col1, IEnumerable<string> cols)
         {
             ReportTableRow(file, prefix, new string[] { col1 }.Concat(cols));
         }
-        private void ReportTableRow(StreamWriter file, string prefix, IEnumerable<string> cols)
+        private static void ReportTableRow(StreamWriter file, string prefix, IEnumerable<string> cols)
         {
             foreach (string col in cols)
             {

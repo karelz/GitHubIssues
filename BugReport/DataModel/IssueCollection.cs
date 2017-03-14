@@ -83,6 +83,13 @@ namespace BugReport.DataModel
         }
 
         public static IEnumerable<DataModelIssue> LoadIssues(
+            string fileName,
+            IssueKindFlags issueKind = IssueKindFlags.All)
+        {
+            return LoadIssues(new string[] { fileName }, issueKind);
+        }
+
+        public static IEnumerable<DataModelIssue> LoadIssues(
             IEnumerable<string> fileNames, 
             IssueKindFlags issueKind = IssueKindFlags.All)
         {
