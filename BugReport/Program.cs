@@ -52,7 +52,7 @@ class Program
   cache /config <.xml> /prefix <name> [/comments_prefix <comments>] [/authToken <token>]
     * Will cache all GitHub issues into file <name>YYYY-MM-DD@HH-MM.json
     * If /comments is set, will also cache all GitHub comments into file <comments>YYY-MM-DD@HH-MM.json
-  report /in <issues.json> [...] /out <.html> /config <.xml>
+  report /begin [<issues1.json> [...]] /end <issues1_end.json> [...] /out <.html> /config <.xml>
     * Creates report with alerts/areas as rows and queries as columns from cached .json file
   query /in <issues.json> [...] /out <.html> /config <.xml>
     * Creates query report (list of issues) from cached .json file
@@ -133,7 +133,6 @@ class Program
                         return CacheGitHubIssues(configFiles, filePrefix, commentsFilePrefix, authenticationToken);
                     }
                 case ActionCommand.query:
-                case ActionCommand.report:
                     {
                         if (!optionsParser.Parse(
                             new Option[] { _configOption, _inputOption, _outputOption },
@@ -145,16 +144,25 @@ class Program
                         IEnumerable<string> inputFiles = _inputOption.GetValues(optionsParser);
                         string outputFile = _outputOption.GetValue(optionsParser);
 
-                        if (action == ActionCommand.query)
+                        QueryReport report = new QueryReport(configFiles);
+                        report.Write(IssueCollection.LoadIssues(inputFiles), outputFile);
+                        return ErrorCode.Success;
+                    }
+                case ActionCommand.report:
+                    {
+                        if (!optionsParser.Parse(
+                            new Option[] { _configOption, _endOption, _outputOption },
+                            new Option[] { _beginOption }))
                         {
-                            QueryReport report = new QueryReport(configFiles);
-                            report.Write(IssueCollection.LoadIssues(inputFiles), outputFile);
+                            return ErrorCode.InvalidCommand;
                         }
-                        else
-                        {   // ActionCommand.report
-                            HtmlReport report = new HtmlReport(configFiles);
-                            report.Write(IssueCollection.LoadIssues(inputFiles), outputFile);
-                        }
+                        IEnumerable<string> configFiles = _configOption.GetValues(optionsParser);
+                        IEnumerable<string> beginFiles = _beginOption.GetValues(optionsParser);
+                        IEnumerable<string> endFiles = _endOption.GetValues(optionsParser);
+                        string outputFile = _outputOption.GetValue(optionsParser);
+
+                        HtmlReport report = new HtmlReport(configFiles);
+                        report.Write(IssueCollection.LoadIssues(beginFiles), IssueCollection.LoadIssues(endFiles), outputFile);
                         return ErrorCode.Success;
                     }
                 case ActionCommand.alerts:
@@ -266,7 +274,7 @@ class Program
         return isAllEmailSendSuccessful ? ErrorCode.Success : ErrorCode.EmailSendFailure;
     }
 
-    static ErrorCode CacheGitHubIssues(
+    private static ErrorCode CacheGitHubIssues(
         IEnumerable<string> configFiles, 
         string prefix, 
         string commentsPrefix, 
