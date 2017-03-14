@@ -62,6 +62,12 @@ namespace BugReport.Reports
                 file.WriteLine("</tr>");
             }
 
+            Expression noRowQuery = new ExpressionAnd(rows.Select(row => Expression.Not(row.Query)).ToArray());
+            file.WriteLine("<tr>");
+            ReportTableRow(file, "  ",
+                "<b>Other (missing)</b>",
+                columns.Select(col => GetQueryCountLinked(Expression.And(noRowQuery, col.Query), issues)));
+            file.WriteLine("</tr>");
             file.WriteLine("<tr>");
             ReportTableRow(file, "  ", 
                 "<b>Total</b>", 

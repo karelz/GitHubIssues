@@ -39,13 +39,13 @@ namespace BugReport.Query
             }
         }
 
-        public static Expression And(Expression ex1, Expression ex2)
+        public static Expression And(params Expression[] expressions)
         {
-            return new ExpressionAnd(new Expression[] { ex1, ex2 });
+            return new ExpressionAnd(expressions);
         }
-        public static Expression Or(Expression ex1, Expression ex2)
+        public static Expression Or(params Expression[] expressions)
         {
-            return new ExpressionOr(new Expression[] { ex1, ex2 });
+            return new ExpressionOr(expressions);
         }
         public static Expression Not(Expression ex)
         {
