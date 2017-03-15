@@ -160,7 +160,8 @@ namespace BugReport.Query
             return (char.IsLetterOrDigit((char)c) ||
                     (c == '-') ||
                     (c == '_') ||
-                    (c == '.'));
+                    (c == '.') ||
+                    (c == '/'));
         }
 
         void SkipWhitespaces()
