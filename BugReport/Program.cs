@@ -162,7 +162,7 @@ class Program
                         string outputFile = _outputOption.GetValue(optionsParser);
 
                         HtmlReport report = new HtmlReport(configFiles);
-                        report.Write(IssueCollection.LoadIssues(beginFiles), IssueCollection.LoadIssues(endFiles), outputFile);
+                        report.Write(beginFiles, endFiles, outputFile);
                         return ErrorCode.Success;
                     }
                 case ActionCommand.alerts:
