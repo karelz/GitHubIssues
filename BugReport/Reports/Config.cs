@@ -212,12 +212,7 @@ namespace BugReport.Reports
                 foreach (XElement repoNode in configFile.Root.Descendants("repository"))
                 {
                     string repoName = repoNode.Attribute("name").Value;
-                    string[] repoNameParts = repoName.Split('/');
-                    if (repoNameParts.Length != 2)
-                    {
-                        throw new InvalidDataException($"Invalid repository name format in repo '{repoName}'");
-                    }
-                    yield return new Repository(repoNameParts[0], repoNameParts[1]);
+                    yield return Repository.From(repoName);
                 }
             }
         }

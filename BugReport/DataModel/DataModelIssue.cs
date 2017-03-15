@@ -28,13 +28,27 @@ namespace BugReport.DataModel
         public PullRequest PullRequest;
         public Milestone Milestone;
 
+
+        private Repository _repo;
+        public Repository Repo
+        {
+            get
+            {
+                if (_repo == null)
+                {
+                    _repo = Repository.FromHtmlUrl(HtmlUrl);
+                }
+                return _repo;
+            }
+        }
+
         public bool IsIssueOrComment
         {
-            get { return (PullRequest == null); }
+            get => (PullRequest == null);
         }
         public bool IsPullRequest
         {
-            get { return (PullRequest != null); }
+            get => (PullRequest != null);
         }
         public bool IsIssueKind(IssueKindFlags flags)
         {
@@ -55,17 +69,14 @@ namespace BugReport.DataModel
 
         public bool IsOpen
         {
-            get { return (State == Octokit.ItemState.Open); }
+            get => (State == Octokit.ItemState.Open);
         }
         public bool IsClosed
         {
-            get { return (State == Octokit.ItemState.Closed); }
+            get => (State == Octokit.ItemState.Closed);
         }
 
-        public bool HasLabel(string labelName)
-        {
-            return Labels.ContainsLabel(labelName);
-        }
+        public bool HasLabel(string labelName) => Labels.ContainsLabel(labelName);
 
         public bool IsMilestone(string milestoneName)
         {

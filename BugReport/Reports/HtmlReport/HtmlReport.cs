@@ -41,6 +41,7 @@ namespace BugReport.Reports
                     file.WriteLine($"    <li>{fileName}</li>");
                 }
                 file.WriteLine("</ul>");
+
                 file.WriteLine("/end");
                 file.WriteLine("<ul>");
                 foreach (string fileName in endFiles)
@@ -113,7 +114,7 @@ namespace BugReport.Reports
                         beginIssues,
                         endIssues);
                     return new string[] {
-                        GetQueryCountLinked(filteredIssues.Query, filteredIssues.End.Count()),
+                        GetQueryCountLinked(filteredIssues.Query, filteredIssues.End),
                         $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
                         $"<i>+{filteredIssues.EndOnly.Count()}</i>",
                         $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
@@ -129,7 +130,7 @@ namespace BugReport.Reports
                         beginIssues,
                         endIssues);
                     return new string[] {
-                        $"<b>{GetQueryCountLinked(filteredIssues.Query, filteredIssues.End.Count())}</b>",
+                        $"<b>{GetQueryCountLinked(filteredIssues.Query, filteredIssues.End)}</b>",
                         $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
                         $"<i>+{filteredIssues.EndOnly.Count()}</i>",
                         $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
@@ -160,27 +161,41 @@ namespace BugReport.Reports
             }
         }
 
-        private static string GetQueryCountLinked(Expression query, int count)
+        private static string GetQueryCountLinked(Expression query, IEnumerable<DataModelIssue> issues)
         {
+            int count = issues.Count();
             string gitHubQueryURL = query.GetGitHubQueryURL();
             if (gitHubQueryURL != null)
             {
-                return $"<a href=\"{GitHubQuery.GetHyperLink(gitHubQueryURL)}\">{count}</a>";
+                IEnumerable<Repository> repos = Repository.GetReposOrDefault(issues);
+                if (repos.Count() <= 1)
+                {
+                    Repository repo = repos.First();
+                    return $"<a href=\"{repo.GetQueryUrl(gitHubQueryURL)}\">{count}</a>";
+                }
+                else
+                {
+                    return $"{count} <small>(" +
+                        string.Join(" + ", repos.Select(
+                            repo => $"<a href=\"{repo.GetQueryUrl(gitHubQueryURL)}\">{issues.Where(repo).Count()}</a>")) +
+                        ")</small>";
+                }
             }
             return count.ToString();
         }
 
         private static string GetQueryCountLinked_Multiple(Expression query, IEnumerable<DataModelIssue> issues)
         {
-            int count = issues.Count();
-
             string gitHubQueryURL = query.GetGitHubQueryURL();
             if (gitHubQueryURL != null)
             {
-                return $"<a href=\"{GitHubQuery.GetHyperLink(gitHubQueryURL)}\">{count}</a>";
+                return GetQueryCountLinked(query, issues);
             }
-            if (query is ExpressionAnd)
+            int count = issues.Count();
+            IEnumerable<Repository> repos = Repository.GetReposOrDefault(issues);
+            if ((query is ExpressionAnd) && (repos.Count() <= 1))
             {
+                Repository repo = repos.First();
                 Expression[] andExpressions = (query as ExpressionAnd).Expressions.ToArray();
                 if (andExpressions.Length == 2)
                 {
@@ -202,7 +217,7 @@ namespace BugReport.Reports
                                         int subCount = subQuery.Evaluate(issues).Count();
                                         string subQueryURL = subQuery.GetGitHubQueryURL();
                                         Debug.Assert(subQueryURL != null);
-                                        return $"<a href=\"{GitHubQuery.GetHyperLink(subQueryURL)}\">{subCount}</a>";
+                                        return $"<a href=\"{repo.GetQueryUrl(subQueryURL)}\">{subCount}</a>";
                                     })) +
                                 ")</small>";
                         }

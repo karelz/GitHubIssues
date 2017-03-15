@@ -13,6 +13,10 @@ namespace BugReport.DataModel
         {
             return issues.Where(i => !exceptIssues.Where(i2 => i2.EqualsByNumber(i)).Any());
         }
+        public static IEnumerable<DataModelIssue> Where(this IEnumerable<DataModelIssue> issues, Repository repo)
+        {
+            return issues.Where(i => (i.Repo == repo));
+        }
 
         public static DataModelIssue FirstOrNull_ByIssueNumber(this IEnumerable<DataModelIssue> issues, DataModelIssue issue)
         {
