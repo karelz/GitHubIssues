@@ -192,10 +192,8 @@ namespace BugReport.Reports
                 return GetQueryCountLinked(query, issues);
             }
             int count = issues.Count();
-            IEnumerable<Repository> repos = Repository.GetReposOrDefault(issues);
-            if ((query is ExpressionAnd) && (repos.Count() <= 1))
+            if (query is ExpressionAnd)
             {
-                Repository repo = repos.First();
                 Expression[] andExpressions = (query as ExpressionAnd).Expressions.ToArray();
                 if (andExpressions.Length == 2)
                 {
@@ -205,19 +203,22 @@ namespace BugReport.Reports
                         (rowQuery is ExpressionOr))
                     {
                         IEnumerable<Expression> orExpressions = ((ExpressionOr)(rowQuery.Simplify())).Expressions;
-                        if ((orExpressions.Count() <= 4) &&
+                        if ((orExpressions.Count() <= 5) && 
                             !orExpressions.Where(e => e.GetGitHubQueryURL() == null).Any())
                         {
+                            IEnumerable<RepoExpression> repoExpressions = Repository.GetReposOrDefault(issues)
+                                .SelectMany(repo => 
+                                    orExpressions.Select(expr => new RepoExpression(repo, expr)));
                             return
                                 $"{count} <small>(" +
-                                string.Join("+", orExpressions.Select(
-                                    expr =>
+                                string.Join("+", repoExpressions.Select(
+                                    re =>
                                     {
-                                        Expression subQuery = Expression.And(expr, colQuery);
-                                        int subCount = subQuery.Evaluate(issues).Count();
+                                        Expression subQuery = Expression.And(re.Expr, colQuery);
+                                        int subCount = subQuery.Evaluate(issues.Where(re.Repo)).Count();
                                         string subQueryURL = subQuery.GetGitHubQueryURL();
                                         Debug.Assert(subQueryURL != null);
-                                        return $"<a href=\"{repo.GetQueryUrl(subQueryURL)}\">{subCount}</a>";
+                                        return $"<a href=\"{re.Repo.GetQueryUrl(subQueryURL)}\">{subCount}</a>";
                                     })) +
                                 ")</small>";
                         }
@@ -225,6 +226,17 @@ namespace BugReport.Reports
                 }
             }
             return count.ToString();
+        }
+
+        private struct RepoExpression
+        {
+            public Repository Repo;
+            public Expression Expr;
+            public RepoExpression(Repository repo, Expression expr)
+            {
+                Repo = repo;
+                Expr = expr;
+            }
         }
 
         private static void ReportTableRow(StreamWriter file, string prefix, string col1, IEnumerable<string> cols)
