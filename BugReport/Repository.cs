@@ -11,11 +11,13 @@ using Octokit;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using BugReport.DataModel;
+using BugReport.Query;
 
 public class Repository
 {
     public string Owner { get; private set; }
     public string Name { get; private set; }
+    public Expression FilterQuery { get; private set; }
     // owner/name lowercase
     public string RepoName { get; private set; }
     public bool IsRepoName(string repoName) => (RepoName == repoName.ToLower());
@@ -23,7 +25,7 @@ public class Repository
     public string HtmlUrlPrefix { get; private set; }
     public string AuthenticationToken { get; set; }
 
-    private Repository(string repoName)
+    private Repository(string repoName, string filterQuery)
     {
         RepoName = repoName.ToLower();
         Debug.Assert(!_repositories.Where(repo => (repo.RepoName == RepoName)).Any());
@@ -41,6 +43,20 @@ public class Repository
 
         HtmlUrlPrefix = _htmlUrlGitHubPrefix + RepoName + "/";
         _repositories.Add(this);
+
+        if (filterQuery != null)
+        {
+            FilterQuery = QueryParser.Parse(filterQuery, null);
+        }
+    }
+
+    public IEnumerable<DataModelIssue> Filter(IEnumerable<DataModelIssue> issues)
+    {
+        if (FilterQuery == null)
+        {
+            return issues;
+        }
+        return issues.Where(i => ((i.Repo != this) || FilterQuery.Evaluate(i)));
     }
 
     // TODO - Move to config
@@ -56,18 +72,22 @@ public class Repository
 
     // Captures order of definitions
     private static List<Repository> _repositories = new List<Repository>();
+    public static IEnumerable<Repository> Repositories
+    {
+        get => _repositories;
+    }
 
     private static Repository FindRepo(string repoName)
     {
         return _repositories.Where(repo => repo.IsRepoName(repoName)).FirstOrDefault();
     }
 
-    public static Repository From(string repoName)
+    public static Repository From(string repoName, string filterQuery)
     {
         Repository repo = FindRepo(repoName);
         if (repo == null)
         {
-            repo = new Repository(repoName);
+            repo = new Repository(repoName, filterQuery);
             Debug.Assert(FindRepo(repoName) == repo);
         }
         return repo;
@@ -84,7 +104,7 @@ public class Repository
         {
             throw new InvalidDataException($"Invalid GitHub URL '{htmlUrl}', can't parse repo name");
         }
-        return From(urlSplit[0] + "/" + urlSplit[1]);
+        return From(urlSplit[0] + "/" + urlSplit[1], null);
     }
 
     // Returns repos in order of their definition, or the first one as default
