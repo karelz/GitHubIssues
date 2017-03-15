@@ -101,7 +101,8 @@ namespace BugReport.Reports.EmailReports
             text = text.Replace("%NEEDSMSRESPONSE_ISSUES_START%", "");
             text = text.Replace("%NEEDSMSRESPONSE_ISSUES_END%", "");
 
-            text = text.Replace("%NEEDSMSRESPONSE_ISSUES_LINK%", GitHubQuery.GetHyperLink(needsResponse.Keys));
+            text = text.Replace("%NEEDSMSRESPONSE_ISSUES_LINKED_COUNTS%",
+                AlertReport.GetLinkedCount("is:issue is:open", needsResponse.Keys));
             text = text.Replace("%NEEDSMSRESPONSE_ISSUES_COUNT%", needsResponse.Count().ToString());
 
             text = text.Replace("%NEEDSMSRESPONSE_ISSUES_TABLE%", FormatIssueTable(needsResponse.OrderByDescending((pair) => pair.Value.Value.Days)));

@@ -70,6 +70,11 @@ public class Repository
         return HtmlUrlPrefix + "issues?q=" + System.Net.WebUtility.UrlEncode(queryArgs);
     }
 
+    public string GetQueryUrl(string queryPrefix, IEnumerable<DataModelIssue> issues)
+    {
+        return GetQueryUrl(queryPrefix + " " + string.Join(" ", issues.Select(i => i.Number)));
+    }
+
     // Captures order of definitions
     private static List<Repository> _repositories = new List<Repository>();
     public static IEnumerable<Repository> Repositories

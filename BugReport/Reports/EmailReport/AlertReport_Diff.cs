@@ -77,12 +77,12 @@ namespace BugReport.Reports.EmailReports
             text = text.Replace("%NEW_ISSUES_START%", "");
             text = text.Replace("%NEW_ISSUES_END%", "");
 
-            text = text.Replace("%ALL_ISSUES_LINK%", GitHubQuery.GetHyperLink(newIssues.Concat(goneIssues)));
-            text = text.Replace("%ALL_ISSUES_COUNT%", (goneIssues.Count() + newIssues.Count()).ToString());
-            text = text.Replace("%GONE_ISSUES_LINK%", GitHubQuery.GetHyperLink(goneIssues));
-            text = text.Replace("%GONE_ISSUES_COUNT%", goneIssues.Count().ToString());
-            text = text.Replace("%NEW_ISSUES_LINK%", GitHubQuery.GetHyperLink(newIssues));
-            text = text.Replace("%NEW_ISSUES_COUNT%", newIssues.Count().ToString());
+            text = text.Replace("%ALL_ISSUES_LINKED_COUNTS%", 
+                AlertReport.GetLinkedCount("is:issue is:open", newIssues.Concat(goneIssues)));
+            text = text.Replace("%GONE_ISSUES_LINKED_COUNTS%",
+                AlertReport.GetLinkedCount("is:issue is:open", goneIssues));
+            text = text.Replace("%NEW_ISSUES_LINKED_COUNTS%",
+                AlertReport.GetLinkedCount("is:issue is:open", newIssues));
 
             IEnumerable<IssueEntry> newIssueEntries = newIssues.Select(issue => new IssueEntry(issue));
             text = text.Replace("%NEW_ISSUES_TABLE%", FormatIssueTable(newIssueEntries));
