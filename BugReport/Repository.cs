@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -8,25 +10,102 @@ using System.Xml.Linq;
 using Octokit;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Collections.Concurrent;
+using BugReport.DataModel;
 
 public class Repository
 {
     public string Owner { get; private set; }
     public string Name { get; private set; }
+    // owner/name lowercase
+    public string RepoName { get; private set; }
+    public bool IsRepoName(string repoName) => (RepoName == repoName.ToLower());
+    // https://github.com/owner/name/
+    public string HtmlUrlPrefix { get; private set; }
     public string AuthenticationToken { get; set; }
 
-    public Repository(string owner, string name)
+    private Repository(string repoName)
     {
-        Owner = owner;
-        Name = name;
+        RepoName = repoName.ToLower();
+        Debug.Assert(!_repositories.Where(repo => (repo.RepoName == RepoName)).Any());
+
+        string[] repoNameParts = RepoName.Split('/');
+        if ((repoNameParts.Length != 2) ||
+            string.IsNullOrEmpty(repoNameParts[0]) ||
+            string.IsNullOrEmpty(repoNameParts[1]))
+        {
+            throw new InvalidDataException($"Invalid repository name format in repo '{repoName}'");
+        }
+
+        Owner = repoNameParts[0];
+        Name = repoNameParts[1];
+
+        HtmlUrlPrefix = _htmlUrlGitHubPrefix + RepoName + "/";
+        _repositories.Add(this);
     }
 
     // TODO - Move to config
     private static string s_GitHubProductIdentifier = "GitHubBugReporter";
 
-    public IReadOnlyList<Issue> Issues;
-    public ConcurrentBag<IssueComment> IssueComments;
+    public IReadOnlyList<Issue> Issues { get; private set; }
+    public ConcurrentBag<IssueComment> IssueComments { get; private set; }
+
+    public string GetQueryUrl(string queryArgs)
+    {
+        return HtmlUrlPrefix + "issues?q=" + System.Net.WebUtility.UrlEncode(queryArgs);
+    }
+
+    // Captures order of definitions
+    private static List<Repository> _repositories = new List<Repository>();
+
+    private static Repository FindRepo(string repoName)
+    {
+        return _repositories.Where(repo => repo.IsRepoName(repoName)).FirstOrDefault();
+    }
+
+    public static Repository From(string repoName)
+    {
+        Repository repo = FindRepo(repoName);
+        if (repo == null)
+        {
+            repo = new Repository(repoName);
+            Debug.Assert(FindRepo(repoName) == repo);
+        }
+        return repo;
+    }
+
+    private static string _htmlUrlGitHubPrefix = "https://github.com/";
+    public static Repository FromHtmlUrl(string htmlUrl)
+    {
+        Debug.Assert(htmlUrl.StartsWith(_htmlUrlGitHubPrefix));
+        string[] urlSplit = htmlUrl.Substring(_htmlUrlGitHubPrefix.Length).Split('/');
+        if ((urlSplit.Length < 2) || 
+            string.IsNullOrEmpty(urlSplit[0]) || 
+            string.IsNullOrEmpty(urlSplit[1]))
+        {
+            throw new InvalidDataException($"Invalid GitHub URL '{htmlUrl}', can't parse repo name");
+        }
+        return From(urlSplit[0] + "/" + urlSplit[1]);
+    }
+
+    // Returns repos in order of their definition, or the first one as default
+    public static IEnumerable<Repository> GetReposOrDefault(IEnumerable<DataModelIssue> issues)
+    {
+        Repository[] repos = issues.Select(i => i.Repo).ToArray();
+        if (repos.Length == 0)
+        {
+            yield return _repositories[0];
+        }
+        else
+        {   // Return repos in order of their definitions
+            foreach (Repository repo in _repositories)
+            {
+                if (repos.Contains(repo))
+                {
+                    yield return repo;
+                }
+            }
+        }
+    }
 
     /// <summary>
     /// Gets all of the issues in the repository, closed and open

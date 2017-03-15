@@ -25,9 +25,5 @@ namespace BugReport.Reports
             GetHyperLink(link, issues);
             return link.ToString();
         }
-        public static string GetHyperLink(string query)
-        {
-            return BaseUrl + System.Net.WebUtility.UrlEncode(query);
-        }
     }
 }
