@@ -22,21 +22,44 @@ namespace BugReport.Reports
             _areaLabelQueries = _config.AreaLabels.Select(label => new NamedQuery(label.Name, new ExpressionLabel(label.Name))).ToList();
         }
 
-        public void Write(IEnumerable<DataModelIssue> beginIssuesAll, IEnumerable<DataModelIssue> endIssuesAll, string outputHtmlFile)
+        public void Write(IEnumerable<string> beginFiles, IEnumerable<string> endFiles, string outputHtmlFile)
         {
+            IEnumerable<DataModelIssue> beginIssuesAll = IssueCollection.LoadIssues(beginFiles);
+            IEnumerable<DataModelIssue> endIssuesAll = IssueCollection.LoadIssues(endFiles);
+
             IEnumerable<DataModelIssue> beginIssues = beginIssuesAll.Where(i => i.IsIssueOrComment).ToArray();
             IEnumerable<DataModelIssue> endIssues = endIssuesAll.Where(i => i.IsIssueOrComment).ToArray();
             using (StreamWriter file = new StreamWriter(outputHtmlFile))
             {
                 file.WriteLine("<html><body>");
+                file.WriteLine($"Report create on {DateTime.Now}<br/>");
+
+                file.WriteLine("/begin");
+                file.WriteLine("<ul>");
+                foreach (string fileName in beginFiles)
+                {
+                    file.WriteLine($"    <li>{fileName}</li>");
+                }
+                file.WriteLine("</ul>");
+                file.WriteLine("/end");
+                file.WriteLine("<ul>");
+                foreach (string fileName in endFiles)
+                {
+                    file.WriteLine($"    <li>{fileName}</li>");
+                }
+                file.WriteLine("</ul>");
+
                 file.WriteLine("<h2>Alerts - sorted by issue count</h2>");
                 NamedQuery firstQuery = _config.Queries.First();
                 Report(file, beginIssues, endIssues, _config.Queries, 
                     _config.Alerts.OrderByDescending(alert => Expression.And(alert.Query, firstQuery.Query).Evaluate(endIssues).Count()));
+
                 file.WriteLine("<h2>Alerts - sorted alphabetically</h2>");
                 Report(file, beginIssues, endIssues, _config.Queries, _config.Alerts.OrderBy(alert => alert.Name));
+
                 file.WriteLine("<h2>Areas - sorted alphabetically</h2>");
                 Report(file, beginIssues, endIssues, _config.Queries, _areaLabelQueries.OrderBy(labelQuery => labelQuery.Name));
+
                 file.WriteLine("</body></html>");
             }
         }
