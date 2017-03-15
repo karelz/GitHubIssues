@@ -24,18 +24,7 @@ namespace BugReport.Reports
         public IEnumerable<Label> UntriagedLabels { get; private set; }
         public ExpressionUntriaged UntriagedExpression { get; private set; }
 
-        private List<Repository> _repositories;
-        public IEnumerable<Repository> Repositories
-        {
-            get
-            {
-                if (_repositories == null)
-                {
-                    _repositories = LoadRepositories().ToList();
-                }
-                return _repositories;
-            }
-        }
+        public IEnumerable<Repository> Repositories { get; private set; }
 
         private struct ConfigFile
         {
@@ -89,6 +78,8 @@ namespace BugReport.Reports
 
             Alerts = LoadAlerts(customIsValues).ToList();
             Queries = LoadQueries(customIsValues).ToList();
+
+            Repositories = LoadRepositories().ToArray();
         }
 
         private void LoadUsers()
@@ -212,7 +203,8 @@ namespace BugReport.Reports
                 foreach (XElement repoNode in configFile.Root.Descendants("repository"))
                 {
                     string repoName = repoNode.Attribute("name").Value;
-                    yield return Repository.From(repoName);
+                    string filterQuery = repoNode.Descendants("filterQuery").FirstOrDefault()?.Value;
+                    yield return Repository.From(repoName, filterQuery);
                 }
             }
         }

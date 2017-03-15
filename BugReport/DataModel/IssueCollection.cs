@@ -104,6 +104,10 @@ namespace BugReport.DataModel
                                                         .Where(i => i.IsIssueKind(issueKind)));
                 }
             }
+            foreach (Repository repo in Repository.Repositories)
+            {
+                issues = repo.Filter(issues);
+            }
             return issues;
         }
     }
