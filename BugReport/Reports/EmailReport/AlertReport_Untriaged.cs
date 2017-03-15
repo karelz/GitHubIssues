@@ -62,8 +62,8 @@ namespace BugReport.Reports.EmailReports
             text = text.Replace("%UNTRIAGED_ISSUES_START%", "");
             text = text.Replace("%UNTRIAGED_ISSUES_END%", "");
 
-            text = text.Replace("%UNTRIAGED_ISSUES_LINK%", GitHubQuery.GetHyperLink(untriagedFlagsMap.Keys));
-            text = text.Replace("%UNTRIAGED_ISSUES_COUNT%", untriagedFlagsMap.Count().ToString());
+            text = text.Replace("%UNTRIAGED_ISSUES_LINKED_COUNTS%", 
+                AlertReport.GetLinkedCount("is:issue is:open", untriagedFlagsMap.Keys));
 
             IEnumerable<IssueEntry> untriagedIssueEntries = untriagedFlagsMap.Keys.Select(issue => new IssueEntry(issue));
             text = text.Replace("%UNTRIAGED_ISSUES_TABLE%", FormatIssueTable(untriagedFlagsMap));

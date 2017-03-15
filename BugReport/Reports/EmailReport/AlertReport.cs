@@ -259,5 +259,23 @@ namespace BugReport.Reports.EmailReports
             bodyText = regex.Replace(bodyText, "");
             return foundValue;
         }
+
+        public static string GetLinkedCount(string queryPrefix, IEnumerable<DataModelIssue> issues)
+        {
+            int count = issues.Count();
+            IEnumerable<Repository> repos = Repository.GetReposOrDefault(issues);
+            if (repos.Count() <= 1)
+            {
+                Repository repo = repos.First();
+                return $"<a href=\"{repo.GetQueryUrl(queryPrefix, issues)}\">{count}</a>";
+            }
+            else
+            {
+                return $"{count} <small>(" +
+                    string.Join(" + ", repos.Select(
+                        repo => $"<a href=\"{repo.GetQueryUrl(queryPrefix, issues.Where(repo))}\">{issues.Where(repo).Count()}</a>")) +
+                    ")</small>";
+            }
+        }
     }
 }
