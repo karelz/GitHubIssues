@@ -87,7 +87,7 @@ public class Repository
         return _repositories.Where(repo => repo.IsRepoName(repoName)).FirstOrDefault();
     }
 
-    public static Repository From(string repoName, string filterQuery)
+    public static Repository From(string repoName, string filterQuery = null)
     {
         Repository repo = FindRepo(repoName);
         if (repo == null)
@@ -214,5 +214,15 @@ public class Repository
         {
             serializer.Serialize(writer, objToSerialize);
         }
+
+    }
+
+    public override string ToString()
+    {
+        if (FilterQuery == null)
+        {
+            return RepoName;
+        }
+        return $"{RepoName} filtered by '{FilterQuery}'";
     }
 }

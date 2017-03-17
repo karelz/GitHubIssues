@@ -102,12 +102,12 @@ namespace BugReport.Query
 
         public IEnumerable<Expression> Expressions
         {
-            get { return _expressions; }
+            get => _expressions;
         }
 
         public ExpressionAnd(IEnumerable<Expression> expressions)
         {
-            this._expressions = expressions;
+            _expressions = expressions;
         }
         public override bool Evaluate(DataModelIssue issue)
         {
@@ -170,12 +170,12 @@ namespace BugReport.Query
 
         public IEnumerable<Expression> Expressions
         {
-            get { return _expressions; }
+            get => _expressions;
         }
 
         public ExpressionOr(IEnumerable<Expression> expressions)
         {
-            this._expressions = expressions;
+            _expressions = expressions;
         }
         public override bool Evaluate(DataModelIssue issue)
         {
@@ -229,20 +229,20 @@ namespace BugReport.Query
 
     public class ExpressionLabel : Expression
     {
-        string labelName;
+        string _labelName;
         public ExpressionLabel(string labelName)
         {
-            this.labelName = labelName;
+            _labelName = labelName;
         }
         public override bool Evaluate(DataModelIssue issue)
         {
-            return issue.HasLabel(labelName);
+            return issue.HasLabel(_labelName);
         }
         public override void Validate(IssueCollection collection)
         {
-            if (!collection.HasLabel(labelName))
+            if (!collection.HasLabel(_labelName))
             {
-                Console.WriteLine("WARNING: Label does not exist: {0}", labelName);
+                Console.WriteLine("WARNING: Label does not exist: {0}", _labelName);
             }
         }
         public override string ToString()
@@ -252,24 +252,24 @@ namespace BugReport.Query
 
         public override string GetGitHubQueryURL()
         {
-            if (labelName.Contains(' '))
+            if (_labelName.Contains(' '))
             {
-                return $"label:\"{labelName}\"";
+                return $"label:\"{_labelName}\"";
             }
-            return "label:" + labelName;
+            return "label:" + _labelName;
         }
     }
 
     public class ExpressionIsIssue : Expression
     {
-        bool isIssue;
+        bool _isIssue;
         public ExpressionIsIssue(bool isIssue)
         {
-            this.isIssue = isIssue;
+            _isIssue = isIssue;
         }
         public override bool Evaluate(DataModelIssue issue)
         {
-            return issue.IsIssueOrComment == isIssue;
+            return issue.IsIssueOrComment == _isIssue;
         }
         public override void Validate(IssueCollection collection)
         {
@@ -281,20 +281,20 @@ namespace BugReport.Query
 
         public override string GetGitHubQueryURL()
         {
-            return isIssue ? "is:issue" : "is:pr";
+            return _isIssue ? "is:issue" : "is:pr";
         }
     }
 
     public class ExpressionIsOpen : Expression
     {
-        bool isOpen;
+        bool _isOpen;
         public ExpressionIsOpen(bool isOpen)
         {
-            this.isOpen = isOpen;
+            _isOpen = isOpen;
         }
         public override bool Evaluate(DataModelIssue issue)
         {
-            return issue.IsOpen == isOpen;
+            return issue.IsOpen == _isOpen;
         }
         public override void Validate(IssueCollection collection)
         {
@@ -306,26 +306,26 @@ namespace BugReport.Query
 
         public override string GetGitHubQueryURL()
         {
-            return isOpen ? "is:open" : "is:closed";
+            return _isOpen ? "is:open" : "is:closed";
         }
     }
 
     public class ExpressionMilestone : Expression
     {
-        string milestoneName;
+        string _milestoneName;
         public ExpressionMilestone(string milestoneName)
         {
-            this.milestoneName = milestoneName;
+            _milestoneName = milestoneName;
         }
         public override bool Evaluate(DataModelIssue issue)
         {
-            return issue.IsMilestone(milestoneName);
+            return issue.IsMilestone(_milestoneName);
         }
         public override void Validate(IssueCollection collection)
         {
-            if (!collection.HasMilestone(milestoneName))
+            if (!collection.HasMilestone(_milestoneName))
             {
-                Console.WriteLine("WARNING: Milestone does not exist: {0}", milestoneName);
+                Console.WriteLine("WARNING: Milestone does not exist: {0}", _milestoneName);
             }
         }
         public override string ToString()
@@ -335,26 +335,26 @@ namespace BugReport.Query
 
         public override string GetGitHubQueryURL()
         {
-            return "milestone:" + milestoneName;
+            return "milestone:" + _milestoneName;
         }
     }
 
     public class ExpressionAssignee : Expression
     {
-        string assigneeName;
+        string _assigneeName;
         public ExpressionAssignee(string assigneeName)
         {
-            this.assigneeName = assigneeName;
+            _assigneeName = assigneeName;
         }
         public override bool Evaluate(DataModelIssue issue)
         {
-            return issue.HasAssignee(assigneeName);
+            return issue.HasAssignee(_assigneeName);
         }
         public override void Validate(IssueCollection collection)
         {
-            if (!collection.HasUser(assigneeName))
+            if (!collection.HasUser(_assigneeName))
             {
-                Console.WriteLine("WARNING: Assignee does not exist: {0}", assigneeName);
+                Console.WriteLine("WARNING: Assignee does not exist: {0}", _assigneeName);
             }
         }
         public override string ToString()
@@ -364,7 +364,109 @@ namespace BugReport.Query
 
         public override string GetGitHubQueryURL()
         {
-            return "assginee:" + assigneeName;
+            return "assginee:" + _assigneeName;
+        }
+    }
+
+    public struct RepoExpression
+    {
+        public Repository Repo;
+        public Expression Expr;
+        public RepoExpression(Repository repo, Expression expr)
+        {
+            Repo = repo;
+            Expr = expr;
+        }
+    }
+
+    public class ExpressionMultiRepo : Expression
+    {
+        Dictionary<Repository, Expression> _expressions;
+        Expression _defaultExpression;
+
+        public IEnumerable<Expression> Expressions
+        {
+            get
+            {
+                foreach (Expression expr in _expressions.Values)
+                {
+                    yield return expr;
+                }
+                if (_defaultExpression != null)
+                {
+                    yield return _defaultExpression;
+                }
+            }
+        }
+
+        public ExpressionMultiRepo(IEnumerable<RepoExpression> expressions)
+        {
+            _expressions = new Dictionary<Repository, Expression>();
+            _defaultExpression = null;
+            foreach (RepoExpression repoExpr in expressions)
+            {
+                if (repoExpr.Repo == null)
+                {
+                    if (_defaultExpression != null)
+                    {
+                        throw new InvalidDataException($"Duplicate no-repo query defined.");
+                    }
+                    _defaultExpression = repoExpr.Expr;
+                    continue;
+                }
+                if (_expressions.ContainsKey(repoExpr.Repo))
+                {
+                    throw new InvalidDataException($"Duplicate repo query defined for repo {repoExpr.Repo.RepoName}.");
+                }
+                _expressions[repoExpr.Repo] = repoExpr.Expr;
+            }
+        }
+
+        public Expression GetExpression(Repository repo)
+        {
+            Expression expr;
+            if (_expressions.TryGetValue(repo, out expr))
+            {
+                return expr;
+            }
+            return _defaultExpression;
+        }
+
+        public override Expression Simplify()
+        {
+            if (_defaultExpression != null)
+            {
+                _defaultExpression = _defaultExpression.Simplify();
+            }
+            Repository[] repos = _expressions.Keys.ToArray();
+            foreach (Repository repo in repos)
+            {
+                _expressions[repo] = _expressions[repo].Simplify();
+            }
+            return this;
+        }
+
+        public override bool Evaluate(DataModelIssue issue)
+        {
+            Expression expr = GetExpression(issue.Repo);
+            return expr != null ? expr.Evaluate(issue) : false;
+        }
+
+        public override string GetGitHubQueryURL()
+        {
+            return null;
+        }
+
+        public override void Validate(IssueCollection collection)
+        {
+            if (_defaultExpression != null)
+            {
+                _defaultExpression.Validate(collection);
+            }
+            foreach (Expression expr in _expressions.Values)
+            {
+                expr.Validate(collection);
+            }
         }
     }
 }
