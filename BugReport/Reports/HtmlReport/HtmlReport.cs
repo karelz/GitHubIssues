@@ -19,7 +19,9 @@ namespace BugReport.Reports
         {
             _config = new Config(configFiles);
 
-            _areaLabelQueries = _config.AreaLabels.Select(label => new NamedQuery(label.Name, new ExpressionLabel(label.Name))).ToList();
+            _areaLabelQueries = _config.AreaLabels
+                .Select(label => new NamedQuery(label.Name, new ExpressionLabel(label.Name)))
+                .ToList();
         }
 
         public void Write(IEnumerable<string> beginFiles, IEnumerable<string> endFiles, string outputHtmlFile)
@@ -52,22 +54,40 @@ namespace BugReport.Reports
 
                 file.WriteLine("<h2>Alerts - sorted by issue count</h2>");
                 NamedQuery firstQuery = _config.Queries.First();
-                Report(file, beginIssues, endIssues, _config.Queries, 
-                    _config.Alerts.OrderByDescending(alert => Expression.And(alert.Query, firstQuery.Query).Evaluate(endIssues).Count()));
+                Report(file, 
+                    beginIssues, 
+                    endIssues, 
+                    _config.Queries, 
+                    _config.Alerts.OrderByDescending(alert => 
+                        Expression.And(alert.Query, firstQuery.Query).Evaluate(endIssues).Count()));
 
                 file.WriteLine("<h2>Alerts - sorted alphabetically</h2>");
-                Report(file, beginIssues, endIssues, _config.Queries, _config.Alerts.OrderBy(alert => alert.Name));
+                Report(file, 
+                    beginIssues, 
+                    endIssues, 
+                    _config.Queries, 
+                    _config.Alerts.OrderBy(alert => alert.Name));
 
                 file.WriteLine("<h2>Areas - sorted alphabetically</h2>");
-                Report(file, beginIssues, endIssues, _config.Queries, _areaLabelQueries.OrderBy(labelQuery => labelQuery.Name));
+                Report(file, 
+                    beginIssues, 
+                    endIssues, 
+                    _config.Queries, 
+                    _areaLabelQueries.OrderBy(labelQuery => labelQuery.Name));
 
                 file.WriteLine("<h2>Alerts - sorted alphabetically (no links)</h2>");
-                Report(file, beginIssues, endIssues, _config.Queries, 
+                Report(file, 
+                    beginIssues, 
+                    endIssues, 
+                    _config.Queries, 
                     _config.Alerts.OrderBy(alert => alert.Name), 
                     shouldHyperLink: false);
 
                 file.WriteLine("<h2>Areas - sorted alphabetically (no links)</h2>");
-                Report(file, beginIssues, endIssues, _config.Queries, 
+                Report(file, 
+                    beginIssues, 
+                    endIssues, 
+                    _config.Queries, 
                     _areaLabelQueries.OrderBy(labelQuery => labelQuery.Name),
                     shouldHyperLink: false);
 
@@ -225,16 +245,32 @@ namespace BugReport.Reports
                 {
                     Expression rowQuery = andExpressions[0];
                     Expression colQuery = andExpressions[1];
-                    if ((colQuery.GetGitHubQueryURL() != null) &&
-                        (rowQuery is ExpressionOr))
+
+                    if (rowQuery is ExpressionOr)
                     {
-                        IEnumerable<Expression> orExpressions = ((ExpressionOr)(rowQuery.Simplify())).Expressions;
-                        if ((orExpressions.Count() <= 5) && 
-                            !orExpressions.Where(e => e.GetGitHubQueryURL() == null).Any())
+                        rowQuery = new ExpressionMultiRepo(new RepoExpression[] { new RepoExpression(null, rowQuery) });
+                    }
+                    rowQuery = rowQuery.Simplify();
+
+                    if ((colQuery.GetGitHubQueryURL() != null) && 
+                        (rowQuery is ExpressionMultiRepo))
+                    {
+                        ExpressionMultiRepo rowMultiRepoQuery = (ExpressionMultiRepo)rowQuery;
+                        IEnumerable<RepoExpression> repoExpressions = Repository.GetReposOrDefault(issues).SelectMany(
+                            repo =>
+                            {
+                                Expression expr = rowMultiRepoQuery.GetExpression(repo);
+                                if (expr is ExpressionOr)
+                                {
+                                    return ((ExpressionOr)expr).Expressions.Select(e => new RepoExpression(repo, e));
+                                }
+                                return new RepoExpression[] { new RepoExpression(repo, expr) };
+                            });
+
+
+                        if (//(repoExpressions.Count() <= 6) && 
+                            !repoExpressions.Where(re => (re.Expr.GetGitHubQueryURL() == null)).Any())
                         {
-                            IEnumerable<RepoExpression> repoExpressions = Repository.GetReposOrDefault(issues)
-                                .SelectMany(repo => 
-                                    orExpressions.Select(expr => new RepoExpression(repo, expr)));
                             return
                                 $"{count} <small>(" +
                                 string.Join("+", repoExpressions.Select(
@@ -252,17 +288,6 @@ namespace BugReport.Reports
                 }
             }
             return count.ToString();
-        }
-
-        private struct RepoExpression
-        {
-            public Repository Repo;
-            public Expression Expr;
-            public RepoExpression(Repository repo, Expression expr)
-            {
-                Repo = repo;
-                Expr = expr;
-            }
         }
 
         private static void ReportTableRow(StreamWriter file, string prefix, string col1, IEnumerable<string> cols)

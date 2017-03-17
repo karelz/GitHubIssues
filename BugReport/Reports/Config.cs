@@ -64,6 +64,8 @@ namespace BugReport.Reports
                 }
             }
 
+            Repositories = LoadRepositories().ToArray();
+
             LoadUsers();
 
             AreaLabels = LoadLabels("area").ToList();
@@ -78,8 +80,6 @@ namespace BugReport.Reports
 
             Alerts = LoadAlerts(customIsValues).ToList();
             Queries = LoadQueries(customIsValues).ToList();
-
-            Repositories = LoadRepositories().ToArray();
         }
 
         private void LoadUsers()
@@ -150,14 +150,19 @@ namespace BugReport.Reports
                     {
                         string alertName = alertNode.Attribute("name").Value;
 
-                        string query = alertNode.Descendants("query").First().Value;
                         IEnumerable<Alert.User> owners = alertNode.Descendants("owner").Select(e => FindUserOrThrow(e.Value));
                         IEnumerable<Alert.User> ccUsers = alertNode.Descendants("cc").Select(e => FindUserOrThrow(e.Value));
 
                         Alert alert;
                         try
                         {
-                            alert = new Alert(alertName, query, customIsValues, owners, ccUsers);
+                            alert = new Alert(
+                                alertName,
+                                alertNode.Descendants("query").Select(q => 
+                                    new NamedQuery.RepoQuery(q.Attribute("repo")?.Value, q.Value)),
+                                customIsValues,
+                                owners,
+                                ccUsers);
                         }
                         catch (InvalidQueryException ex)
                         {
