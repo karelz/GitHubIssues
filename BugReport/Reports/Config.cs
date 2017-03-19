@@ -24,9 +24,11 @@ namespace BugReport.Reports
         public IEnumerable<Label> UntriagedLabels { get; private set; }
         public ExpressionUntriaged UntriagedExpression { get; private set; }
 
+        public IDictionary<string, Label> LabelAliases { get; private set; }
+
         public IEnumerable<Repository> Repositories { get; private set; }
 
-        private struct ConfigFile
+        private class ConfigFile
         {
             public string FileName;
             public XElement Root;
@@ -36,6 +38,8 @@ namespace BugReport.Reports
                 FileName = fileName;
                 Root = root;
             }
+
+            public override string ToString() => FileName;
         }
 
         public Config(IEnumerable<string> configFiles)
@@ -64,13 +68,16 @@ namespace BugReport.Reports
                 }
             }
 
+            // Repositories have to be first - they are used in other elements (e.g. alerts and queries)
             Repositories = LoadRepositories().ToArray();
 
             LoadUsers();
 
-            AreaLabels = LoadLabels("area").ToList();
+            AreaLabels = LoadLabels("area").Distinct().ToList();
             IssueTypeLabels = LoadLabels("issueType").ToList();
             UntriagedLabels = LoadLabels("untriaged").ToList();
+
+            LabelAliases = LoadLabelAliases();
 
             UntriagedExpression = new ExpressionUntriaged(
                 IssueTypeLabels,
@@ -158,7 +165,7 @@ namespace BugReport.Reports
                         {
                             alert = new Alert(
                                 alertName,
-                                alertNode.Descendants("query").Select(q => 
+                                alertNode.Descendants("query").Select(q =>
                                     new NamedQuery.RepoQuery(q.Attribute("repo")?.Value, q.Value)),
                                 customIsValues,
                                 owners,
@@ -218,7 +225,7 @@ namespace BugReport.Reports
         {
             foreach (ConfigFile configFile in _configFiles)
             {
-                foreach (XElement labelsNode in 
+                foreach (XElement labelsNode in
                     configFile.Root.Descendants("labels").Where(n => n.Attribute("kind")?.Value == kind))
                 {
                     foreach (XElement labelNode in labelsNode.Descendants("label"))
@@ -228,7 +235,32 @@ namespace BugReport.Reports
                 }
             }
         }
- 
+
+        private Dictionary<string, Label> LoadLabelAliases()
+        {
+            Dictionary<string, Label> labelAliases = new Dictionary<string, Label>();
+            foreach (ConfigFile configFile in _configFiles)
+            {
+                foreach (XElement labelsNode in
+                    configFile.Root.Descendants("labels").Where(n => n.Attribute("kind")?.Value == "aliases"))
+                {
+                    foreach (XElement aliasNode in labelsNode.Descendants("alias"))
+                    {
+                        string aliasName = aliasNode.Attribute("name").Value;
+                        Label targetLabel = new Label(aliasNode.Value);
+
+                        if (labelAliases.TryGetValue(aliasName, out _))
+                        {
+                            throw new InvalidDataException($"Label alias {aliasName} defined more than once.");
+                        }
+                        labelAliases[aliasName] = targetLabel;
+                    }
+                }
+            }
+
+            return labelAliases;
+        }
+
         private Alert.User FindUser(string id)
         {
             foreach (Alert.User user in _users)

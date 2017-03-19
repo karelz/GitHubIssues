@@ -13,9 +13,9 @@ namespace BugReport.Reports
     {
         Config _config;
 
-        public QueryReport(IEnumerable<string> configFiles)
+        public QueryReport(Config config)
         {
-            _config = new Config(configFiles);
+            _config = config;
         }
 
         public void Write(IEnumerable<DataModelIssue> issues, string outputHtmlFile)

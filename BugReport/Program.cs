@@ -144,8 +144,9 @@ class Program
                         IEnumerable<string> inputFiles = _inputOption.GetValues(optionsParser);
                         string outputFile = _outputOption.GetValue(optionsParser);
 
-                        QueryReport report = new QueryReport(configFiles);
-                        report.Write(IssueCollection.LoadIssues(inputFiles), outputFile);
+                        Config config = new Config(configFiles);
+                        QueryReport report = new QueryReport(config);
+                        report.Write(IssueCollection.LoadIssues(inputFiles, config.LabelAliases), outputFile);
                         return ErrorCode.Success;
                     }
                 case ActionCommand.report:
@@ -182,15 +183,18 @@ class Program
                         bool skipEmail = _skipEmailOption.IsDefined(optionsParser);
                         string outputFile = _outputOption.GetValue(optionsParser);
 
+                        Config config = new Config(configFiles);
                         IEnumerable<DataModelIssue> beginIssues = IssueCollection.LoadIssues(
                             beginFiles, 
+                            config.LabelAliases, 
                             IssueKindFlags.Issue | IssueKindFlags.PullRequest);
                         IEnumerable<DataModelIssue> endIssues = IssueCollection.LoadIssues(
-                            endFiles,
+                            endFiles, 
+                            config.LabelAliases, 
                             IssueKindFlags.Issue | IssueKindFlags.PullRequest);
 
                         return GetSendEmailErrorCode(AlertReport_Diff.SendEmails(
-                            configFiles,
+                            config,
                             templateFile,
                             skipEmail,
                             outputFile,
@@ -214,10 +218,14 @@ class Program
                         bool skipEmail = _skipEmailOption.IsDefined(optionsParser);
                         string outputFile = _outputOption.GetValue(optionsParser);
 
-                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(inputFiles, IssueKindFlags.Issue);
+                        Config config = new Config(configFiles);
+                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(
+                            inputFiles, 
+                            config.LabelAliases, 
+                            IssueKindFlags.Issue);
 
                         return GetSendEmailErrorCode(AlertReport_Untriaged.SendEmails(
-                            configFiles,
+                            config,
                             templateFile,
                             skipEmail,
                             outputFile,
@@ -241,11 +249,18 @@ class Program
                         bool skipEmail = _skipEmailOption.IsDefined(optionsParser);
                         string outputFile = _outputOption.GetValue(optionsParser);
 
-                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(inputFiles, IssueKindFlags.Issue);
-                        IEnumerable<DataModelIssue> comments = IssueCollection.LoadIssues(commentsFiles, IssueKindFlags.Comment);
+                        Config config = new Config(configFiles);
+                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(
+                            inputFiles, 
+                            config.LabelAliases, 
+                            IssueKindFlags.Issue);
+                        IEnumerable<DataModelIssue> comments = IssueCollection.LoadIssues(
+                            commentsFiles, 
+                            config.LabelAliases, 
+                            IssueKindFlags.Comment);
 
                         return GetSendEmailErrorCode(AlertReport_NeedsResponse.SendEmails(
-                            configFiles,
+                            config,
                             templateFile,
                             skipEmail,
                             outputFile,

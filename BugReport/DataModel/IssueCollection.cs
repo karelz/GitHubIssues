@@ -83,14 +83,16 @@ namespace BugReport.DataModel
         }
 
         public static IEnumerable<DataModelIssue> LoadIssues(
-            string fileName,
+            string fileName, 
+            IDictionary<string, Label> labelAliases, 
             IssueKindFlags issueKind = IssueKindFlags.All)
         {
-            return LoadIssues(new string[] { fileName }, issueKind);
+            return LoadIssues(new string[] { fileName }, labelAliases, issueKind);
         }
 
         public static IEnumerable<DataModelIssue> LoadIssues(
             IEnumerable<string> fileNames, 
+            IDictionary<string, Label> labelAliases, 
             IssueKindFlags issueKind = IssueKindFlags.All)
         {
             IEnumerable<DataModelIssue> issues = new DataModelIssue[] {};
@@ -104,11 +106,34 @@ namespace BugReport.DataModel
                                                         .Where(i => i.IsIssueKind(issueKind)));
                 }
             }
+            // Process label aliases before repo filtering - its query might rely on the label aliases
+            foreach (DataModelIssue issue in issues)
+            {
+                issue.Labels = TransformLabelAliases(issue.Labels, labelAliases).ToArray();
+            }
+            // Process repo filters after label aliases, the filter query might depend on them
             foreach (Repository repo in Repository.Repositories)
             {
                 issues = repo.Filter(issues);
             }
-            return issues;
+            return issues.ToArray();
+        }
+
+        private static IEnumerable<Label> TransformLabelAliases(
+            IEnumerable<Label> labels, 
+            IDictionary<string, Label> labelAliases)
+        {
+            foreach (Label label in labels)
+            {
+                if (labelAliases.TryGetValue(label.Name, out Label newLabel))
+                {
+                    yield return newLabel;
+                }
+                else
+                {
+                    yield return label;
+                }
+            }
         }
     }
 }

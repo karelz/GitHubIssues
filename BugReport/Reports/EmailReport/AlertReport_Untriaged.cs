@@ -10,14 +10,13 @@ namespace BugReport.Reports.EmailReports
     public class AlertReport_Untriaged
     {
         public static bool SendEmails(
-            IEnumerable<string> configFiles,
+            Config config,
             string htmlTemplateFileName,
             bool skipEmail,
             string outputHtmlFileName,
             IEnumerable<string> filteredAlertNames,
             IEnumerable<DataModelIssue> issues)
         {
-            Config config = new Config(configFiles);
             return AlertReport.SendEmails(
                 config,
                 htmlTemplateFileName,
