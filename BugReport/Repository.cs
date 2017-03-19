@@ -60,7 +60,7 @@ public class Repository
     }
 
     // TODO - Move to config
-    private static string s_GitHubProductIdentifier = "GitHubBugReporter";
+    private static readonly string s_GitHubProductIdentifier = "GitHubBugReporter";
 
     public IReadOnlyList<Issue> Issues { get; private set; }
     public ConcurrentBag<IssueComment> IssueComments { get; private set; }
@@ -98,7 +98,7 @@ public class Repository
         return repo;
     }
 
-    private static string _htmlUrlGitHubPrefix = "https://github.com/";
+    private static readonly string _htmlUrlGitHubPrefix = "https://github.com/";
     public static Repository FromHtmlUrl(string htmlUrl)
     {
         Debug.Assert(htmlUrl.StartsWith(_htmlUrlGitHubPrefix));
