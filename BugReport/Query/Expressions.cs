@@ -6,24 +6,44 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BugReport.DataModel;
+using BugReport.Util;
 
 namespace BugReport.Query
 {
     public abstract class Expression
     {
         public abstract bool Evaluate(DataModelIssue issue);
+
         public abstract void Validate(IssueCollection collection);
 
         public IEnumerable<DataModelIssue> Evaluate(IEnumerable<DataModelIssue> issues)
         {
             return issues.Where(i => Evaluate(i));
         }
+
         public abstract string GetGitHubQueryURL();
 
-        public virtual Expression Simplify()
+        // Normalized form:
+        //  [MultiRepo] -> [OR|AND] -> [NOT] -> Leaf = Label|Milestone|IsIssue|IsOpen|Assignee|Untriaged
+        public abstract Expression Normalized
         {
-            return this;
+            get;
         }
+
+        internal enum NormalizedState
+        {
+            MultiRepo = 0,
+            AndOr = 1,
+            Not = 2,
+            Leaf = 3
+        }
+
+        internal bool IsNormalized()
+        {
+            return IsNormalized(NormalizedState.MultiRepo);
+        }
+
+        internal abstract bool IsNormalized(NormalizedState minAllowedState);
 
         protected class Indentation
         {
@@ -43,7 +63,15 @@ namespace BugReport.Query
         {
             return new ExpressionAnd(expressions);
         }
+        public static Expression And(IEnumerable<Expression> expressions)
+        {
+            return new ExpressionAnd(expressions);
+        }
         public static Expression Or(params Expression[] expressions)
+        {
+            return new ExpressionOr(expressions);
+        }
+        public static Expression Or(IEnumerable<Expression> expressions)
         {
             return new ExpressionOr(expressions);
         }
@@ -55,22 +83,26 @@ namespace BugReport.Query
 
     public class ExpressionNot : Expression
     {
-        Expression _expr;
+        readonly Expression _expr;
+
         public ExpressionNot(Expression expr)
         {
             _expr = expr;
         }
+
         public override bool Evaluate(DataModelIssue issue)
         {
             return !_expr.Evaluate(issue);
         }
+
         public override void Validate(IssueCollection collection)
         {
             _expr.Validate(collection);
         }
+
         public override string ToString()
         {
-            if ((_expr is ExpressionAnd) || (_expr is ExpressionOr))
+            if ((_expr is ExpressionAnd) || (_expr is ExpressionOr) || (_expr is ExpressionMultiRepo))
             {
                 return $"!({_expr})";
             }
@@ -83,22 +115,49 @@ namespace BugReport.Query
             {
                 return "-" + _expr.GetGitHubQueryURL();
             }
+            if (_expr is ExpressionMultiRepo.ExpressionFilteredOutRepo)
+            {
+                return "";
+            }
             return null;
         }
 
-        public override Expression Simplify()
+        internal override bool IsNormalized(NormalizedState minAllowedState)
         {
-            if (_expr is ExpressionNot)
+            return (minAllowedState <= NormalizedState.Not) &&_expr.IsNormalized(NormalizedState.Leaf);
+        }
+
+        public override Expression Normalized
+        {
+            get
             {
-                return ((ExpressionNot)_expr)._expr.Simplify();
+                if (_expr is ExpressionNot)
+                {
+                    return ((ExpressionNot)_expr)._expr.Normalized;
+                }
+
+                Expression normalizedExpr = _expr.Normalized;
+                if (normalizedExpr is ExpressionOr)
+                {
+                    return Expression.And(((ExpressionOr)normalizedExpr).Expressions.Select(e => Expression.Not(e))).Normalized;
+                }
+                if (normalizedExpr is ExpressionAnd)
+                {
+                    return Expression.Or(((ExpressionAnd)normalizedExpr).Expressions.Select(e => Expression.Not(e))).Normalized;
+                }
+                if (normalizedExpr is ExpressionMultiRepo)
+                {
+                    return new ExpressionMultiRepo(((ExpressionMultiRepo)normalizedExpr).RepoExpressions.Select(repoExpr =>
+                        new RepoExpression(repoExpr.Repo, Expression.Not(repoExpr.Expr).Normalized)));
+                }
+                return Expression.Not(normalizedExpr);
             }
-            return this;
         }
     }
 
     public class ExpressionAnd : Expression
     {
-        IEnumerable<Expression> _expressions;
+        readonly IEnumerable<Expression> _expressions;
 
         public IEnumerable<Expression> Expressions
         {
@@ -109,6 +168,7 @@ namespace BugReport.Query
         {
             _expressions = expressions;
         }
+
         public override bool Evaluate(DataModelIssue issue)
         {
             foreach (Expression expr in _expressions)
@@ -120,6 +180,7 @@ namespace BugReport.Query
             }
             return true;
         }
+
         public override void Validate(IssueCollection collection)
         {
             foreach (Expression expr in _expressions)
@@ -127,6 +188,7 @@ namespace BugReport.Query
                 expr.Validate(collection);
             }
         }
+
         public override string ToString()
         {
             return string.Join(" ", _expressions.Select(e => (e is ExpressionOr) ? $"({e})" : e.ToString()));
@@ -142,31 +204,63 @@ namespace BugReport.Query
             return string.Join(" ", subQueries);
         }
 
-        public override Expression Simplify()
+        internal override bool IsNormalized(NormalizedState minAllowedState)
         {
-            List<Expression> expressions = new List<Expression>();
-            foreach (Expression expr in _expressions)
+            return (minAllowedState <= NormalizedState.AndOr) &&
+                _expressions.Where(e => (e is ExpressionAnd) || !e.IsNormalized(NormalizedState.AndOr)).None();
+        }
+
+        public override Expression Normalized
+        {
+            get
             {
-                if (expr is ExpressionAnd)
-                {   // Fold all inner AND operands into this one
-                    foreach (Expression expr2 in ((ExpressionAnd)expr)._expressions)
+                List<Expression> andExpressions = new List<Expression>();
+
+                Queue<Expression> normalizedExpressionsQueue = new Queue<Expression>(_expressions.Select(e => e.Normalized));
+                while (normalizedExpressionsQueue.Count > 0)
+                {
+                    Expression normalizedExpression = normalizedExpressionsQueue.Dequeue();
+                    if (normalizedExpression is ExpressionAnd)
+                    {   // Fold all inner AND operands into this one
+                        foreach (Expression expr2 in ((ExpressionAnd)normalizedExpression)._expressions)
+                        {
+                            normalizedExpressionsQueue.Enqueue(expr2);
+                        }
+                    }
+                    else
                     {
-                        expressions.Add(expr2.Simplify());
+                        andExpressions.Add(normalizedExpression);
                     }
                 }
-                else
+
+                IEnumerable<ExpressionMultiRepo> multiRepoExpressions = andExpressions
+                    .Where(e => e is ExpressionMultiRepo)
+                    .Select(e => (ExpressionMultiRepo)e);
+                if (multiRepoExpressions.None())
                 {
-                    expressions.Add(expr.Simplify());
+                    return Expression.And(andExpressions);
                 }
+
+                IEnumerable<Repository> repos = multiRepoExpressions
+                    .SelectMany(e => e.RepoExpressions.Select(re => re.Repo))
+                    .Distinct();
+                IEnumerable<RepoExpression> repoExpressions = repos
+                    .Select(repo =>
+                        new RepoExpression(repo,
+                            Expression.And(andExpressions.Select(e => 
+                                (e is ExpressionMultiRepo)
+                                    ? ((ExpressionMultiRepo)e).GetExpression(repo) 
+                                    : e)).Normalized
+                        )
+                    );
+                return new ExpressionMultiRepo(repoExpressions);
             }
-            _expressions = expressions;
-            return this;
         }
     }
 
     public class ExpressionOr : Expression
     {
-        IEnumerable<Expression> _expressions;
+        readonly IEnumerable<Expression> _expressions;
 
         public IEnumerable<Expression> Expressions
         {
@@ -177,6 +271,7 @@ namespace BugReport.Query
         {
             _expressions = expressions;
         }
+
         public override bool Evaluate(DataModelIssue issue)
         {
             foreach (Expression expr in _expressions)
@@ -188,6 +283,7 @@ namespace BugReport.Query
             }
             return false;
         }
+
         public override void Validate(IssueCollection collection)
         {
             foreach (Expression expr in _expressions)
@@ -205,39 +301,74 @@ namespace BugReport.Query
             return null;
         }
 
-        public override Expression Simplify()
+        internal override bool IsNormalized(NormalizedState minAllowedState)
         {
-            List<Expression> expressions = new List<Expression>();
-            foreach (Expression expr in _expressions)
+            return (minAllowedState <= NormalizedState.AndOr) &&
+                _expressions.Where(e => (e is ExpressionOr) || !e.IsNormalized(NormalizedState.AndOr)).None();
+        }
+
+        public override Expression Normalized
+        {
+            get
             {
-                if (expr is ExpressionOr)
-                {   // Fold all inner OR operands into this one
-                    foreach (Expression expr2 in ((ExpressionOr)expr)._expressions)
+                List<Expression> orExpressions = new List<Expression>();
+
+                Queue<Expression> normalizedExpressionsQueue = new Queue<Expression>(_expressions.Select(e => e.Normalized));
+                while (normalizedExpressionsQueue.Count > 0)
+                {
+                    Expression normalizedExpression = normalizedExpressionsQueue.Dequeue();
+                    if (normalizedExpression is ExpressionOr)
+                    {   // Fold all inner OR operands into this one
+                        foreach (Expression expr2 in ((ExpressionOr)normalizedExpression)._expressions)
+                        {
+                            normalizedExpressionsQueue.Enqueue(expr2);
+                        }
+                    }
+                    else
                     {
-                        expressions.Add(expr2.Simplify());
+                        orExpressions.Add(normalizedExpression);
                     }
                 }
-                else
+
+                IEnumerable<ExpressionMultiRepo> multiRepoExpressions = orExpressions
+                    .Where(e => e is ExpressionMultiRepo)
+                    .Select(e => (ExpressionMultiRepo)e);
+                if (multiRepoExpressions.None())
                 {
-                    expressions.Add(expr.Simplify());
+                    return Expression.Or(orExpressions);
                 }
+
+                IEnumerable<Repository> repos = multiRepoExpressions
+                    .SelectMany(e => e.RepoExpressions.Select(re => re.Repo))
+                    .Distinct();
+                IEnumerable<RepoExpression> repoExpressions = repos
+                    .Select(repo =>
+                        new RepoExpression(repo,
+                            Expression.Or(orExpressions.Select(e =>
+                                (e is ExpressionMultiRepo)
+                                    ? ((ExpressionMultiRepo)e).GetExpression(repo)
+                                    : e)).Normalized
+                        )
+                    );
+                return new ExpressionMultiRepo(repoExpressions);
             }
-            _expressions = expressions;
-            return this;
         }
     }
 
     public class ExpressionLabel : Expression
     {
-        string _labelName;
+        readonly string _labelName;
+
         public ExpressionLabel(string labelName)
         {
             _labelName = labelName;
         }
+
         public override bool Evaluate(DataModelIssue issue)
         {
             return issue.HasLabel(_labelName);
         }
+
         public override void Validate(IssueCollection collection)
         {
             if (!collection.HasLabel(_labelName))
@@ -245,6 +376,7 @@ namespace BugReport.Query
                 Console.WriteLine("WARNING: Label does not exist: {0}", _labelName);
             }
         }
+
         public override string ToString()
         {
             return GetGitHubQueryURL();
@@ -258,22 +390,36 @@ namespace BugReport.Query
             }
             return "label:" + _labelName;
         }
+
+        internal override bool IsNormalized(NormalizedState minAllowedState)
+        {
+            return true;
+        }
+
+        public override Expression Normalized
+        {
+            get => this;
+        }
     }
 
     public class ExpressionIsIssue : Expression
     {
-        bool _isIssue;
+        readonly bool _isIssue;
+
         public ExpressionIsIssue(bool isIssue)
         {
             _isIssue = isIssue;
         }
+
         public override bool Evaluate(DataModelIssue issue)
         {
             return issue.IsIssueOrComment == _isIssue;
         }
+
         public override void Validate(IssueCollection collection)
         {
         }
+
         public override string ToString()
         {
             return GetGitHubQueryURL();
@@ -283,11 +429,23 @@ namespace BugReport.Query
         {
             return _isIssue ? "is:issue" : "is:pr";
         }
+
+        internal override bool IsNormalized(NormalizedState minAllowedState)
+        {
+            return true;
+        }
+
+        public override Expression Normalized
+        {
+            get => this;
+        }
+
     }
 
     public class ExpressionIsOpen : Expression
     {
-        bool _isOpen;
+        readonly bool _isOpen;
+
         public ExpressionIsOpen(bool isOpen)
         {
             _isOpen = isOpen;
@@ -308,19 +466,33 @@ namespace BugReport.Query
         {
             return _isOpen ? "is:open" : "is:closed";
         }
+
+        internal override bool IsNormalized(NormalizedState minAllowedState)
+        {
+            return true;
+
+        }
+        public override Expression Normalized
+        {
+            get => this;
+        }
+
     }
 
     public class ExpressionMilestone : Expression
     {
-        string _milestoneName;
+        readonly string _milestoneName;
+
         public ExpressionMilestone(string milestoneName)
         {
             _milestoneName = milestoneName;
         }
+
         public override bool Evaluate(DataModelIssue issue)
         {
             return issue.IsMilestone(_milestoneName);
         }
+
         public override void Validate(IssueCollection collection)
         {
             if (!collection.HasMilestone(_milestoneName))
@@ -328,6 +500,7 @@ namespace BugReport.Query
                 Console.WriteLine("WARNING: Milestone does not exist: {0}", _milestoneName);
             }
         }
+
         public override string ToString()
         {
             return GetGitHubQueryURL();
@@ -337,19 +510,32 @@ namespace BugReport.Query
         {
             return "milestone:" + _milestoneName;
         }
+
+        internal override bool IsNormalized(NormalizedState minAllowedState)
+        {
+            return true;
+        }
+
+        public override Expression Normalized
+        {
+            get => this;
+        }
     }
 
     public class ExpressionAssignee : Expression
     {
-        string _assigneeName;
+        readonly string _assigneeName;
+
         public ExpressionAssignee(string assigneeName)
         {
             _assigneeName = assigneeName;
         }
+
         public override bool Evaluate(DataModelIssue issue)
         {
             return issue.HasAssignee(_assigneeName);
         }
+
         public override void Validate(IssueCollection collection)
         {
             if (!collection.HasUser(_assigneeName))
@@ -357,6 +543,7 @@ namespace BugReport.Query
                 Console.WriteLine("WARNING: Assignee does not exist: {0}", _assigneeName);
             }
         }
+
         public override string ToString()
         {
             return GetGitHubQueryURL();
@@ -366,107 +553,15 @@ namespace BugReport.Query
         {
             return "assginee:" + _assigneeName;
         }
-    }
 
-    public struct RepoExpression
-    {
-        public Repository Repo;
-        public Expression Expr;
-        public RepoExpression(Repository repo, Expression expr)
+        internal override bool IsNormalized(NormalizedState minAllowedState)
         {
-            Repo = repo;
-            Expr = expr;
-        }
-    }
-
-    public class ExpressionMultiRepo : Expression
-    {
-        Dictionary<Repository, Expression> _expressions;
-        Expression _defaultExpression;
-
-        public IEnumerable<Expression> Expressions
-        {
-            get
-            {
-                foreach (Expression expr in _expressions.Values)
-                {
-                    yield return expr;
-                }
-                if (_defaultExpression != null)
-                {
-                    yield return _defaultExpression;
-                }
-            }
+            return true;
         }
 
-        public ExpressionMultiRepo(IEnumerable<RepoExpression> expressions)
+        public override Expression Normalized
         {
-            _expressions = new Dictionary<Repository, Expression>();
-            _defaultExpression = null;
-            foreach (RepoExpression repoExpr in expressions)
-            {
-                if (repoExpr.Repo == null)
-                {
-                    if (_defaultExpression != null)
-                    {
-                        throw new InvalidDataException($"Duplicate no-repo query defined.");
-                    }
-                    _defaultExpression = repoExpr.Expr;
-                    continue;
-                }
-                if (_expressions.ContainsKey(repoExpr.Repo))
-                {
-                    throw new InvalidDataException($"Duplicate repo query defined for repo {repoExpr.Repo.RepoName}.");
-                }
-                _expressions[repoExpr.Repo] = repoExpr.Expr;
-            }
-        }
-
-        public Expression GetExpression(Repository repo)
-        {
-            Expression expr;
-            if (_expressions.TryGetValue(repo, out expr))
-            {
-                return expr;
-            }
-            return _defaultExpression;
-        }
-
-        public override Expression Simplify()
-        {
-            if (_defaultExpression != null)
-            {
-                _defaultExpression = _defaultExpression.Simplify();
-            }
-            Repository[] repos = _expressions.Keys.ToArray();
-            foreach (Repository repo in repos)
-            {
-                _expressions[repo] = _expressions[repo].Simplify();
-            }
-            return this;
-        }
-
-        public override bool Evaluate(DataModelIssue issue)
-        {
-            Expression expr = GetExpression(issue.Repo);
-            return expr != null ? expr.Evaluate(issue) : false;
-        }
-
-        public override string GetGitHubQueryURL()
-        {
-            return null;
-        }
-
-        public override void Validate(IssueCollection collection)
-        {
-            if (_defaultExpression != null)
-            {
-                _defaultExpression.Validate(collection);
-            }
-            foreach (Expression expr in _expressions.Values)
-            {
-                expr.Validate(collection);
-            }
+            get => this;
         }
     }
 }

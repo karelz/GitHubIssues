@@ -53,6 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="Query\ExpressionMultiRepo.cs" />
     <Compile Include="Repository.cs" />
     <Compile Include="DataModel\IssueCollection.cs" />
     <Compile Include="DataModel\DataModelIssue.cs" />
@@ -68,7 +69,7 @@
     <Compile Include="Reports\Alert.cs" />
     <Compile Include="Reports\IssueEntry.cs" />
     <Compile Include="Reports\Config.cs" />
-    <Compile Include="Reports\UntriagedExpression.cs" />
+    <Compile Include="Reports\ExpressionUntriaged.cs" />
     <Compile Include="Reports\EmailReport\AlertReport.cs" />
     <Compile Include="Reports\EmailReport\AlertReport_NeedsMSResponse.cs" />
     <Compile Include="Reports\EmailReport\AlertReport_Diff.cs" />
