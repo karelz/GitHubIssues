@@ -125,7 +125,11 @@ namespace BugReport.Reports
                             beginIssues,
                             endIssues);
                         return new string[] {
-                            GetQueryCountLinked_Multiple(filteredIssues.Query, filteredIssues.End, shouldHyperLink),
+                            GetQueryCountLinked_Multiple(
+                                filteredIssues.Query, 
+                                filteredIssues.End, 
+                                shouldHyperLink, 
+                                useRepositoriesFromIssues: true),
                             $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
                             $"<i>+{filteredIssues.EndOnly.Count()}</i>",
                             $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
@@ -144,7 +148,7 @@ namespace BugReport.Reports
                         beginIssues,
                         endIssues);
                     return new string[] {
-                        $"<b>{GetQueryCountLinked_Multiple(filteredIssues.Query, filteredIssues.End, shouldHyperLink, Repository.Repositories)}</b>",
+                        $"<b>{GetQueryCountLinked_Multiple(filteredIssues.Query, filteredIssues.End, shouldHyperLink, useRepositoriesFromIssues: false)}</b>",
                         $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
                         $"<i>+{filteredIssues.EndOnly.Count()}</i>",
                         $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
@@ -160,7 +164,7 @@ namespace BugReport.Reports
                         beginIssues,
                         endIssues);
                     return new string[] {
-                        $"<b>{GetQueryCountLinked(filteredIssues.Query, filteredIssues.End, shouldHyperLink, Repository.Repositories)}</b>",
+                        $"<b>{GetQueryCountLinked(filteredIssues.Query, filteredIssues.End, shouldHyperLink, useRepositoriesFromIssues: false)}</b>",
                         $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
                         $"<i>+{filteredIssues.EndOnly.Count()}</i>",
                         $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
@@ -195,7 +199,7 @@ namespace BugReport.Reports
             Expression query, 
             IEnumerable<DataModelIssue> issues, 
             bool shouldHyperLink, 
-            IEnumerable<Repository> repositories = null)
+            bool useRepositoriesFromIssues = true)
         {
             int count = issues.Count();
             if (!shouldHyperLink)
@@ -205,7 +209,7 @@ namespace BugReport.Reports
             string gitHubQueryURL = query.GetGitHubQueryURL();
             if (gitHubQueryURL != null)
             {
-                IEnumerable<Repository> repos = repositories ?? Repository.GetReposOrDefault(issues);
+                IEnumerable<Repository> repos = useRepositoriesFromIssues ? Repository.GetReposOrDefault(issues) : Repository.Repositories;
                 if (repos.Count() <= 1)
                 {
                     Repository repo = repos.First();
@@ -226,13 +230,13 @@ namespace BugReport.Reports
             Expression query, 
             IEnumerable<DataModelIssue> issues, 
             bool shouldHyperLink, 
-            IEnumerable<Repository> repositories = null)
+            bool useRepositoriesFromIssues = true)
         {
             Expression simplifiedQuery = query.Normalized;
             string gitHubQueryURL = simplifiedQuery.GetGitHubQueryURL();
             if (gitHubQueryURL != null)
             {
-                return GetQueryCountLinked(simplifiedQuery, issues, shouldHyperLink);
+                return GetQueryCountLinked(simplifiedQuery, issues, shouldHyperLink, useRepositoriesFromIssues);
             }
 
             int count = issues.Count();
@@ -257,17 +261,18 @@ namespace BugReport.Reports
                         (rowQuery is ExpressionMultiRepo))
                     {
                         ExpressionMultiRepo rowMultiRepoQuery = (ExpressionMultiRepo)rowQuery;
-                        IEnumerable<RepoExpression> repoExpressions = (repositories ?? Repository.GetReposOrDefault(issues))
-                            .SelectMany(
-                                repo =>
-                                {
-                                    Expression expr = rowMultiRepoQuery.GetExpression(repo);
-                                    if (expr is ExpressionOr)
+                        IEnumerable<RepoExpression> repoExpressions = 
+                            (useRepositoriesFromIssues ? Repository.GetReposOrDefault(issues) : Repository.Repositories)
+                                .SelectMany(
+                                    repo =>
                                     {
-                                        return ((ExpressionOr)expr).Expressions.Select(e => new RepoExpression(repo, e));
-                                    }
-                                    return new RepoExpression[] { new RepoExpression(repo, expr) };
-                                });
+                                        Expression expr = rowMultiRepoQuery.GetExpression(repo);
+                                        if (expr is ExpressionOr)
+                                        {
+                                            return ((ExpressionOr)expr).Expressions.Select(e => new RepoExpression(repo, e));
+                                        }
+                                        return new RepoExpression[] { new RepoExpression(repo, expr) };
+                                    });
 
 
                         if ((repoExpressions.Count() <= 6) && 
