@@ -1,17 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using Octokit;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using BugReport.DataModel;
 using BugReport.Query;
+using BugReport.Util;
 
 public class Repository
 {
@@ -28,7 +25,7 @@ public class Repository
     private Repository(string repoName, string filterQuery)
     {
         RepoName = repoName.ToLower();
-        Debug.Assert(!_repositories.Where(repo => (repo.RepoName == RepoName)).Any());
+        Debug.Assert(_repositories.Where(repo => (repo.RepoName == RepoName)).None());
 
         string[] repoNameParts = RepoName.Split('/');
         if ((repoNameParts.Length != 2) ||

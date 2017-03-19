@@ -1,13 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
-using BugReport.Query;
 using BugReport.DataModel;
-using System.Diagnostics;
+using BugReport.Util;
 
 namespace BugReport.Reports.EmailReports
 {
@@ -50,7 +46,7 @@ namespace BugReport.Reports.EmailReports
                 }
             }
 
-            if (!untriagedFlagsMap.Any())
+            if (untriagedFlagsMap.None())
             {
                 Console.WriteLine("    No untriaged issues, skipping.");
                 Console.WriteLine();

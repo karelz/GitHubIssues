@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BugReport.Util;
 
 namespace BugReport.DataModel
 {
@@ -11,7 +12,7 @@ namespace BugReport.DataModel
     {
         public static IEnumerable<DataModelIssue> Except_ByIssueNumber(this IEnumerable<DataModelIssue> issues, IEnumerable<DataModelIssue> exceptIssues)
         {
-            return issues.Where(i => !exceptIssues.Where(i2 => i2.EqualsByNumber(i)).Any());
+            return issues.Where(i => exceptIssues.Where(i2 => i2.EqualsByNumber(i)).None());
         }
         public static IEnumerable<DataModelIssue> Where(this IEnumerable<DataModelIssue> issues, Repository repo)
         {

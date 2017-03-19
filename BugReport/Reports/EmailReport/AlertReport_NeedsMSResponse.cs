@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
-using BugReport.Query;
 using BugReport.DataModel;
+using BugReport.Util;
 
 namespace BugReport.Reports.EmailReports
 {
@@ -45,7 +42,7 @@ namespace BugReport.Reports.EmailReports
             Dictionary<int, List<DataModelIssue>> issueComments = new Dictionary<int, List<DataModelIssue>>();
             Dictionary<int, DataModelIssue> issuesMap = new Dictionary<int, DataModelIssue>();
             IEnumerable<DataModelIssue> matchingIssues = alert.Query.Evaluate(issues);
-            if (!matchingIssues.Any())
+            if (matchingIssues.None())
             {
                 Console.WriteLine("    No changes to the query, skipping.");
                 Console.WriteLine();
@@ -87,7 +84,7 @@ namespace BugReport.Reports.EmailReports
                     needsResponse.Add(issuesMap[pair.Key], lastComment);
             }
 
-            if (!needsResponse.Any())
+            if (needsResponse.None())
             {
                 Console.WriteLine("    No changes to the query, skipping.");
                 Console.WriteLine();

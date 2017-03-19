@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
-using BugReport.Query;
 using BugReport.DataModel;
-using System.Diagnostics;
+using BugReport.Util;
+using BugReport.Query;
 
 namespace BugReport.Reports.EmailReports
 {
@@ -45,7 +46,7 @@ namespace BugReport.Reports.EmailReports
             IEnumerable<DataModelIssue> goneIssues = beginQuery.Except_ByIssueNumber(endQuery);
             IEnumerable<DataModelIssue> newIssues = endQuery.Except_ByIssueNumber(beginQuery);
 
-            if (!goneIssues.Any() && !newIssues.Any())
+            if (goneIssues.None() && newIssues.None())
             {
                 Console.WriteLine("    No changes to the query, skipping.");
                 Console.WriteLine();
@@ -54,17 +55,17 @@ namespace BugReport.Reports.EmailReports
 
             string text = htmlTemplate;
 
-            if (!goneIssues.Any() || !newIssues.Any())
+            if (goneIssues.None() || newIssues.None())
             {
                 Regex regex = new Regex("%ALL_ISSUES_START%(.|\n)*%ALL_ISSUES_END%");
                 text = regex.Replace(text, "");
 
-                if (!goneIssues.Any())
+                if (goneIssues.None())
                 {
                     regex = new Regex("%GONE_ISSUES_START%(.|\n)*%GONE_ISSUES_END%");
                     text = regex.Replace(text, "");
                 }
-                if (!newIssues.Any())
+                if (newIssues.None())
                 {
                     regex = new Regex("%NEW_ISSUES_START%(.|\n)*%NEW_ISSUES_END%");
                     text = regex.Replace(text, "");
