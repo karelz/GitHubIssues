@@ -9,9 +9,9 @@ namespace BugReport.Reports
 {
     public class ExpressionUntriaged : Expression
     {
-        private IEnumerable<Label> _issueTypeLabels;
-        private IEnumerable<Label> _areaLabels;
-        private IEnumerable<Label> _untriagedLabels;
+        private readonly IEnumerable<Label> _issueTypeLabels;
+        private readonly IEnumerable<Label> _areaLabels;
+        private readonly IEnumerable<Label> _untriagedLabels;
 
         public ExpressionUntriaged(
             IEnumerable<Label> issueTypeLabels, 
@@ -104,6 +104,16 @@ namespace BugReport.Reports
         public override string GetGitHubQueryURL()
         {
             return null;
+        }
+
+        internal override bool IsNormalized(NormalizedState minAllowedState)
+        {
+            return true;
+        }
+
+        public override Expression Normalized
+        {
+            get => this;
         }
     }
 }
