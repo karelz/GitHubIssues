@@ -14,5 +14,10 @@ namespace BugReport.Util
         {
             return strs.Where(s => s.EqualsIgnoreCase(str)).Any();
         }
+
+        public static bool None<T>(this IEnumerable<T> items)
+        {
+            return items.None();
+        }
     }
 }
