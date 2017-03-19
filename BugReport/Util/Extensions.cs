@@ -17,7 +17,7 @@ namespace BugReport.Util
 
         public static bool None<T>(this IEnumerable<T> items)
         {
-            return items.None();
+            return !items.Any();
         }
     }
 }
