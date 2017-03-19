@@ -13,7 +13,7 @@ namespace BugReport.Reports.EmailReports
         private static TimeSpan _acceptableResponseDelay = new TimeSpan(5, 0, 0, 0, 0); // 5 days
 
         public static bool SendEmails(
-            IEnumerable<string> configFiles,
+            Config config,
             string htmlTemplateFileName,
             bool skipEmail,
             string outputHtmlFileName,
@@ -22,7 +22,7 @@ namespace BugReport.Reports.EmailReports
             IEnumerable<DataModelIssue> comments)
         {
             return AlertReport.SendEmails(
-                configFiles,
+                config,
                 htmlTemplateFileName,
                 skipEmail,
                 outputHtmlFileName,

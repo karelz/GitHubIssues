@@ -66,23 +66,6 @@ namespace BugReport.Reports.EmailReports
             return report.SendEmails();
         }
 
-        public static bool SendEmails(
-            IEnumerable<string> configFiles,
-            string htmlTemplateFileName,
-            bool skipEmail,
-            string outputHtmlFileName,
-            IEnumerable<string> filteredAlertNames,
-            GenerateReport generateReport)
-        {
-            return SendEmails(
-                new Config(configFiles),
-                htmlTemplateFileName,
-                skipEmail,
-                outputHtmlFileName,
-                filteredAlertNames,
-                generateReport);
-        }
-
         /// <summary>
         /// Sends all of the emails for the diffs of the given issues that match the filter.
         /// </summary>

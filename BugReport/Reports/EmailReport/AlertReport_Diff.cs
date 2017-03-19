@@ -15,7 +15,7 @@ namespace BugReport.Reports.EmailReports
     public class AlertReport_Diff
     {
         public static bool SendEmails(
-            IEnumerable<string> configFiles,
+            Config config,
             string htmlTemplateFileName,
             bool skipEmail,
             string outputHtmlFileName,
@@ -24,7 +24,7 @@ namespace BugReport.Reports.EmailReports
             IEnumerable<DataModelIssue> endIssues)
         {
             return AlertReport.SendEmails(
-                configFiles,
+                config,
                 htmlTemplateFileName,
                 skipEmail,
                 outputHtmlFileName,
