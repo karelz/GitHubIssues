@@ -217,8 +217,8 @@ namespace BugReport.Query
             {
                 List<Expression> andExpressions = new List<Expression>();
 
-                // First flatten all ANDs and normalize sub-expressions
-                Queue<Expression> normalizedExpressionsQueue = new Queue<Expression>(_expressions.Select(e => e.Normalized));
+                // First flatten all ANDs
+                Queue<Expression> normalizedExpressionsQueue = new Queue<Expression>(_expressions);
                 while (normalizedExpressionsQueue.Count > 0)
                 {
                     Expression normalizedExpression = normalizedExpressionsQueue.Dequeue();
@@ -233,6 +233,12 @@ namespace BugReport.Query
                     {
                         andExpressions.Add(normalizedExpression);
                     }
+                }
+                
+                // Now normalize the AND expressions (can't do it earlier, because AND(x,AND(y,OR(a,b))) would start to permutate too early
+                {
+                    List<Expression> andExpressionsNormalized = new List<Expression>(andExpressions.Select(e => e.Normalized));
+                    andExpressions = andExpressionsNormalized;
                 }
 
                 // Handle multi-repo sub-expressions if present - bubble merge multi-repo expression up
