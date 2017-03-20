@@ -109,8 +109,8 @@ namespace BugReport.Query
         internal override bool IsNormalized(NormalizedState minAllowedState)
         {
             return (minAllowedState == NormalizedState.MultiRepo) &&
-                _expressions.Values.Where(e => !e.IsNormalized(NormalizedState.AndOr)).None() &&
-                _defaultExpression.IsNormalized(NormalizedState.AndOr);
+                _expressions.Values.Where(e => !e.IsNormalized(NormalizedState.Or)).None() &&
+                _defaultExpression.IsNormalized(NormalizedState.Or);
         }
 
         public override Expression Normalized

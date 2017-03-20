@@ -55,7 +55,13 @@ namespace BugReport.Reports
 
                     file.WriteLine($"<h2>Query: {query.Name}</h2>");
                     file.WriteLine($"<p>Query: <code>{query.Query}</code></p>");
-                    file.WriteLine($"Count: {GetQueryCountLinked_Multiple(query.Query, queryIssues, shouldHyperLink: true, useRepositoriesFromIssues: true)}<br/>");
+                    file.WriteLine("Count: " + 
+                        GetQueryCountLinked(
+                            query.Query, 
+                            queryIssues, 
+                            shouldHyperLink: true, 
+                            useRepositoriesFromIssues: true) + 
+                        "<br/>");
                     file.WriteLine(FormatIssueTable(queryIssues.Select(issue => new IssueEntry(issue))));
                 }
 
