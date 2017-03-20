@@ -54,6 +54,7 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Query\ExpressionMultiRepo.cs" />
+    <Compile Include="Reports\HtmlReport\Report.cs" />
     <Compile Include="Repository.cs" />
     <Compile Include="DataModel\IssueCollection.cs" />
     <Compile Include="DataModel\DataModelIssue.cs" />

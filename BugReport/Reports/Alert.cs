@@ -40,15 +40,6 @@ namespace BugReport.Reports
             }
         }
 
-        public NamedQuery(
-            string name,
-            string queryName,
-            IReadOnlyDictionary<string, Expression> customIsValues)
-        {
-            Name = name;
-            Query = QueryParser.Parse(queryName, customIsValues);
-        }
-
         public NamedQuery(string name, Expression query)
         {
             Name = name;
