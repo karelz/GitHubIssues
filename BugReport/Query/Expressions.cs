@@ -23,8 +23,8 @@ namespace BugReport.Query
 
         public abstract string GetGitHubQueryURL();
 
-        // Normalized form:
-        //  [MultiRepo] -> [OR|AND] -> [NOT] -> Leaf = Label|Milestone|IsIssue|IsOpen|Assignee|Untriaged
+        // Normalized DNF form = Dusjuncite normal form:
+        //  [MultiRepo] -> [OR] -> [AND] -> [NOT] -> Leaf = Label|Milestone|IsIssue|IsOpen|Assignee|Untriaged
         public abstract Expression Normalized
         {
             get;
@@ -33,9 +33,10 @@ namespace BugReport.Query
         internal enum NormalizedState
         {
             MultiRepo = 0,
-            AndOr = 1,
-            Not = 2,
-            Leaf = 3
+            Or = 1,
+            And = 2,
+            Not = 3,
+            Leaf = 4
         }
 
         internal bool IsNormalized()
@@ -206,8 +207,8 @@ namespace BugReport.Query
 
         internal override bool IsNormalized(NormalizedState minAllowedState)
         {
-            return (minAllowedState <= NormalizedState.AndOr) &&
-                _expressions.Where(e => (e is ExpressionAnd) || !e.IsNormalized(NormalizedState.AndOr)).None();
+            return (minAllowedState <= NormalizedState.And) &&
+                _expressions.Where(e => !e.IsNormalized(NormalizedState.And + 1)).None();
         }
 
         public override Expression Normalized
@@ -216,6 +217,7 @@ namespace BugReport.Query
             {
                 List<Expression> andExpressions = new List<Expression>();
 
+                // First flatten all ANDs and normalize sub-expressions
                 Queue<Expression> normalizedExpressionsQueue = new Queue<Expression>(_expressions.Select(e => e.Normalized));
                 while (normalizedExpressionsQueue.Count > 0)
                 {
@@ -233,27 +235,84 @@ namespace BugReport.Query
                     }
                 }
 
+                // Handle multi-repo sub-expressions if present - bubble merge multi-repo expression up
                 IEnumerable<ExpressionMultiRepo> multiRepoExpressions = andExpressions
                     .Where(e => e is ExpressionMultiRepo)
                     .Select(e => (ExpressionMultiRepo)e);
-                if (multiRepoExpressions.None())
+                if (multiRepoExpressions.Any())
                 {
-                    return Expression.And(andExpressions);
+                    IEnumerable<Repository> repos = multiRepoExpressions
+                        .SelectMany(e => e.RepoExpressions.Select(re => re.Repo))
+                        .Distinct();
+                    IEnumerable<RepoExpression> repoExpressions = repos
+                        .Select(repo =>
+                            new RepoExpression(repo,
+                                Expression.And(andExpressions.Select(e =>
+                                    (e is ExpressionMultiRepo)
+                                        ? ((ExpressionMultiRepo)e).GetExpression(repo)
+                                        : e))
+                                    // We need to normalize to bubble up all ORs on top
+                                    .Normalized
+                            )
+                        );
+                    Expression multiRepoExpr = new ExpressionMultiRepo(repoExpressions);
+                    Debug.Assert(multiRepoExpr.IsNormalized());
+                    return multiRepoExpr;
                 }
 
-                IEnumerable<Repository> repos = multiRepoExpressions
-                    .SelectMany(e => e.RepoExpressions.Select(re => re.Repo))
-                    .Distinct();
-                IEnumerable<RepoExpression> repoExpressions = repos
-                    .Select(repo =>
-                        new RepoExpression(repo,
-                            Expression.And(andExpressions.Select(e => 
-                                (e is ExpressionMultiRepo)
-                                    ? ((ExpressionMultiRepo)e).GetExpression(repo) 
-                                    : e)).Normalized
-                        )
-                    );
-                return new ExpressionMultiRepo(repoExpressions);
+                // Handle OR sub-expressions if present - make sub-expression permutations and bubble OR up
+                IEnumerable<ExpressionOr> orSubExpressions = andExpressions
+                    .Where(e => e is ExpressionOr)
+                    .Select(e => (ExpressionOr)e).ToArray();
+                if (orSubExpressions.Any())
+                {
+                    IEnumerable<Expression> nonOrSubExpressions = andExpressions.Where(e => !(e is ExpressionOr)).ToArray();
+                    Debug.Assert(andExpressions.Count() == orSubExpressions.Count() + nonOrSubExpressions.Count());
+
+                    List<Expression> orExpressions = new List<Expression>();
+
+                    // (A || B) && Z ---> (A && Z) || (B && Z)
+                    // (A || B) && (C || D) && Z ---> (A && C && Z) || (A && D && Z) || (B && C && Z) || (B && D && Z)
+                    foreach (IEnumerable<Expression> orSubExpressionsAndPermutation in GeneratePermutations(orSubExpressions))
+                    {
+                        orExpressions.Add(Expression.And(orSubExpressionsAndPermutation.Concat(nonOrSubExpressions)));
+                    }
+                    Expression orExpression = Expression.Or(orExpressions);
+                    Debug.Assert(orExpression.IsNormalized());
+                    return orExpression;
+                }
+
+                // AND is on the top
+                Expression andExpression = Expression.And(andExpressions);
+                Debug.Assert(andExpression.IsNormalized());
+                return andExpression;
+            }
+        }
+
+        private IEnumerable<IEnumerable<Expression>> GeneratePermutations(IEnumerable<ExpressionOr> orExpressions)
+        {
+            return GeneratePermutations(orExpressions, orExpressions.Count());
+        }
+        private IEnumerable<IEnumerable<Expression>> GeneratePermutations(
+            IEnumerable<ExpressionOr> orExpressions, 
+            int orExpressionsCount)
+        {
+            foreach (ExpressionOr orExpression in orExpressions)
+            {
+                foreach (Expression expr in orExpression.Expressions)
+                {
+                    if (orExpressionsCount == 1)
+                    {
+                        yield return expr.ToEnumerable();
+                    }
+                    else
+                    {
+                        foreach (IEnumerable<Expression> tailPermutation in GeneratePermutations(orExpressions.Skip(1)))
+                        {
+                            yield return expr.ToEnumerable().Concat(tailPermutation);
+                        }
+                    }
+                }
             }
         }
     }
@@ -303,8 +362,8 @@ namespace BugReport.Query
 
         internal override bool IsNormalized(NormalizedState minAllowedState)
         {
-            return (minAllowedState <= NormalizedState.AndOr) &&
-                _expressions.Where(e => (e is ExpressionOr) || !e.IsNormalized(NormalizedState.AndOr)).None();
+            return (minAllowedState <= NormalizedState.Or) &&
+                _expressions.Where(e => !e.IsNormalized(NormalizedState.Or + 1)).None();
         }
 
         public override Expression Normalized
@@ -335,7 +394,9 @@ namespace BugReport.Query
                     .Select(e => (ExpressionMultiRepo)e);
                 if (multiRepoExpressions.None())
                 {
-                    return Expression.Or(orExpressions);
+                    Expression orExpr = Expression.Or(orExpressions);
+                    Debug.Assert(orExpr.IsNormalized());
+                    return orExpr;
                 }
 
                 IEnumerable<Repository> repos = multiRepoExpressions
@@ -350,7 +411,9 @@ namespace BugReport.Query
                                     : e)).Normalized
                         )
                     );
-                return new ExpressionMultiRepo(repoExpressions);
+                Expression expr = new ExpressionMultiRepo(repoExpressions);
+                Debug.Assert(expr.IsNormalized());
+                return expr;
             }
         }
     }

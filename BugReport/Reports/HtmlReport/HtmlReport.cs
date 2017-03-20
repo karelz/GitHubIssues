@@ -125,7 +125,7 @@ namespace BugReport.Reports
                             beginIssues,
                             endIssues);
                         return new string[] {
-                            GetQueryCountLinked_Multiple(
+                            GetQueryCountLinked(
                                 filteredIssues.Query, 
                                 filteredIssues.End, 
                                 shouldHyperLink, 
@@ -148,7 +148,13 @@ namespace BugReport.Reports
                         beginIssues,
                         endIssues);
                     return new string[] {
-                        $"<b>{GetQueryCountLinked_Multiple(filteredIssues.Query, filteredIssues.End, shouldHyperLink, useRepositoriesFromIssues: false)}</b>",
+                        "<b>" + 
+                            GetQueryCountLinked(
+                                filteredIssues.Query, 
+                                filteredIssues.End, 
+                                shouldHyperLink, 
+                                useRepositoriesFromIssues: false) + 
+                            "</b>",
                         $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
                         $"<i>+{filteredIssues.EndOnly.Count()}</i>",
                         $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
@@ -164,7 +170,13 @@ namespace BugReport.Reports
                         beginIssues,
                         endIssues);
                     return new string[] {
-                        $"<b>{GetQueryCountLinked(filteredIssues.Query, filteredIssues.End, shouldHyperLink, useRepositoriesFromIssues: false)}</b>",
+                        "<b>" +
+                            GetQueryCountLinked(
+                                filteredIssues.Query, 
+                                filteredIssues.End, 
+                                shouldHyperLink, 
+                                useRepositoriesFromIssues: false) +
+                            "</b>",
                         $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
                         $"<i>+{filteredIssues.EndOnly.Count()}</i>",
                         $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
