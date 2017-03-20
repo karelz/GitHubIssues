@@ -19,5 +19,10 @@ namespace BugReport.Util
         {
             return !items.Any();
         }
+
+        public static IEnumerable<T> ToEnumerable<T>(this T value)
+        {
+            yield return value;
+        }
     }
 }

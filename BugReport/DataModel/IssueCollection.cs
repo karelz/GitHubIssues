@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
+using BugReport.Util;
 
 namespace BugReport.DataModel
 {
@@ -87,7 +85,7 @@ namespace BugReport.DataModel
             IDictionary<string, Label> labelAliases, 
             IssueKindFlags issueKind = IssueKindFlags.All)
         {
-            return LoadIssues(new string[] { fileName }, labelAliases, issueKind);
+            return LoadIssues(fileName.ToEnumerable(), labelAliases, issueKind);
         }
 
         public static IEnumerable<DataModelIssue> LoadIssues(

@@ -27,7 +27,7 @@ namespace BugReport.Query
         public IEnumerable<RepoExpression> RepoExpressions
         {
             get => _expressions.Select(entry => new RepoExpression(entry.Key, entry.Value))
-                    .Concat(new RepoExpression[] { new RepoExpression(null, _defaultExpression) });
+                    .Concat(new RepoExpression(null, _defaultExpression).ToEnumerable());
         }
 
         private ExpressionMultiRepo(Dictionary<Repository, Expression> expressions, Expression defaultExpression)
