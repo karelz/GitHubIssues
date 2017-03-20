@@ -9,7 +9,7 @@ using BugReport.Query;
 
 namespace BugReport.Reports
 {
-    public class HtmlReport
+    public class HtmlReport : Report
     {
         private Config _config;
         private IEnumerable<NamedQuery> _areaLabelQueries;
@@ -195,111 +195,9 @@ namespace BugReport.Reports
             }
         }
 
-        private static string GetQueryCountLinked(
-            Expression query, 
-            IEnumerable<DataModelIssue> issues, 
-            bool shouldHyperLink, 
-            bool useRepositoriesFromIssues = true)
-        {
-            int count = issues.Count();
-            if (!shouldHyperLink)
-            {
-                return count.ToString();
-            }
-            string gitHubQueryURL = query.GetGitHubQueryURL();
-            if (gitHubQueryURL != null)
-            {
-                IEnumerable<Repository> repos = useRepositoriesFromIssues ? Repository.GetReposOrDefault(issues) : Repository.Repositories;
-                if (repos.Count() <= 1)
-                {
-                    Repository repo = repos.First();
-                    return $"<a href=\"{repo.GetQueryUrl(gitHubQueryURL)}\">{count}</a>";
-                }
-                else
-                {
-                    return $"{count} <small>(" +
-                        string.Join(" + ", repos.Select(
-                            repo => $"<a href=\"{repo.GetQueryUrl(gitHubQueryURL)}\">{issues.Where(repo).Count()}</a>")) +
-                        ")</small>";
-                }
-            }
-            return count.ToString();
-        }
-
-        private static string GetQueryCountLinked_Multiple(
-            Expression query, 
-            IEnumerable<DataModelIssue> issues, 
-            bool shouldHyperLink, 
-            bool useRepositoriesFromIssues = true)
-        {
-            Expression simplifiedQuery = query.Normalized;
-            string gitHubQueryURL = simplifiedQuery.GetGitHubQueryURL();
-            if (gitHubQueryURL != null)
-            {
-                return GetQueryCountLinked(simplifiedQuery, issues, shouldHyperLink, useRepositoriesFromIssues);
-            }
-
-            int count = issues.Count();
-            if (!shouldHyperLink)
-            {
-                return count.ToString();
-            }
-            if (query is ExpressionAnd)
-            {
-                Expression[] andExpressions = ((ExpressionAnd)query).Expressions.ToArray();
-                if (andExpressions.Length == 2)
-                {
-                    Expression rowQuery = andExpressions[0].Normalized;
-                    Expression colQuery = andExpressions[1];
-
-                    if (rowQuery is ExpressionOr)
-                    {
-                        rowQuery = new ExpressionMultiRepo(new RepoExpression[] { new RepoExpression(null, rowQuery) }).Normalized;
-                    }
-
-                    if ((colQuery.GetGitHubQueryURL() != null) && 
-                        (rowQuery is ExpressionMultiRepo))
-                    {
-                        ExpressionMultiRepo rowMultiRepoQuery = (ExpressionMultiRepo)rowQuery;
-                        IEnumerable<RepoExpression> repoExpressions = 
-                            (useRepositoriesFromIssues ? Repository.GetReposOrDefault(issues) : Repository.Repositories)
-                                .SelectMany(
-                                    repo =>
-                                    {
-                                        Expression expr = rowMultiRepoQuery.GetExpression(repo);
-                                        if (expr is ExpressionOr)
-                                        {
-                                            return ((ExpressionOr)expr).Expressions.Select(e => new RepoExpression(repo, e));
-                                        }
-                                        return new RepoExpression[] { new RepoExpression(repo, expr) };
-                                    });
-
-
-                        if ((repoExpressions.Count() <= 6) && 
-                            repoExpressions.Where(re => (re.Expr.GetGitHubQueryURL() == null)).None())
-                        {
-                            return
-                                $"{count} <small>(" +
-                                string.Join("+", repoExpressions.Select(
-                                    re =>
-                                    {
-                                        Expression subQuery = Expression.And(re.Expr, colQuery);
-                                        int subCount = subQuery.Evaluate(issues.Where(re.Repo)).Count();
-                                        string subQueryURL = subQuery.GetGitHubQueryURL();
-                                        Debug.Assert(subQueryURL != null);
-                                        return $"<a href=\"{re.Repo.GetQueryUrl(subQueryURL)}\">{subCount}</a>";
-                                    })) +
-                                ")</small>";
-                        }
-                    }
-                }
-            }
-            return count.ToString();
-        }
-
         private static void ReportTableRow(StreamWriter file, string prefix, string col1, IEnumerable<string> cols)
         {
-            ReportTableRow(file, prefix, new string[] { col1 }.Concat(cols));
+            ReportTableRow(file, prefix, col1.ToEnumerable().Concat(cols));
         }
         private static void ReportTableRow(StreamWriter file, string prefix, IEnumerable<string> cols)
         {

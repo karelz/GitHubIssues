@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Mail;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using BugReport.Query;
 using BugReport.DataModel;
+using BugReport.Util;
 
 namespace BugReport.Reports
 {
@@ -192,11 +189,15 @@ namespace BugReport.Reports
                         string queryName = queryNode.Attribute("name").Value;
 
                         string queryString = queryNode.Value.ToString();
+                        string repo = queryNode.Attribute("repo")?.Value;
 
                         NamedQuery query;
                         try
                         {
-                            query = new NamedQuery(queryName, queryString, customIsValues);
+                            query = new NamedQuery(
+                                queryName, 
+                                new NamedQuery.RepoQuery(repo, queryString).ToEnumerable(), 
+                                customIsValues);
                         }
                         catch (InvalidQueryException ex)
                         {

@@ -9,7 +9,7 @@ using BugReport.Query;
 
 namespace BugReport.Reports
 {
-    public class QueryReport
+    public class QueryReport : Report
     {
         Config _config;
 
@@ -54,8 +54,8 @@ namespace BugReport.Reports
                     IEnumerable<DataModelIssue> queryIssues = query.Query.Evaluate(issues);
 
                     file.WriteLine($"<h2>Query: {query.Name}</h2>");
-                    file.WriteLine($"<p>{query.Query}</p>");
-                    file.WriteLine($"Count: {queryIssues.Count()}<br/>");
+                    file.WriteLine($"<p>Query: <code>{query.Query}</code></p>");
+                    file.WriteLine($"Count: {GetQueryCountLinked_Multiple(query.Query, queryIssues, shouldHyperLink: true, useRepositoriesFromIssues: true)}<br/>");
                     file.WriteLine(FormatIssueTable(queryIssues.Select(issue => new IssueEntry(issue))));
                 }
 
