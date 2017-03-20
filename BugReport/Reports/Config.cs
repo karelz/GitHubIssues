@@ -83,7 +83,7 @@ namespace BugReport.Reports
             var customIsValues = new Dictionary<string, Expression>() { { "untriaged", UntriagedExpression } };
 
             Alerts = LoadAlerts(customIsValues).ToList();
-            Queries = LoadQueries(customIsValues).ToList();
+            Queries = LoadQueryReports(customIsValues).ToList();
         }
 
         private void LoadUsers()
@@ -178,30 +178,28 @@ namespace BugReport.Reports
             }
         }
 
-        private IEnumerable<NamedQuery> LoadQueries(IReadOnlyDictionary<string, Expression> customIsValues)
+        private IEnumerable<NamedQuery> LoadQueryReports(IReadOnlyDictionary<string, Expression> customIsValues)
         {
             foreach (ConfigFile configFile in _configFiles)
             {
                 foreach (XElement reportNode in configFile.Root.Descendants("report"))
                 {
-                    foreach (XElement queryNode in reportNode.Descendants("query"))
+                    foreach (XElement queryReportNode in reportNode.Descendants("queryReport"))
                     {
-                        string queryName = queryNode.Attribute("name").Value;
-
-                        string queryString = queryNode.Value.ToString();
-                        string repo = queryNode.Attribute("repo")?.Value;
+                        string queryReportName = queryReportNode.Attribute("name").Value;
 
                         NamedQuery query;
                         try
                         {
                             query = new NamedQuery(
-                                queryName, 
-                                new NamedQuery.RepoQuery(repo, queryString).ToEnumerable(), 
+                                queryReportName,
+                                queryReportNode.Descendants("query").Select(q =>
+                                    new NamedQuery.RepoQuery(q.Attribute("repo")?.Value, q.Value)),
                                 customIsValues);
                         }
                         catch (InvalidQueryException ex)
                         {
-                            throw new InvalidDataException($"Invalid query '{queryName}'", ex);
+                            throw new InvalidDataException($"Invalid queryReport '{queryReportName}'", ex);
                         }
                         yield return query;
                     }
