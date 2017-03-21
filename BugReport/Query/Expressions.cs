@@ -471,10 +471,12 @@ namespace BugReport.Query
 
     public class ExpressionLabelPattern : Expression
     {
+        readonly string _labelPattern;
         readonly Regex _labelRegex;
 
         public ExpressionLabelPattern(string labelPattern)
         {
+            _labelPattern = labelPattern;
             _labelRegex = new Regex("^" + labelPattern + "$");
         }
 
@@ -493,12 +495,11 @@ namespace BugReport.Query
 
         public override string ToString()
         {
-            string labelPattern = _labelRegex.ToString();
-            if (labelPattern.Contains(' '))
+            if (_labelPattern.Contains(' '))
             {
-                return $"label:\"{labelPattern}\"";
+                return $"label:\"{_labelPattern}\"";
             }
-            return "label:" + labelPattern;
+            return "label:" + _labelPattern;
         }
 
         public override string GetGitHubQueryURL()
@@ -639,10 +640,12 @@ namespace BugReport.Query
 
     public class ExpressionMilestonePattern : Expression
     {
+        readonly string _milestonePattern;
         readonly Regex _milestoneRegex;
 
         public ExpressionMilestonePattern(string milestonePattern)
         {
+            _milestonePattern = milestonePattern;
             _milestoneRegex = new Regex("^" + milestonePattern + "$");
         }
 
@@ -659,12 +662,11 @@ namespace BugReport.Query
 
         public override string ToString()
         {
-            string milestonePattern = _milestoneRegex.ToString();
-            if (milestonePattern.Contains(' '))
+            if (_milestonePattern.Contains(' '))
             {
-                return $"milestone:\"{milestonePattern}\"";
+                return $"milestone:\"{_milestonePattern}\"";
             }
-            return "milestone:" + milestonePattern;
+            return "milestone:" + _milestonePattern;
         }
 
         public override string GetGitHubQueryURL()
