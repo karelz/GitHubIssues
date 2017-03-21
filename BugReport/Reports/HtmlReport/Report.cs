@@ -103,7 +103,7 @@ namespace BugReport.Reports
                 string queryArgs = query.GetGitHubQueryURL();
                 return new CountLink(
                     (queryArgs != null) ? repo.GetQueryUrl(queryArgs) : null,
-                    $"[{repo.Name}] {query.ToString()}",
+                    $"[{repo.Alias}] {query.ToString()}",
                     query.Evaluate(issues.Where(repo)).Count());
             }
         }

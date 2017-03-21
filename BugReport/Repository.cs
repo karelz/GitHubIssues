@@ -14,6 +14,7 @@ public class Repository
 {
     public string Owner { get; private set; }
     public string Name { get; private set; }
+    public string Alias { get; private set; }
     public Expression FilterQuery { get; private set; }
     // owner/name lowercase
     public string RepoName { get; private set; }
@@ -22,9 +23,10 @@ public class Repository
     public string HtmlUrlPrefix { get; private set; }
     public string AuthenticationToken { get; set; }
 
-    private Repository(string repoName, string filterQuery)
+    private Repository(string repoName, string alias, string filterQuery)
     {
         RepoName = repoName.ToLower();
+        Alias = alias ?? RepoName;
         Debug.Assert(_repositories.Where(repo => (repo.RepoName == RepoName)).None());
 
         string[] repoNameParts = RepoName.Split('/');
@@ -56,6 +58,22 @@ public class Repository
         return issues.Where(i => ((i.Repo != this) || FilterQuery.Evaluate(i)));
     }
 
+    public void UpdateAlias(string alias)
+    {
+        Debug.Assert(alias != null);
+        if (Alias == RepoName)
+        {
+            Alias = alias;
+        }
+        else
+        {
+            if (Alias != alias)
+            {
+                throw new InvalidDataException($"Repository '{RepoName}' has 2 aliases defined '{Alias}' and '{alias}'");
+            }
+        }
+    }
+
     // TODO - Move to config
     private static readonly string s_GitHubProductIdentifier = "GitHubBugReporter";
 
@@ -84,13 +102,20 @@ public class Repository
         return _repositories.Where(repo => repo.IsRepoName(repoName)).FirstOrDefault();
     }
 
-    public static Repository From(string repoName, string filterQuery = null)
+    public static Repository From(string repoName, string alias = null, string filterQuery = null)
     {
         Repository repo = FindRepo(repoName);
         if (repo == null)
         {
-            repo = new Repository(repoName, filterQuery);
+            repo = new Repository(repoName, alias, filterQuery);
             Debug.Assert(FindRepo(repoName) == repo);
+        }
+        else
+        {
+            if (alias != null)
+            {
+                repo.UpdateAlias(alias);
+            }
         }
         return repo;
     }
@@ -106,7 +131,7 @@ public class Repository
         {
             throw new InvalidDataException($"Invalid GitHub URL '{htmlUrl}', can't parse repo name");
         }
-        return From(urlSplit[0] + "/" + urlSplit[1], null);
+        return From(urlSplit[0] + "/" + urlSplit[1]);
     }
 
     // Returns repos in order of their definition, or the first one as default

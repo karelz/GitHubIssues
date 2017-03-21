@@ -239,7 +239,8 @@ namespace BugReport.Reports
                 {
                     string repoName = repoNode.Attribute("name").Value;
                     string filterQuery = repoNode.Descendants("filterQuery").FirstOrDefault()?.Value;
-                    yield return Repository.From(repoName, filterQuery);
+                    string alias = repoNode.Attribute("alias")?.Value;
+                    yield return Repository.From(repoName, alias, filterQuery);
                 }
             }
         }
