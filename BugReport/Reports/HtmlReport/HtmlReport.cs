@@ -122,94 +122,89 @@ namespace BugReport.Reports
             }
         }
 
+        private class Row : NamedQuery
+        {
+            public FilteredIssues[] Columns { get; private set; }
+
+            public Row(
+                NamedQuery namedQuery,
+                IEnumerable<NamedQuery> columns,
+                IEnumerable<DataModelIssue> beginIssues,
+                IEnumerable<DataModelIssue> endIssues)
+                : base(namedQuery.Name, namedQuery.Query)
+            {
+                InitializeColumns(columns, beginIssues, endIssues);
+            }
+
+            public Row(
+                string name, 
+                Expression query, 
+                IEnumerable<NamedQuery> columns, 
+                IEnumerable<DataModelIssue> beginIssues, 
+                IEnumerable<DataModelIssue> endIssues)
+                : base(name, query)
+            {
+                InitializeColumns(columns, beginIssues, endIssues);
+            }
+
+            private void InitializeColumns(
+                IEnumerable<NamedQuery> columns,
+                IEnumerable<DataModelIssue> beginIssues,
+                IEnumerable<DataModelIssue> endIssues)
+            {
+                Columns = columns.Select(col => new FilteredIssues(
+                    Expression.And(Query, col.Query),
+                    beginIssues,
+                    endIssues)).ToArray();
+            }
+        }
+
         public void Report(
             StreamWriter file,
             IEnumerable<DataModelIssue> beginIssues,
             IEnumerable<DataModelIssue> endIssues,
             IEnumerable<NamedQuery> columns,
-            IEnumerable<NamedQuery> rows,
+            IEnumerable<NamedQuery> rowQueries,
             bool shouldHyperLink = true)
         {
-            file.WriteLine("<table border=\"1\">");
-            file.WriteLine("<tr>");
-            ReportTableRow(file, "  ", 
-                "&nbsp;", 
-                columns.SelectMany(col => new string[] {
-                    $"<b title=\"{col.Query.Normalized.ToString()}\">{col.Name}</b>",
-                    "<i>(diff)</i>",
-                    "<i>(new)</i>",
-                    "<i>(gone)</i>" } ));
-            file.WriteLine("</tr>");
-
-            foreach (NamedQuery row in rows)
+            // Heading row
             {
-                file.WriteLine("<tr>");
+                file.WriteLine("<table border=\"1\">");
                 ReportTableRow(file, "  ",
-                    $"<b title=\"{row.Query.Normalized.ToString()}\">{row.Name}</b>",
-                    columns.SelectMany(col =>
-                    {
-                        FilteredIssues filteredIssues = new FilteredIssues(
-                            Expression.And(row.Query, col.Query),
-                            beginIssues,
-                            endIssues);
-                        return new string[] {
-                            GetQueryCountLinked(
-                                filteredIssues.Query, 
-                                filteredIssues.End, 
-                                shouldHyperLink, 
-                                useRepositoriesFromIssues: true),
-                            $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
-                            $"<i>+{filteredIssues.EndOnly.Count()}</i>",
-                            $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
-                    }));
-                file.WriteLine("</tr>");
+                    "&nbsp;",
+                    columns.SelectMany(col => new string[] {
+                        $"<b title=\"{col.Query.Normalized.ToString()}\">{col.Name}</b>",
+                        "<i>(diff)</i>",
+                        "<i>(new)</i>",
+                        "<i>(gone)</i>" }));
             }
 
-            Expression noRowQuery = Expression.And(rows.Select(row => Expression.Not(row.Query)).ToArray());
-            file.WriteLine("<tr>");
-            ReportTableRow(file, "  ",
-                "<b>Other (missing above)</b>",
-                columns.SelectMany(col =>
+            // All "middle" rows
+            {
+                List<Row> rows = rowQueries.Select(row =>
+                    new Row(row.Name, row.Query, columns, beginIssues, endIssues)).ToList();
+
+                foreach (Row row in rows)
                 {
-                    FilteredIssues filteredIssues = new FilteredIssues(
-                        Expression.And(noRowQuery, col.Query),
-                        beginIssues,
-                        endIssues);
-                    return new string[] {
-                        "<b>" + 
-                            GetQueryCountLinked(
-                                filteredIssues.Query, 
-                                filteredIssues.End, 
-                                shouldHyperLink, 
-                                useRepositoriesFromIssues: false) + 
-                            "</b>",
-                        $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
-                        $"<i>+{filteredIssues.EndOnly.Count()}</i>",
-                        $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
-                }));
-            file.WriteLine("</tr>");
-            file.WriteLine("<tr>");
-            ReportTableRow(file, "  ", 
-                "<b>Total</b>", 
-                columns.SelectMany(col =>
-                {
-                    FilteredIssues filteredIssues = new FilteredIssues(
-                        col.Query,
-                        beginIssues,
-                        endIssues);
-                    return new string[] {
-                        "<b>" +
-                            GetQueryCountLinked(
-                                filteredIssues.Query, 
-                                filteredIssues.End, 
-                                shouldHyperLink, 
-                                useRepositoriesFromIssues: false) +
-                            "</b>",
-                        $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
-                        $"<i>+{filteredIssues.EndOnly.Count()}</i>",
-                        $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
-                }));
-            file.WriteLine("</tr>");
+                    ReportTableRow(file, "  ", row, shouldHyperLink, useRepositoriesFromIssues: true, makeCountBold: false);
+                }
+            }
+
+            // "Other (missing above)" row
+            {
+                Expression otherRowQuery = Expression.And(rowQueries.Select(row => Expression.Not(row.Query)).ToArray());
+                Row otherRow = new Row("Other (missing above)", otherRowQuery, columns, beginIssues, endIssues);
+
+                ReportTableRow(file, "  ", otherRow, shouldHyperLink, useRepositoriesFromIssues: false, makeCountBold: true);
+            }
+
+            // "Total" row
+            {
+                Row totalRow = new Row("Total", ExpressionConstant.True, columns, beginIssues, endIssues);
+
+                ReportTableRow(file, "  ", totalRow, shouldHyperLink, useRepositoriesFromIssues: false, makeCountBold: true);
+            }
+
             file.WriteLine("</table>");
         }
 
@@ -235,16 +230,44 @@ namespace BugReport.Reports
             }
         }
 
+        private static void ReportTableRow(
+            StreamWriter file,
+            string prefix,
+            Row row,
+            bool shouldHyperLink,
+            bool useRepositoriesFromIssues = true,
+            bool makeCountBold = true)
+        {
+            ReportTableRow(file,
+                "  ",
+                $"<b title=\"{row.Query.Normalized.ToString()}\">{row.Name}</b>",
+                row.Columns.SelectMany(filteredIssues =>
+                {
+                    string count = GetQueryCountLinked(
+                        filteredIssues.Query,
+                        filteredIssues.End,
+                        shouldHyperLink,
+                        useRepositoriesFromIssues);
+                    return new string[] {
+                        makeCountBold ? $"<b>{count}</b>" : count,
+                        $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
+                        $"<i>+{filteredIssues.EndOnly.Count()}</i>",
+                        $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
+                }));
+        }
+
         private static void ReportTableRow(StreamWriter file, string prefix, string col1, IEnumerable<string> cols)
         {
             ReportTableRow(file, prefix, col1.ToEnumerable().Concat(cols));
         }
         private static void ReportTableRow(StreamWriter file, string prefix, IEnumerable<string> cols)
         {
+            file.WriteLine("<tr>");
             foreach (string col in cols)
             {
                 file.WriteLine($"{prefix}<td>{col}</td>");
             }
+            file.WriteLine("</tr>");
         }
     }
 }
