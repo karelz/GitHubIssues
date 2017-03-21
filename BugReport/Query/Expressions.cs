@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using BugReport.DataModel;
 using BugReport.Util;
 
@@ -442,7 +440,7 @@ namespace BugReport.Query
         {
             if (!collection.HasLabel(_labelName))
             {
-                Console.WriteLine("WARNING: Label does not exist: {0}", _labelName);
+                Console.WriteLine($"WARNING: Label does not exist: {_labelName}");
             }
         }
 
@@ -458,6 +456,54 @@ namespace BugReport.Query
                 return $"label:\"{_labelName}\"";
             }
             return "label:" + _labelName;
+        }
+
+        internal override bool IsNormalized(NormalizedState minAllowedState)
+        {
+            return true;
+        }
+
+        public override Expression Normalized
+        {
+            get => this;
+        }
+    }
+
+    public class ExpressionLabelPattern : Expression
+    {
+        readonly Regex _labelRegex;
+
+        public ExpressionLabelPattern(string labelPattern)
+        {
+            _labelRegex = new Regex("^" + labelPattern + "$");
+        }
+
+        public override bool Evaluate(DataModelIssue issue)
+        {
+            return issue.Labels.Where(label => _labelRegex.IsMatch(label.Name)).Any();
+        }
+
+        public override void Validate(IssueCollection collection)
+        {
+            if (collection.Labels.Where(label => _labelRegex.IsMatch(label.Name)).None())
+            {
+                Console.WriteLine($"WARNING: Label pattern does not match any label: {_labelRegex.ToString()}");
+            }
+        }
+
+        public override string ToString()
+        {
+            string labelPattern = _labelRegex.ToString();
+            if (labelPattern.Contains(' '))
+            {
+                return $"label:\"{labelPattern}\"";
+            }
+            return "label:" + labelPattern;
+        }
+
+        public override string GetGitHubQueryURL()
+        {
+            return null;
         }
 
         internal override bool IsNormalized(NormalizedState minAllowedState)
@@ -566,7 +612,7 @@ namespace BugReport.Query
         {
             if (!collection.HasMilestone(_milestoneName))
             {
-                Console.WriteLine("WARNING: Milestone does not exist: {0}", _milestoneName);
+                Console.WriteLine($"WARNING: Milestone does not exist: {_milestoneName}");
             }
         }
 
@@ -578,6 +624,52 @@ namespace BugReport.Query
         public override string GetGitHubQueryURL()
         {
             return "milestone:" + _milestoneName;
+        }
+
+        internal override bool IsNormalized(NormalizedState minAllowedState)
+        {
+            return true;
+        }
+
+        public override Expression Normalized
+        {
+            get => this;
+        }
+    }
+
+    public class ExpressionMilestonePattern : Expression
+    {
+        readonly Regex _milestoneRegex;
+
+        public ExpressionMilestonePattern(string milestonePattern)
+        {
+            _milestoneRegex = new Regex("^" + milestonePattern + "$");
+        }
+
+        public override bool Evaluate(DataModelIssue issue)
+        {
+            return ((issue.Milestone != null) && 
+                _milestoneRegex.IsMatch(issue.Milestone.Title));
+        }
+
+        public override void Validate(IssueCollection collection)
+        {
+            // TODO: We could enumerate all Milestones on collection - very low pri
+        }
+
+        public override string ToString()
+        {
+            string milestonePattern = _milestoneRegex.ToString();
+            if (milestonePattern.Contains(' '))
+            {
+                return $"milestone:\"{milestonePattern}\"";
+            }
+            return "milestone:" + milestonePattern;
+        }
+
+        public override string GetGitHubQueryURL()
+        {
+            return null;
         }
 
         internal override bool IsNormalized(NormalizedState minAllowedState)
@@ -609,7 +701,7 @@ namespace BugReport.Query
         {
             if (!collection.HasUser(_assigneeName))
             {
-                Console.WriteLine("WARNING: Assignee does not exist: {0}", _assigneeName);
+                Console.WriteLine($"WARNING: Assignee does not exist: {_assigneeName}");
             }
         }
 

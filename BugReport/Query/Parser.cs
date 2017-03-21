@@ -152,15 +152,36 @@ namespace BugReport.Query
                 Expression expr;
                 if (token.IsKeyValuePair("label"))
                 {
-                    expr = new ExpressionLabel(token.Word2);
+                    if (IsRegex(token.Word2))
+                    {
+                        expr = new ExpressionLabelPattern(token.Word2);
+                    }
+                    else
+                    {
+                        expr = new ExpressionLabel(token.Word2);
+                    }
                 }
                 else if (token.IsKeyValuePair("-label"))
                 {
-                    expr = new ExpressionNot(new ExpressionLabel(token.Word2));
+                    if (IsRegex(token.Word2))
+                    {
+                        expr = new ExpressionNot(new ExpressionLabelPattern(token.Word2));
+                    }
+                    else
+                    {
+                        expr = new ExpressionNot(new ExpressionLabel(token.Word2));
+                    }
                 }
                 else if (token.IsKeyValuePair("milestone"))
                 {
-                    expr = new ExpressionMilestone(token.Word2);
+                    if (IsRegex(token.Word2))
+                    {
+                        expr = new ExpressionMilestonePattern(token.Word2);
+                    }
+                    else
+                    {
+                        expr = new ExpressionMilestone(token.Word2);
+                    }
                 }
                 else if (token.IsKeyValuePair("is"))
                 {
@@ -233,6 +254,11 @@ namespace BugReport.Query
             }
 
             throw new InvalidQueryException("Unexpected expression -- expected ! or ( or key-value pair", _queryString, token.Position);
+        }
+
+        public static bool IsRegex(string value)
+        {
+            return (value.Contains(".*") || value.Contains(".."));
         }
 
         public void Close()
