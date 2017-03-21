@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
 using BugReport.Util;
+using BugReport.Reports;
 
 namespace BugReport.DataModel
 {
@@ -82,15 +83,15 @@ namespace BugReport.DataModel
 
         public static IEnumerable<DataModelIssue> LoadIssues(
             string fileName, 
-            IDictionary<string, Label> labelAliases, 
+            Config config,
             IssueKindFlags issueKind = IssueKindFlags.All)
         {
-            return LoadIssues(fileName.ToEnumerable(), labelAliases, issueKind);
+            return LoadIssues(fileName.ToEnumerable(), config, issueKind);
         }
 
         public static IEnumerable<DataModelIssue> LoadIssues(
-            IEnumerable<string> fileNames, 
-            IDictionary<string, Label> labelAliases, 
+            IEnumerable<string> fileNames,
+            Config config,
             IssueKindFlags issueKind = IssueKindFlags.All)
         {
             IEnumerable<DataModelIssue> issues = new DataModelIssue[] {};
@@ -104,10 +105,11 @@ namespace BugReport.DataModel
                                                         .Where(i => i.IsIssueKind(issueKind)));
                 }
             }
-            // Process label aliases before repo filtering - its query might rely on the label aliases
+            // Process label/milestone aliases before repo filtering - its query might rely on the aliases
             foreach (DataModelIssue issue in issues)
             {
-                issue.Labels = TransformLabelAliases(issue.Labels, labelAliases).ToArray();
+                issue.Labels = ApplyLabelAliases(issue.Labels, config.LabelAliases).ToArray();
+                ApplyMilestoneAliases(issue.Milestone, config.MilestoneAliases);
             }
             // Process repo filters after label aliases, the filter query might depend on them
             foreach (Repository repo in Repository.Repositories)
@@ -117,7 +119,7 @@ namespace BugReport.DataModel
             return issues.ToArray();
         }
 
-        private static IEnumerable<Label> TransformLabelAliases(
+        private static IEnumerable<Label> ApplyLabelAliases(
             IEnumerable<Label> labels, 
             IDictionary<string, Label> labelAliases)
         {
@@ -131,6 +133,17 @@ namespace BugReport.DataModel
                 {
                     yield return label;
                 }
+            }
+        }
+
+        private static void ApplyMilestoneAliases(
+            Milestone milestone,
+            IDictionary<string, string> milestoneAliases)
+        {
+            if ((milestone != null) && 
+                milestoneAliases.TryGetValue(milestone.Title, out string newMilestoneTitle))
+            {
+                milestone.Title = newMilestoneTitle;
             }
         }
     }

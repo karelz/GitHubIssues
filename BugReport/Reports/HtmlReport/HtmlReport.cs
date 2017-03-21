@@ -25,8 +25,8 @@ namespace BugReport.Reports
 
         public void Write(IEnumerable<string> beginFiles, IEnumerable<string> endFiles, string outputHtmlFile)
         {
-            IEnumerable<DataModelIssue> beginIssuesAll = IssueCollection.LoadIssues(beginFiles, _config.LabelAliases);
-            IEnumerable<DataModelIssue> endIssuesAll = IssueCollection.LoadIssues(endFiles, _config.LabelAliases);
+            IEnumerable<DataModelIssue> beginIssuesAll = IssueCollection.LoadIssues(beginFiles, _config);
+            IEnumerable<DataModelIssue> endIssuesAll = IssueCollection.LoadIssues(endFiles, _config);
 
             IEnumerable<DataModelIssue> beginIssues = beginIssuesAll.Where(i => i.IsIssueOrComment).ToArray();
             IEnumerable<DataModelIssue> endIssues = endIssuesAll.Where(i => i.IsIssueOrComment).ToArray();
