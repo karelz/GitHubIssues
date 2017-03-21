@@ -60,6 +60,32 @@ namespace BugReport.Reports
                     _config.Alerts.OrderByDescending(alert => 
                         Expression.And(alert.Query, firstQuery.Query).Evaluate(endIssues).Count()));
 
+                file.WriteLine("<h2>Teams</h2>");
+                Report(file,
+                    beginIssues,
+                    endIssues,
+                    _config.Queries,
+                    _config.Teams.Select(
+                        team =>
+                        new NamedQuery(
+                            team.Name,
+                            Expression.Or(
+                                _config.Alerts.Where(alert => alert.Team == team)
+                                    .Select(alert => alert.Query)))));
+
+                file.WriteLine("<h2>Organizations</h2>");
+                Report(file,
+                    beginIssues,
+                    endIssues,
+                    _config.Queries,
+                    _config.Organizations.Select(
+                        org =>
+                        new NamedQuery(
+                            org.Description,
+                            Expression.Or(
+                                _config.Alerts.Where(alert => alert.IsOrganization(org))
+                                    .Select(alert => alert.Query)))));
+
                 file.WriteLine("<h2>Alerts - sorted alphabetically</h2>");
                 Report(file, 
                     beginIssues, 
@@ -74,6 +100,7 @@ namespace BugReport.Reports
                     _config.Queries, 
                     _areaLabelQueries.OrderBy(labelQuery => labelQuery.Name));
 
+                /*
                 file.WriteLine("<h2>Alerts - sorted alphabetically (no links)</h2>");
                 Report(file, 
                     beginIssues, 
@@ -89,6 +116,7 @@ namespace BugReport.Reports
                     _config.Queries, 
                     _areaLabelQueries.OrderBy(labelQuery => labelQuery.Name),
                     shouldHyperLink: false);
+                */
 
                 file.WriteLine("</body></html>");
             }

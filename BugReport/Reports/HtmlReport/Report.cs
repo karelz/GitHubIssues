@@ -76,20 +76,22 @@ namespace BugReport.Reports
         private class CountLink
         {
             private string Link { get; set; }
+            private string Expression { get; set; }
             public int Count { get; private set; }
 
             public override string ToString()
             {
                 if (Link != null)
                 {
-                    return $"<a href=\"{Link}\">{Count}</a>";
+                    return $"<a href=\"{Link}\" title=\"{Expression}\">{Count}</a>";
                 }
-                return Count.ToString();
+                return $"<span title=\"{Expression}\">{Count}</span>";
             }
 
-            public CountLink(string link, int count)
+            public CountLink(string link, string expression, int count)
             {
                 Link = link;
+                Expression = expression;
                 Count = count;
             }
 
@@ -101,6 +103,7 @@ namespace BugReport.Reports
                 string queryArgs = query.GetGitHubQueryURL();
                 return new CountLink(
                     (queryArgs != null) ? repo.GetQueryUrl(queryArgs) : null,
+                    $"[{repo.Name}] {query.ToString()}",
                     query.Evaluate(issues.Where(repo)).Count());
             }
         }

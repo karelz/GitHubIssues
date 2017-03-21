@@ -13,14 +13,22 @@ namespace BugReport.Reports
     {
         public string Name { get; private set; }
         public Expression Query { get; private set; }
+        public Team Team { get; private set; }
+
+        public bool IsOrganization(Organization organization)
+        {
+            return (Team != null) && (Team.Organization == organization);
+        }
 
         // customIsValues - customization of is:* (e.g. is:untriaged) syntax in queries
         public NamedQuery(
             string name, 
             IEnumerable<RepoQuery> queries, 
+            Team team, 
             IReadOnlyDictionary<string, Expression> customIsValues)
         {
             Name = name;
+            Team = team;
 
             int count = queries.Count();
             if (count == 0)
@@ -86,13 +94,38 @@ namespace BugReport.Reports
         public Alert(
             string name, 
             IEnumerable<RepoQuery> queries, 
+            Team team, 
             IReadOnlyDictionary<string, Expression> customIsValues, 
             IEnumerable<User> owners, 
             IEnumerable<User> ccList) 
-            : base(name, queries, customIsValues)
+            : base(name, queries, team, customIsValues)
         {
             Owners = owners;
             CCs = ccList;
+        }
+    }
+
+    public class Organization
+    {
+        public string Name { get; private set; }
+        public string Description { get; private set; }
+
+        public Organization(string name, string description)
+        {
+            Name = name;
+            Description = description;
+        }
+    }
+
+    public class Team
+    {
+        public string Name { get; private set; }
+        public Organization Organization { get; private set; }
+
+        public Team(string name, Organization organization)
+        {
+            Name = name;
+            Organization = organization;
         }
     }
 }
