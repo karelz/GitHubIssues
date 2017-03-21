@@ -281,7 +281,7 @@ namespace BugReport.Query
                     // (A || B) && (C || D) && Z ---> (A && C && Z) || (A && D && Z) || (B && C && Z) || (B && D && Z)
                     foreach (IEnumerable<Expression> orSubExpressionsAndPermutation in GeneratePermutations(orSubExpressions))
                     {
-                        orExpressions.Add(Expression.And(orSubExpressionsAndPermutation.Concat(nonOrSubExpressions)));
+                        orExpressions.Add(Expression.And(orSubExpressionsAndPermutation.Concat(nonOrSubExpressions)).Normalized);
                     }
                     Expression orExpression = Expression.Or(orExpressions);
                     Debug.Assert(orExpression.IsNormalized());
