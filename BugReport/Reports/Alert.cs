@@ -27,17 +27,12 @@ namespace BugReport.Reports
             {
                 throw new InvalidDataException("Expected at least 1 query");
             }
-            if ((count == 1) && (queries.First().Repo == null))
-            {
-                Query = QueryParser.Parse(queries.First().Query, customIsValues);
-            }
-            else
-            {
-                Query = new ExpressionMultiRepo(queries.Select(q =>
+            
+            Query = new ExpressionMultiRepo(queries.SelectMany(q =>
+                q.Repos.Select(repo => 
                     new RepoExpression(
-                        (q.Repo != null) ? Repository.From(q.Repo) : null,
-                        QueryParser.Parse(q.Query, customIsValues))));
-            }
+                        (repo != null) ? Repository.From(repo) : null,
+                        QueryParser.Parse(q.Query, customIsValues)))));
         }
 
         public NamedQuery(string name, Expression query)
@@ -48,13 +43,20 @@ namespace BugReport.Reports
 
         public struct RepoQuery
         {
-            public string Repo { get; private set; }
+            public IEnumerable<string> Repos { get; private set; }
             public string Query { get; private set; }
 
-            public RepoQuery(string repo, string query)
+            public RepoQuery(string repos, string query)
             {
-                Repo = repo;
                 Query = query;
+                if ((repos == null) || (repos == "*") || (repos == ""))
+                {
+                    Repos = new string[] { null };
+                }
+                else
+                {
+                    Repos = repos.Split(';');
+                }
             }
         }
     }
