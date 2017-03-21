@@ -161,6 +161,7 @@ namespace BugReport.Query
                     (c == '-') ||
                     (c == '_') ||
                     (c == '.') ||
+                    (c == '*') ||
                     (c == '/'));
         }
 
