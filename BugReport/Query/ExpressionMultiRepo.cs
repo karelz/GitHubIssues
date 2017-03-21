@@ -61,11 +61,11 @@ namespace BugReport.Query
             }
             if (_defaultExpression == null)
             {
-                _defaultExpression = _filteredOutRepoExpression;
+                _defaultExpression = FilteredOutRepoExpression;
             }
         }
 
-        private static readonly ExpressionFilteredOutRepo _filteredOutRepoExpression = new ExpressionFilteredOutRepo();
+        private static readonly ExpressionConstant FilteredOutRepoExpression = ExpressionConstant.False;
 
         public Expression GetExpression(Repository repo)
         {
@@ -86,11 +86,26 @@ namespace BugReport.Query
             return GetExpression(issue.Repo).Evaluate(issue);
         }
 
+        private static readonly string RepoQuerySeparator = "\r\n";
         public override string ToString()
         {
-            return "{ " + string.Join(" / ", _expressions.Select(entry => $"[{entry.Key.RepoName}: {entry.Value}]")) + 
-                (_expressions.Any() ? " / " : "") +
-                $"[default: {_defaultExpression}] }}";
+            if (!_expressions.Any())
+            {
+                return $"{{ {_defaultExpression} }}";
+            }
+
+            string text = "{ ";
+            text += string.Join(RepoQuerySeparator, _expressions.Select(entry => $"[{entry.Key.Alias}] {entry.Value}"));
+            if (_defaultExpression != FilteredOutRepoExpression)
+            {
+                if (_expressions.Any())
+                {
+                    text += RepoQuerySeparator;
+                }
+                text += $"[default] {_defaultExpression}";
+            }
+            text += " }";
+            return text;
         }
 
         public override string GetGitHubQueryURL()
@@ -148,43 +163,6 @@ namespace BugReport.Query
                     normalizedDefaultExpression);
                 Debug.Assert(newMultiRepoExpression.IsNormalized());
                 return newMultiRepoExpression;
-            }
-        }
-
-        // Represents 'false' expression - the repo has been filtered out by not having any applicable query
-        public class ExpressionFilteredOutRepo : Expression
-        {
-            public ExpressionFilteredOutRepo()
-            {
-            }
-
-            public override bool Evaluate(DataModelIssue issue)
-            {
-                return false;
-            }
-
-            public override void Validate(IssueCollection collection)
-            {
-            }
-
-            public override string ToString()
-            {
-                return "false";
-            }
-
-            public override string GetGitHubQueryURL()
-            {
-                return null;
-            }
-
-            internal override bool IsNormalized(NormalizedState minAllowedState)
-            {
-                return true;
-            }
-
-            public override Expression Normalized
-            {
-                get => this;
             }
         }
     }

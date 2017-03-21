@@ -64,7 +64,7 @@ namespace BugReport.Reports
                     yield return CountLink.Create(expr, issues, repo);
                 }
             }
-            else if (query is ExpressionMultiRepo.ExpressionFilteredOutRepo)
+            else if (query == ExpressionConstant.False)
             {   // Filter out repo entirely
             }
             else

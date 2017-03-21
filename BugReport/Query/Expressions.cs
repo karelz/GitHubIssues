@@ -114,7 +114,7 @@ namespace BugReport.Query
             {
                 return "-" + _expr.GetGitHubQueryURL();
             }
-            if (_expr is ExpressionMultiRepo.ExpressionFilteredOutRepo)
+            if (_expr == ExpressionConstant.False)
             {
                 return "";
             }
@@ -148,6 +148,11 @@ namespace BugReport.Query
                 {
                     return new ExpressionMultiRepo(((ExpressionMultiRepo)normalizedExpr).RepoExpressions.Select(repoExpr =>
                         new RepoExpression(repoExpr.Repo, Expression.Not(repoExpr.Expr).Normalized)));
+                }
+                if (_expr is ExpressionConstant)
+                {
+                    Debug.Assert((_expr == ExpressionConstant.True) || (_expr == ExpressionConstant.False));
+                    return (_expr == ExpressionConstant.True) ? ExpressionConstant.False : ExpressionConstant.True;
                 }
                 return Expression.Not(normalizedExpr);
             }
@@ -227,6 +232,9 @@ namespace BugReport.Query
                             normalizedExpressionsQueue.Enqueue(expr2);
                         }
                     }
+                    else if (normalizedExpression == ExpressionConstant.True)
+                    {   // Skip TRUE in AND list
+                    }
                     else
                     {
                         andExpressions.Add(normalizedExpression);
@@ -286,8 +294,13 @@ namespace BugReport.Query
                     return orExpression;
                 }
 
+                if (andExpressions.Contains(ExpressionConstant.False))
+                {   // Simplify
+                    return ExpressionConstant.False;
+                }
+
                 // AND is on the top
-                Expression andExpression = Expression.And(andExpressions);
+                Expression andExpression = Expression.And(andExpressions.Distinct());
                 Debug.Assert(andExpression.IsNormalized());
                 return andExpression;
             }
@@ -387,6 +400,9 @@ namespace BugReport.Query
                             normalizedExpressionsQueue.Enqueue(expr2);
                         }
                     }
+                    else if (normalizedExpression == ExpressionConstant.False)
+                    {   // Skip FALSE in OR list
+                    }
                     else
                     {
                         orExpressions.Add(normalizedExpression);
@@ -398,7 +414,12 @@ namespace BugReport.Query
                     .Select(e => (ExpressionMultiRepo)e);
                 if (multiRepoExpressions.None())
                 {
-                    Expression orExpr = Expression.Or(orExpressions);
+                    if (orExpressions.Contains(ExpressionConstant.True))
+                    {
+                        return ExpressionConstant.True;
+                    }
+
+                    Expression orExpr = Expression.Or(orExpressions.Distinct());
                     Debug.Assert(orExpr.IsNormalized());
                     return orExpr;
                 }
@@ -624,6 +645,10 @@ namespace BugReport.Query
 
         public override string GetGitHubQueryURL()
         {
+            if (_milestoneName == null)
+            {
+                return "no:milestone";
+            }
             return "milestone:" + _milestoneName;
         }
 
@@ -715,6 +740,48 @@ namespace BugReport.Query
         public override string GetGitHubQueryURL()
         {
             return "assginee:" + _assigneeName;
+        }
+
+        internal override bool IsNormalized(NormalizedState minAllowedState)
+        {
+            return true;
+        }
+
+        public override Expression Normalized
+        {
+            get => this;
+        }
+    }
+
+    public class ExpressionConstant : Expression
+    {
+        readonly bool _value;
+
+        public static readonly ExpressionConstant True = new ExpressionConstant(true);
+        public static readonly ExpressionConstant False = new ExpressionConstant(false);
+
+        private ExpressionConstant(bool value)
+        {
+            _value = value;
+        }
+
+        public override bool Evaluate(DataModelIssue issue)
+        {
+            return _value;
+        }
+
+        public override void Validate(IssueCollection collection)
+        {
+        }
+
+        public override string ToString()
+        {
+            return _value.ToString();
+        }
+
+        public override string GetGitHubQueryURL()
+        {
+            return null;
         }
 
         internal override bool IsNormalized(NormalizedState minAllowedState)
