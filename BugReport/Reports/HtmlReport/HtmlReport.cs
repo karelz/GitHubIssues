@@ -18,8 +18,8 @@ namespace BugReport.Reports
         {
             _config = new Config(configFiles);
 
-            _areaLabelQueries = _config.AreaLabels
-                .Select(label => new NamedQuery(label.Name, new ExpressionLabel(label.Name)))
+            _areaLabelQueries = _config.AreaLabels.Select(label => label.Name).Distinct()
+                .Select(labelName => new NamedQuery(labelName, new ExpressionLabel(labelName)))
                 .ToList();
         }
 
@@ -88,7 +88,7 @@ namespace BugReport.Reports
                                     .Select(alert => alert.Query)))),
                     SortRows_ByFirstColumn);
 
-                file.WriteLine("<h2>Alerts alphabetically</h2>");
+                file.WriteLine("<h2>Alerts - alphabetically</h2>");
                 Report(file, 
                     beginIssues, 
                     endIssues, 
@@ -96,7 +96,7 @@ namespace BugReport.Reports
                     _config.Alerts,
                     SortRows_ByName);
 
-                file.WriteLine("<h2>Areas - sorted alphabetically</h2>");
+                file.WriteLine("<h2>Areas - alphabetically</h2>");
                 Report(file, 
                     beginIssues, 
                     endIssues, 
