@@ -43,10 +43,11 @@ namespace BugReport.Reports
                         QueryParser.Parse(q.Query, customIsValues)))));
         }
 
-        public NamedQuery(string name, Expression query)
+        public NamedQuery(string name, Expression query, Team team = null)
         {
             Name = name;
             Query = query;
+            Team = team;
         }
 
         public struct RepoQuery
