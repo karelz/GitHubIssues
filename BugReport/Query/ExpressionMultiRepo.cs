@@ -89,7 +89,8 @@ namespace BugReport.Query
         public override string ToString()
         {
             return "{ " + string.Join(" / ", _expressions.Select(entry => $"[{entry.Key.RepoName}: {entry.Value}]")) + 
-                $" / [default: {_defaultExpression}] }}";
+                (_expressions.Any() ? " / " : "") +
+                $"[default: {_defaultExpression}] }}";
         }
 
         public override string GetGitHubQueryURL()
