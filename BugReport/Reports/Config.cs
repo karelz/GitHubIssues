@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using BugReport.Query;
 using BugReport.DataModel;
-using BugReport.Util;
 
 namespace BugReport.Reports
 {
@@ -25,6 +25,9 @@ namespace BugReport.Reports
         public IDictionary<string, string> MilestoneAliases { get; private set; }
 
         public IEnumerable<Repository> Repositories { get; private set; }
+
+        public IEnumerable<Team> Teams { get; private set; }
+        public IEnumerable<Organization> Organizations { get; private set; }
 
         private class ConfigFile
         {
@@ -78,6 +81,9 @@ namespace BugReport.Reports
             LabelAliases = LoadLabelAliases();
             MilestoneAliases = LoadMilestoneAliases();
 
+            Organizations = LoadOrganizations();
+            Teams = LoadTeams();
+
             UntriagedExpression = new ExpressionUntriaged(
                 IssueTypeLabels,
                 AreaLabels,
@@ -113,20 +119,20 @@ namespace BugReport.Reports
 
                         if (!gitHubLogin.StartsWith("@"))
                         {
-                            throw new InvalidDataException("GitHub login expected to start with @: " + gitHubLogin);
+                            throw new InvalidDataException($"GitHub login expected to start with @ '{gitHubLogin}'");
                         }
                         if (emailAlias.StartsWith("@"))
                         {
-                            throw new InvalidDataException("Alias cannot start with @: " + emailAlias);
+                            throw new InvalidDataException($"Alias cannot start with @ '{emailAlias}'");
                         }
 
                         if (FindUser(gitHubLogin) != null)
                         {
-                            throw new InvalidDataException("Duplicate user defined with GitHub login: " + gitHubLogin);
+                            throw new InvalidDataException($"Duplicate user defined with GitHub login '{gitHubLogin}'");
                         }
                         if (FindUser(emailAlias) != null)
                         {
-                            throw new InvalidDataException("Duplicate user defined with alias: " + emailAlias);
+                            throw new InvalidDataException($"Duplicate user defined with alias '{emailAlias}'");
                         }
 
                         string email;
@@ -180,13 +186,14 @@ namespace BugReport.Reports
                                 alertName,
                                 alertNode.Descendants("query").Select(q =>
                                     new NamedQuery.RepoQuery(GetInheritedAttributeValue(q, "repo"), q.Value)),
+                                FindTeam(alertNode.Attribute("team")?.Value),
                                 customIsValues,
                                 owners,
                                 ccUsers);
                         }
                         catch (InvalidQueryException ex)
                         {
-                            throw new InvalidDataException("Invalid query in alert: " + alertName, ex);
+                            throw new InvalidDataException($"Invalid query in alert '{alertName}'", ex);
                         }
                         yield return alert;
                     }
@@ -211,6 +218,7 @@ namespace BugReport.Reports
                                 queryReportName,
                                 queryReportNode.Descendants("query").Select(q =>
                                     new NamedQuery.RepoQuery(GetInheritedAttributeValue(q, "repo"), q.Value)),
+                                null,
                                 customIsValues);
                         }
                         catch (InvalidQueryException ex)
@@ -266,7 +274,7 @@ namespace BugReport.Reports
 
                         if (labelAliases.TryGetValue(aliasName, out _))
                         {
-                            throw new InvalidDataException($"Label alias {aliasName} defined more than once.");
+                            throw new InvalidDataException($"Label alias '{aliasName}' defined more than once.");
                         }
                         labelAliases[aliasName] = targetLabel;
                     }
@@ -291,7 +299,7 @@ namespace BugReport.Reports
 
                         if (milestoneAliases.TryGetValue(aliasName, out _))
                         {
-                            throw new InvalidDataException($"Milestone alias {aliasName} defined more than once.");
+                            throw new InvalidDataException($"Milestone alias '{aliasName}' defined more than once.");
                         }
                         milestoneAliases[aliasName] = targetMilestoneName;
                     }
@@ -299,6 +307,85 @@ namespace BugReport.Reports
             }
 
             return milestoneAliases;
+        }
+
+        private List<Organization> _organizations;
+        private IEnumerable<Organization> LoadOrganizations()
+        {
+            Debug.Assert(_organizations == null);
+
+            _organizations = new List<Organization>();
+            foreach (ConfigFile configFile in _configFiles)
+            {
+                foreach (XElement organizationsNode in configFile.Root.Descendants("organizations"))
+                {
+                    foreach (XElement orgNode in organizationsNode.Descendants("organization"))
+                    {
+                        string orgName = orgNode.Attribute("name").Value;
+
+                        if (FindOrganization(orgName) != null)
+                        {
+                            throw new InvalidDataException($"Organization '{orgName}' defined more than once.");
+                        }
+
+                        _organizations.Add(new Organization(orgName, orgNode.Value));
+                    }
+                }
+            }
+
+            return _organizations;
+        }
+        private Organization FindOrganization(string organizationName)
+        {
+            return _organizations.Where(org => org.Name == organizationName).FirstOrDefault();
+        }
+
+        private Dictionary<string, Team> _teams;
+        private IEnumerable<Team> LoadTeams()
+        {
+            // LoadOrganizations has to be called first
+            Debug.Assert(_organizations != null);
+            Debug.Assert(_teams == null);
+
+            _teams = new Dictionary<string, Team>();
+            foreach (ConfigFile configFile in _configFiles)
+            {
+                foreach (XElement teamsNode in configFile.Root.Descendants("teams"))
+                {
+                    foreach (XElement teamNode in teamsNode.Descendants("team"))
+                    {
+                        string teamName = teamNode.Attribute("name").Value;
+                        string teamOrganizationName = teamNode.Attribute("organization").Value;
+
+                        if (_teams.TryGetValue(teamName, out _))
+                        {
+                            throw new InvalidDataException($"Team '{teamName}' defined more than once.");
+                        }
+
+                        Organization organization = FindOrganization(teamOrganizationName);
+                        if (organization == null)
+                        {
+                            throw new InvalidDataException($"Team's '{teamName}' organization '{teamOrganizationName}' does not exist.");
+                        }
+
+                        _teams[teamName] = new Team(teamName, organization);
+                    }
+                }
+            }
+
+            return _teams.Values;
+        }
+        private Team FindTeam(string teamName)
+        {
+            if (teamName == null)
+            {
+                return null;
+            }
+            if (_teams.TryGetValue(teamName, out Team team))
+            {
+                return team;
+            }
+            throw new InvalidDataException($"Team '{teamName}' does not exist.");
         }
 
         private Alert.User FindUser(string id)
@@ -318,7 +405,7 @@ namespace BugReport.Reports
             Alert.User user = FindUser(id);
             if (user == null)
             {
-                throw new InvalidDataException("Cannot find user: " + id);
+                throw new InvalidDataException($"Cannot find user '{id}'");
             }
             return user;
         }
