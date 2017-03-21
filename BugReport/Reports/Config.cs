@@ -144,6 +144,20 @@ namespace BugReport.Reports
             }
         }
 
+        private static string GetInheritedAttributeValue(XElement element, string name)
+        {
+            while (element != null)
+            {
+                string value = element.Attribute(name)?.Value;
+                if (value != null)
+                {
+                    return value;
+                }
+                element = element.Parent;
+            }
+            return null;
+        }
+
         private IEnumerable<Alert> LoadAlerts(IReadOnlyDictionary<string, Expression> customIsValues)
         {
             foreach (ConfigFile configFile in _configFiles)
@@ -163,7 +177,7 @@ namespace BugReport.Reports
                             alert = new Alert(
                                 alertName,
                                 alertNode.Descendants("query").Select(q =>
-                                    new NamedQuery.RepoQuery(q.Attribute("repo")?.Value, q.Value)),
+                                    new NamedQuery.RepoQuery(GetInheritedAttributeValue(q, "repo"), q.Value)),
                                 customIsValues,
                                 owners,
                                 ccUsers);
@@ -194,7 +208,7 @@ namespace BugReport.Reports
                             query = new NamedQuery(
                                 queryReportName,
                                 queryReportNode.Descendants("query").Select(q =>
-                                    new NamedQuery.RepoQuery(q.Attribute("repo")?.Value, q.Value)),
+                                    new NamedQuery.RepoQuery(GetInheritedAttributeValue(q, "repo"), q.Value)),
                                 customIsValues);
                         }
                         catch (InvalidQueryException ex)
