@@ -15,6 +15,7 @@ public class Repository
     public string Owner { get; private set; }
     public string Name { get; private set; }
     public string Alias { get; private set; }
+    public bool IsAlias(string alias) => (Alias == alias.ToLower());
     public Expression FilterQuery { get; private set; }
     // owner/name lowercase
     public string RepoName { get; private set; }
@@ -26,8 +27,9 @@ public class Repository
     private Repository(string repoName, string alias, string filterQuery)
     {
         RepoName = repoName.ToLower();
-        Alias = alias ?? RepoName;
         Debug.Assert(_repositories.Where(repo => (repo.RepoName == RepoName)).None());
+        Alias = (alias != null) ? alias.ToLower() : RepoName;
+        Debug.Assert(_repositories.Where(repo => (repo.Alias == Alias)).None());
 
         string[] repoNameParts = RepoName.Split('/');
         if ((repoNameParts.Length != 2) ||
@@ -102,9 +104,14 @@ public class Repository
         return _repositories.Where(repo => repo.IsRepoName(repoName)).FirstOrDefault();
     }
 
+    private static Repository FindRepoByAlias(string alias)
+    {
+        return _repositories.Where(repo => repo.IsAlias(alias)).FirstOrDefault();
+    }
+
     public static Repository From(string repoName, string alias = null, string filterQuery = null)
     {
-        Repository repo = FindRepo(repoName);
+        Repository repo = FindRepo(repoName) ?? FindRepoByAlias(repoName);
         if (repo == null)
         {
             repo = new Repository(repoName, alias, filterQuery);
