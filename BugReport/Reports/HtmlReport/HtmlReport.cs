@@ -18,8 +18,8 @@ namespace BugReport.Reports
         {
             _config = new Config(configFiles);
 
-            _areaLabelQueries = _config.AreaLabels
-                .Select(label => new NamedQuery(label.Name, new ExpressionLabel(label.Name)))
+            _areaLabelQueries = _config.AreaLabels.Select(label => label.Name).Distinct()
+                .Select(labelName => new NamedQuery(labelName, new ExpressionLabel(labelName)))
                 .ToList();
         }
 
@@ -51,14 +51,14 @@ namespace BugReport.Reports
                 }
                 file.WriteLine("</ul>");
 
-                file.WriteLine("<h2>Alerts - sorted by issue count</h2>");
+                file.WriteLine("<h2>Alerts</h2>");
                 NamedQuery firstQuery = _config.Queries.First();
-                Report(file, 
-                    beginIssues, 
-                    endIssues, 
-                    _config.Queries, 
-                    _config.Alerts.OrderByDescending(alert => 
-                        Expression.And(alert.Query, firstQuery.Query).Evaluate(endIssues).Count()));
+                Report(file,
+                    beginIssues,
+                    endIssues,
+                    _config.Queries,
+                    _config.Alerts,
+                    SortRows_ByFirstColumn);
 
                 file.WriteLine("<h2>Teams</h2>");
                 Report(file,
@@ -71,7 +71,8 @@ namespace BugReport.Reports
                             team.Name,
                             Expression.Or(
                                 _config.Alerts.Where(alert => alert.Team == team)
-                                    .Select(alert => alert.Query)))));
+                                    .Select(alert => alert.Query)))),
+                    SortRows_ByFirstColumn);
 
                 file.WriteLine("<h2>Organizations</h2>");
                 Report(file,
@@ -84,39 +85,24 @@ namespace BugReport.Reports
                             org.Description,
                             Expression.Or(
                                 _config.Alerts.Where(alert => alert.IsOrganization(org))
-                                    .Select(alert => alert.Query)))));
+                                    .Select(alert => alert.Query)))),
+                    SortRows_ByFirstColumn);
 
-                file.WriteLine("<h2>Alerts - sorted alphabetically</h2>");
+                file.WriteLine("<h2>Alerts - alphabetically</h2>");
                 Report(file, 
                     beginIssues, 
                     endIssues, 
                     _config.Queries, 
-                    _config.Alerts.OrderBy(alert => alert.Name));
+                    _config.Alerts,
+                    SortRows_ByName);
 
-                file.WriteLine("<h2>Areas - sorted alphabetically</h2>");
+                file.WriteLine("<h2>Areas - alphabetically</h2>");
                 Report(file, 
                     beginIssues, 
                     endIssues, 
                     _config.Queries, 
-                    _areaLabelQueries.OrderBy(labelQuery => labelQuery.Name));
-
-                /*
-                file.WriteLine("<h2>Alerts - sorted alphabetically (no links)</h2>");
-                Report(file, 
-                    beginIssues, 
-                    endIssues, 
-                    _config.Queries, 
-                    _config.Alerts.OrderBy(alert => alert.Name), 
-                    shouldHyperLink: false);
-
-                file.WriteLine("<h2>Areas - sorted alphabetically (no links)</h2>");
-                Report(file, 
-                    beginIssues, 
-                    endIssues, 
-                    _config.Queries, 
-                    _areaLabelQueries.OrderBy(labelQuery => labelQuery.Name),
-                    shouldHyperLink: false);
-                */
+                    _areaLabelQueries,
+                    SortRows_ByName);
 
                 file.WriteLine("</body></html>");
             }
@@ -138,11 +124,12 @@ namespace BugReport.Reports
 
             public Row(
                 string name, 
-                Expression query, 
+                Expression query,
+                Team team,
                 IEnumerable<NamedQuery> columns, 
                 IEnumerable<DataModelIssue> beginIssues, 
                 IEnumerable<DataModelIssue> endIssues)
-                : base(name, query)
+                : base(name, query, team)
             {
                 InitializeColumns(columns, beginIssues, endIssues);
             }
@@ -159,12 +146,19 @@ namespace BugReport.Reports
             }
         }
 
-        public void Report(
+        private delegate IEnumerable<Row> SortRows(IEnumerable<Row> rows);
+        //private static IEnumerable<Row> SortRows_KeepOrder(IEnumerable<Row> rows) => rows;
+        private static IEnumerable<Row> SortRows_ByName(IEnumerable<Row> rows) => rows.OrderBy(row => row.Name);
+        private static IEnumerable<Row> SortRows_ByFirstColumn(IEnumerable<Row> rows) => 
+            rows.OrderByDescending(row => row.Columns[0].End.Count());
+
+        private void Report(
             StreamWriter file,
             IEnumerable<DataModelIssue> beginIssues,
             IEnumerable<DataModelIssue> endIssues,
             IEnumerable<NamedQuery> columns,
             IEnumerable<NamedQuery> rowQueries,
+            SortRows sortRows,
             bool shouldHyperLink = true)
         {
             // Heading row
@@ -181,8 +175,8 @@ namespace BugReport.Reports
 
             // All "middle" rows
             {
-                List<Row> rows = rowQueries.Select(row =>
-                    new Row(row.Name, row.Query, columns, beginIssues, endIssues)).ToList();
+                List<Row> rows = sortRows(rowQueries.Select(row =>
+                    new Row(row.Name, row.Query, row.Team, columns, beginIssues, endIssues))).ToList();
 
                 foreach (Row row in rows)
                 {
@@ -193,14 +187,14 @@ namespace BugReport.Reports
             // "Other (missing above)" row
             {
                 Expression otherRowQuery = Expression.And(rowQueries.Select(row => Expression.Not(row.Query)).ToArray());
-                Row otherRow = new Row("Other (missing above)", otherRowQuery, columns, beginIssues, endIssues);
+                Row otherRow = new Row("Other (missing above)", otherRowQuery, null, columns, beginIssues, endIssues);
 
                 ReportTableRow(file, "  ", otherRow, shouldHyperLink, useRepositoriesFromIssues: false, makeCountBold: true);
             }
 
             // "Total" row
             {
-                Row totalRow = new Row("Total", ExpressionConstant.True, columns, beginIssues, endIssues);
+                Row totalRow = new Row("Total", ExpressionConstant.True, null, columns, beginIssues, endIssues);
 
                 ReportTableRow(file, "  ", totalRow, shouldHyperLink, useRepositoriesFromIssues: false, makeCountBold: true);
             }
@@ -240,7 +234,8 @@ namespace BugReport.Reports
         {
             ReportTableRow(file,
                 "  ",
-                $"<b title=\"{row.Query.Normalized.ToString()}\">{row.Name}</b>",
+                $"<b title=\"{row.Query.Normalized.ToString()}\">{row.Name}</b>" + 
+                    (row.Team == null ? "" : $" - <small>{row.Team.Name}</small>"),
                 row.Columns.SelectMany(filteredIssues =>
                 {
                     string count = GetQueryCountLinked(
