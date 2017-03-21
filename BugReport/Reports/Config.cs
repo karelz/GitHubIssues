@@ -22,6 +22,7 @@ namespace BugReport.Reports
         public ExpressionUntriaged UntriagedExpression { get; private set; }
 
         public IDictionary<string, Label> LabelAliases { get; private set; }
+        public IDictionary<string, string> MilestoneAliases { get; private set; }
 
         public IEnumerable<Repository> Repositories { get; private set; }
 
@@ -75,6 +76,7 @@ namespace BugReport.Reports
             UntriagedLabels = LoadLabels("untriaged").ToList();
 
             LabelAliases = LoadLabelAliases();
+            MilestoneAliases = LoadMilestoneAliases();
 
             UntriagedExpression = new ExpressionUntriaged(
                 IssueTypeLabels,
@@ -272,6 +274,31 @@ namespace BugReport.Reports
             }
 
             return labelAliases;
+        }
+
+        private Dictionary<string, string> LoadMilestoneAliases()
+        {
+            Dictionary<string, string> milestoneAliases = new Dictionary<string, string>();
+            foreach (ConfigFile configFile in _configFiles)
+            {
+                foreach (XElement labelsNode in
+                    configFile.Root.Descendants("milestones").Where(n => n.Attribute("kind")?.Value == "aliases"))
+                {
+                    foreach (XElement aliasNode in labelsNode.Descendants("alias"))
+                    {
+                        string aliasName = aliasNode.Attribute("name").Value;
+                        string targetMilestoneName = aliasNode.Value;
+
+                        if (milestoneAliases.TryGetValue(aliasName, out _))
+                        {
+                            throw new InvalidDataException($"Milestone alias {aliasName} defined more than once.");
+                        }
+                        milestoneAliases[aliasName] = targetMilestoneName;
+                    }
+                }
+            }
+
+            return milestoneAliases;
         }
 
         private Alert.User FindUser(string id)

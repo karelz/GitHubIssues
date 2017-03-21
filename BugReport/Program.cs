@@ -146,7 +146,7 @@ class Program
 
                         Config config = new Config(configFiles);
                         QueryReport report = new QueryReport(config);
-                        report.Write(IssueCollection.LoadIssues(inputFiles, config.LabelAliases), outputFile);
+                        report.Write(IssueCollection.LoadIssues(inputFiles, config), outputFile);
                         return ErrorCode.Success;
                     }
                 case ActionCommand.report:
@@ -186,11 +186,11 @@ class Program
                         Config config = new Config(configFiles);
                         IEnumerable<DataModelIssue> beginIssues = IssueCollection.LoadIssues(
                             beginFiles, 
-                            config.LabelAliases, 
+                            config, 
                             IssueKindFlags.Issue | IssueKindFlags.PullRequest);
                         IEnumerable<DataModelIssue> endIssues = IssueCollection.LoadIssues(
                             endFiles, 
-                            config.LabelAliases, 
+                            config, 
                             IssueKindFlags.Issue | IssueKindFlags.PullRequest);
 
                         return GetSendEmailErrorCode(AlertReport_Diff.SendEmails(
@@ -221,7 +221,7 @@ class Program
                         Config config = new Config(configFiles);
                         IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(
                             inputFiles, 
-                            config.LabelAliases, 
+                            config, 
                             IssueKindFlags.Issue);
 
                         return GetSendEmailErrorCode(AlertReport_Untriaged.SendEmails(
@@ -252,11 +252,11 @@ class Program
                         Config config = new Config(configFiles);
                         IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(
                             inputFiles, 
-                            config.LabelAliases, 
+                            config, 
                             IssueKindFlags.Issue);
                         IEnumerable<DataModelIssue> comments = IssueCollection.LoadIssues(
                             commentsFiles, 
-                            config.LabelAliases, 
+                            config, 
                             IssueKindFlags.Comment);
 
                         return GetSendEmailErrorCode(AlertReport_NeedsResponse.SendEmails(
