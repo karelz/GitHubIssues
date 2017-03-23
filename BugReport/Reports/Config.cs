@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -75,23 +76,25 @@ namespace BugReport.Reports
 
             LoadUsers();
 
-            AreaLabels = LoadLabels("area").Distinct().ToList();
+            Organizations = LoadOrganizations();
+            Teams = LoadTeams();
+
+            IEnumerable<AreaLabel> allAreaLabels = LoadAreaLabels().Distinct().ToList();
+            AreaLabels = FilterAreaLabels(allAreaLabels, LoadAreaLabelFilters(allAreaLabels)).ToList();
             IssueTypeLabels = LoadLabels("issueType").ToList();
             UntriagedLabels = LoadLabels("untriaged").ToList();
 
             LabelAliases = LoadLabelAliases();
             MilestoneAliases = LoadMilestoneAliases();
 
-            Organizations = LoadOrganizations();
-            Teams = LoadTeams();
-
             UntriagedExpression = new ExpressionUntriaged(
                 IssueTypeLabels,
-                AreaLabels,
+                allAreaLabels.Select(labelInfo => labelInfo.Label),
                 UntriagedLabels);
             var customIsValues = new Dictionary<string, Expression>() { { "untriaged", UntriagedExpression } };
 
-            Alerts = LoadAlerts(customIsValues).ToList();
+            IEnumerable<Alert> allAlerts = LoadAlerts(customIsValues);
+            Alerts = FilterAlerts(allAlerts, LoadAlertFilters(allAlerts).ToList()).ToList();
             Queries = LoadQueryReports(customIsValues).ToList();
         }
 
@@ -207,6 +210,64 @@ namespace BugReport.Reports
             }
         }
 
+        private class AlertFilter
+        {
+            private Team _team;
+            private string _alertName;
+
+            public AlertFilter(Team team, string alertName)
+            {
+                _team = team;
+                _alertName = alertName;
+            }
+
+            public bool IsMatch(Alert alert)
+            {
+                if (_team != null)
+                {
+                    return (_team == alert.Team);
+                }
+                Debug.Assert(_alertName != null);
+                return _alertName == alert.Name;
+            }
+        }
+
+        private IEnumerable<AlertFilter> LoadAlertFilters(IEnumerable<Alert> alerts)
+        {
+            foreach (ConfigFile configFile in _configFiles)
+            {
+                foreach (XElement alertsNode in configFile.Root.Descendants("alertFilters"))
+                {
+                    foreach (XElement alertNode in alertsNode.Descendants("alertFilter"))
+                    {
+                        string teamName = alertNode.Attribute("team")?.Value;
+                        string alertName = alertNode.Attribute("name")?.Value;
+
+                        if ((teamName == null) && (alertName == null))
+                        {
+                            throw new InvalidDataException("Invalid alert filter - either 'name' or 'team' attribute has to be defined.");
+                        }
+                        if ((teamName != null) && (alertName != null))
+                        {
+                            throw new InvalidDataException($"Invalid alert filter '{alertName}' for team '{teamName}' - cannot filter on both 'name' and 'team' attributes at once.");
+                        }
+                        if ((alertName != null) &&
+                            alerts.Where(alert => (alert.Name == alertName)).None())
+                        {
+                            throw new InvalidDataException($"Invalid alert filter on name '{alertName}' - cannot find alert with that name");
+                        }
+
+                        yield return new AlertFilter(FindTeam(teamName), alertName);
+                    }
+                }
+            }
+        }
+
+        private IEnumerable<Alert> FilterAlerts(IEnumerable<Alert> alerts, IEnumerable<AlertFilter> filters)
+        {
+            return alerts.Where(alert => filters.Where(filter => filter.IsMatch(alert)).Any());
+        }
+
         private IEnumerable<NamedQuery> LoadQueryReports(IReadOnlyDictionary<string, Expression> customIsValues)
         {
             foreach (ConfigFile configFile in _configFiles)
@@ -264,6 +325,100 @@ namespace BugReport.Reports
                     }
                 }
             }
+        }
+
+        private class AreaLabel
+        {
+            public Label Label { get; private set; }
+            public Team Team { get; private set; }
+
+            public AreaLabel(string labelName, Team team)
+            {
+                Label = new Label(labelName);
+                Team = team;
+            }
+        }
+
+        private IEnumerable<AreaLabel> LoadAreaLabels()
+        {
+            foreach (ConfigFile configFile in _configFiles)
+            {
+                foreach (XElement labelsNode in
+                    configFile.Root.Descendants("labels").Where(n => n.Attribute("kind")?.Value == "area"))
+                {
+                    foreach (XElement labelNode in labelsNode.Descendants("label"))
+                    {
+                        yield return new AreaLabel(
+                            labelNode.Attribute("name").Value, 
+                            FindTeam(labelNode.Attribute("team")?.Value));
+                    }
+                }
+            }
+        }
+
+        private class AreaLabelFilter
+        {
+            private Team _team;
+            private string _labelName;
+
+            public AreaLabelFilter(Team team, string labelName)
+            {
+                Debug.Assert((team != null) || (labelName != null));
+                _team = team;
+                _labelName = labelName;
+            }
+
+            public bool IsMatch(AreaLabel areaLabel)
+            {
+                if (_team != null)
+                {
+                    if (_labelName != null)
+                    {
+                        return ((areaLabel.Team == _team) && (areaLabel.Label.Name == _labelName));
+                    }
+                    return (areaLabel.Team == _team);
+                }
+                Debug.Assert(_labelName != null);
+                return (areaLabel.Label.Name == _labelName);
+            }
+        }
+
+        private IEnumerable<AreaLabelFilter> LoadAreaLabelFilters(IEnumerable<AreaLabel> areaLabels)
+        {
+            // Teams have to load first
+            Debug.Assert(Teams != null);
+
+            foreach (ConfigFile configFile in _configFiles)
+            {
+                foreach (XElement alertsNode in configFile.Root.Descendants("areaLabelFilters"))
+                {
+                    foreach (XElement alertNode in alertsNode.Descendants("areaLabelFilter"))
+                    {
+                        string teamName = alertNode.Attribute("team")?.Value;
+                        string labelName = alertNode.Attribute("name")?.Value;
+
+                        if ((teamName == null) && (labelName == null))
+                        {
+                            throw new InvalidDataException("Invalid area label filter - either 'name' or 'team' attribute has to be defined.");
+                        }
+                        if ((labelName != null) && 
+                            areaLabels.Where(areaLabel => (areaLabel.Label.Name == labelName)).None())
+                        {
+                            throw new InvalidDataException($"Invalid areal label filter on name '{labelName}' - cannot find label with that name");
+                        }
+
+                        yield return new AreaLabelFilter(FindTeam(teamName), labelName);
+                    }
+                }
+            }
+        }
+
+        private IEnumerable<Label> FilterAreaLabels(IEnumerable<AreaLabel> areaLabels, IEnumerable<AreaLabelFilter> filters)
+        {
+            return areaLabels
+                .Where(areaLabel => 
+                    filters.Where(filter => filter.IsMatch(areaLabel)).Any())
+                .Select(areaLabel => areaLabel.Label);
         }
 
         private Dictionary<string, Label> LoadLabelAliases()
