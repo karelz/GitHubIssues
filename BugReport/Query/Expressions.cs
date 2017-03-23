@@ -58,6 +58,8 @@ namespace BugReport.Query
             }
         }
 
+        public abstract override string ToString();
+
         public static Expression And(params Expression[] expressions)
         {
             return new ExpressionAnd(expressions);
@@ -78,11 +80,95 @@ namespace BugReport.Query
         {
             return new ExpressionNot(ex);
         }
+
+        protected abstract bool Equals(Expression e);
+
+        // Common logic for AND and OR
+        protected static bool Equals(IEnumerable<Expression> expressions1, IEnumerable<Expression> expressions2)
+        {
+            List<Expression> remainingExpressions2 = expressions2.ToList();
+            // They have to have same length
+            if (remainingExpressions2.Count != expressions1.Count())
+            {
+                return false;
+            }
+            foreach (Expression expr1 in expressions1)
+            {
+                bool removedExpr = false;
+                foreach (Expression expr2 in remainingExpressions2)
+                {
+                    if (expr1.Equals(expr2))
+                    {
+                        remainingExpressions2.Remove(expr2);
+                        removedExpr = true;
+                        break;
+                    }
+                }
+                if (!removedExpr)
+                {
+                    return false;
+                }
+            }
+            Debug.Assert(remainingExpressions2.None());
+            return true;
+        }
+
+        // Common logic for AND and OR
+        protected static void RemoveDuplicates(List<Expression> expressions)
+        {
+            for (int i = 0; i < expressions.Count; i++)
+            {
+                Expression expr = expressions[i];
+                for (int j = i + 1; j < expressions.Count; )
+                {
+                    if (expr.Equals(expressions[j]))
+                    {   // Duplicate found
+                        expressions.RemoveAt(j);
+                        // Process the same index as it contains the next item
+                    }
+                    else
+                    {   // Not a dupe, skip to next one
+                        j++;
+                    }
+                }
+            }
+        }
+
+        // Returns true if the list contains an expression X and also !X
+        // Common logic for AND and OR
+        protected static bool ContainsNegatedExpressions(List<Expression> expressions)
+        {
+            for (int i = 0; i < expressions.Count; i++)
+            {
+                Expression expr = expressions[i];
+                if (expr is ExpressionNot)
+                {
+                    Expression subExpr = ((ExpressionNot)expr).Expression;
+                    for (int j = 0; j < expressions.Count; j++)
+                    {
+                        if (i == j)
+                        {
+                            continue;
+                        }
+                        if (subExpr.Equals(expressions[j]))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
     }
 
     public class ExpressionNot : Expression
     {
         readonly Expression _expr;
+
+        public Expression Expression
+        {
+            get => _expr;
+        }
 
         public ExpressionNot(Expression expr)
         {
@@ -156,6 +242,12 @@ namespace BugReport.Query
                 }
                 return Expression.Not(normalizedExpr);
             }
+        }
+
+        protected override bool Equals(Expression e)
+        {
+            return (e is ExpressionNot) &&
+                ((ExpressionNot)e)._expr.Equals(_expr);
         }
     }
 
@@ -233,7 +325,7 @@ namespace BugReport.Query
                         }
                     }
                     else if (normalizedExpression == ExpressionConstant.True)
-                    {   // Skip TRUE in AND list
+                    {   // Skip 'True' expressions in AND list
                     }
                     else
                     {
@@ -294,13 +386,24 @@ namespace BugReport.Query
                     return orExpression;
                 }
 
+                // Simplify the expression
                 if (andExpressions.Contains(ExpressionConstant.False))
-                {   // Simplify
+                {
+                    return ExpressionConstant.False;
+                }
+                RemoveDuplicates(andExpressions);
+                if (ContainsNegatedExpressions(andExpressions))
+                {
                     return ExpressionConstant.False;
                 }
 
+                if (andExpressions.Count == 1)
+                {
+                    return andExpressions[0];
+                }
+
                 // AND is on the top
-                Expression andExpression = Expression.And(andExpressions.Distinct());
+                Expression andExpression = Expression.And(andExpressions);
                 Debug.Assert(andExpression.IsNormalized());
                 return andExpression;
             }
@@ -331,6 +434,13 @@ namespace BugReport.Query
                     }
                 }
             }
+        }
+
+        protected override bool Equals(Expression e)
+        {
+            return (e is ExpressionAnd) ? 
+                Equals(_expressions, ((ExpressionAnd)e).Expressions) : 
+                false;
         }
     }
 
@@ -401,7 +511,7 @@ namespace BugReport.Query
                         }
                     }
                     else if (normalizedExpression == ExpressionConstant.False)
-                    {   // Skip FALSE in OR list
+                    {   // Skip 'False' expression in OR list
                     }
                     else
                     {
@@ -417,6 +527,16 @@ namespace BugReport.Query
                     if (orExpressions.Contains(ExpressionConstant.True))
                     {
                         return ExpressionConstant.True;
+                    }
+                    RemoveDuplicates(orExpressions);
+                    if (ContainsNegatedExpressions(orExpressions))
+                    {
+                        return ExpressionConstant.True;
+                    }
+
+                    if (orExpressions.Count == 1)
+                    {
+                        return orExpressions[0];
                     }
 
                     Expression orExpr = Expression.Or(orExpressions.Distinct());
@@ -440,6 +560,13 @@ namespace BugReport.Query
                 Debug.Assert(expr.IsNormalized());
                 return expr;
             }
+        }
+
+        protected override bool Equals(Expression e)
+        {
+            return (e is ExpressionOr) ? 
+                Equals(_expressions, ((ExpressionOr)e).Expressions) : 
+                false;
         }
     }
 
@@ -487,6 +614,13 @@ namespace BugReport.Query
         public override Expression Normalized
         {
             get => this;
+        }
+
+        protected override bool Equals(Expression e)
+        {
+            return (e is ExpressionLabel) ? 
+                _labelName == ((ExpressionLabel)e)._labelName : 
+                false;
         }
     }
 
@@ -537,6 +671,13 @@ namespace BugReport.Query
         {
             get => this;
         }
+
+        protected override bool Equals(Expression e)
+        {
+            return (e is ExpressionLabelPattern) ?
+                _labelPattern == ((ExpressionLabelPattern)e)._labelPattern :
+                false;
+        }
     }
 
     public class ExpressionIsIssue : Expression
@@ -577,6 +718,12 @@ namespace BugReport.Query
             get => this;
         }
 
+        protected override bool Equals(Expression e)
+        {
+            return (e is ExpressionIsIssue) ?
+                _isIssue == ((ExpressionIsIssue)e)._isIssue :
+                false;
+        }
     }
 
     public class ExpressionIsOpen : Expression
@@ -614,6 +761,12 @@ namespace BugReport.Query
             get => this;
         }
 
+        protected override bool Equals(Expression e)
+        {
+            return (e is ExpressionIsOpen) ?
+                _isOpen == ((ExpressionIsOpen)e)._isOpen :
+                false;
+        }
     }
 
     public class ExpressionMilestone : Expression
@@ -660,6 +813,13 @@ namespace BugReport.Query
         public override Expression Normalized
         {
             get => this;
+        }
+
+        protected override bool Equals(Expression e)
+        {
+            return (e is ExpressionMilestone) ?
+                _milestoneName == ((ExpressionMilestone)e)._milestoneName :
+                false;
         }
     }
 
@@ -708,6 +868,13 @@ namespace BugReport.Query
         {
             get => this;
         }
+
+        protected override bool Equals(Expression e)
+        {
+            return (e is ExpressionMilestonePattern) ?
+                _milestonePattern == ((ExpressionMilestonePattern)e)._milestonePattern :
+                false;
+        }
     }
 
     public class ExpressionAssignee : Expression
@@ -751,6 +918,13 @@ namespace BugReport.Query
         {
             get => this;
         }
+
+        protected override bool Equals(Expression e)
+        {
+            return (e is ExpressionAssignee) ?
+                _assigneeName == ((ExpressionAssignee)e)._assigneeName :
+                false;
+        }
     }
 
     public class ExpressionConstant : Expression
@@ -792,6 +966,12 @@ namespace BugReport.Query
         public override Expression Normalized
         {
             get => this;
+        }
+
+        protected override bool Equals(Expression e)
+        {
+            // Only 2 static instances exist (True & False), so it is sufficient to compare object references
+            return (this == e);
         }
     }
 }
