@@ -111,9 +111,9 @@ namespace BugReport.Reports
             return true;
         }
 
-        public override Expression Normalized
+        protected override Expression GetSimplified()
         {
-            get => this;
+            return this;
         }
 
         protected override bool Equals(Expression e)

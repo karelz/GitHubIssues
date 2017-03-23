@@ -130,41 +130,36 @@ namespace BugReport.Query
                 _defaultExpression.IsNormalized(NormalizedState.Or);
         }
 
-        public override Expression Normalized
+        protected override Expression GetSimplified()
         {
-            get
+            Dictionary<Repository, Expression> simplifiedExpressions = new Dictionary<Repository, Expression>();
+            foreach (KeyValuePair<Repository, Expression> entry in _expressions)
             {
-                Dictionary<Repository, Expression> normalizedExpressions = new Dictionary<Repository, Expression>();
-                foreach (KeyValuePair<Repository, Expression> entry in _expressions)
+                Expression simplifiedExpression = entry.Value.Simplified;
+                if (simplifiedExpression is ExpressionMultiRepo)
                 {
-                    Expression normalizedExpression = entry.Value.Normalized;
-                    if (normalizedExpression is ExpressionMultiRepo)
-                    {
-                        normalizedExpression = ((ExpressionMultiRepo)normalizedExpression).GetExpression(entry.Key);
-                    }
-                    normalizedExpressions[entry.Key] = normalizedExpression;
+                    simplifiedExpression = ((ExpressionMultiRepo)simplifiedExpression).GetExpression(entry.Key);
                 }
-                Expression normalizedDefaultExpression = _defaultExpression.Normalized;
-
-                if (normalizedDefaultExpression is ExpressionMultiRepo)
-                {
-                    ExpressionMultiRepo normalizedDefaultExpressionMultiRepo = (ExpressionMultiRepo)normalizedDefaultExpression;
-                    foreach (RepoExpression repoExpression in normalizedDefaultExpressionMultiRepo.RepoExpressions
-                        .Where(re => !normalizedExpressions.ContainsKey(re.Repo)))
-                    {
-                        Debug.Assert(!normalizedExpressions.ContainsKey(repoExpression.Repo));
-                        Debug.Assert(repoExpression.Expr.IsNormalized());
-                        normalizedExpressions[repoExpression.Repo] = repoExpression.Expr;
-                    }
-                    normalizedDefaultExpression = normalizedDefaultExpressionMultiRepo.GetExpression(null);
-                }
-
-                ExpressionMultiRepo newMultiRepoExpression = new ExpressionMultiRepo(
-                    normalizedExpressions, 
-                    normalizedDefaultExpression);
-                Debug.Assert(newMultiRepoExpression.IsNormalized());
-                return newMultiRepoExpression;
+                simplifiedExpressions[entry.Key] = simplifiedExpression;
             }
+            Expression simplifiedDefaultExpression = _defaultExpression.Simplified;
+
+            if (simplifiedDefaultExpression is ExpressionMultiRepo)
+            {
+                ExpressionMultiRepo simplifiedDefaultExpressionMultiRepo = (ExpressionMultiRepo)simplifiedDefaultExpression;
+                foreach (RepoExpression repoExpression in simplifiedDefaultExpressionMultiRepo.RepoExpressions
+                    .Where(re => !simplifiedExpressions.ContainsKey(re.Repo)))
+                {
+                    Debug.Assert(!simplifiedExpressions.ContainsKey(repoExpression.Repo));
+                    simplifiedExpressions[repoExpression.Repo] = repoExpression.Expr;
+                }
+                simplifiedDefaultExpression = simplifiedDefaultExpressionMultiRepo.GetExpression(null);
+            }
+
+            ExpressionMultiRepo newMultiRepoExpression = new ExpressionMultiRepo(
+                simplifiedExpressions, 
+                simplifiedDefaultExpression);
+            return newMultiRepoExpression;
         }
 
         protected override bool Equals(Expression e)
