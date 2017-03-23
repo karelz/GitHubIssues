@@ -1,14 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
+using System.Web;
 using BugReport.DataModel;
 using BugReport.Util;
-using BugReport.Query;
 
 namespace BugReport.Reports.EmailReports
 {
@@ -116,7 +113,7 @@ namespace BugReport.Reports.EmailReports
                 text.AppendLine("  <tr>");
                 text.AppendLine($"    <td>{issue.IssueId}</td>");
                 text.AppendLine("    <td>");
-                text.AppendLine($"      {issue.Title}");
+                text.AppendLine($"      {HttpUtility.HtmlEncode(issue.Title)}");
                 if (issue.LabelsText != null)
                 {
                     text.AppendLine($"      <br/><div class=\"labels\">Labels: {issue.LabelsText}</div>");

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Web;
 using BugReport.DataModel;
 using BugReport.Util;
 
@@ -124,7 +125,7 @@ namespace BugReport.Reports.EmailReports
                 text.AppendLine($"    <td>{entry.IssueId}</td>");
                 text.AppendLine($"    <td>{pair.Value.Value.Days}</td>");
                 text.AppendLine("    <td>");
-                text.AppendLine($"      {entry.Title}");
+                text.AppendLine($"      {HttpUtility.HtmlEncode(entry.Title)}");
                 if (entry.LabelsText != null)
                 {
                     text.AppendLine($"      <br/><div class=\"labels\">Labels: {entry.LabelsText}</div>");
