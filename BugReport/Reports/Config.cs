@@ -5,6 +5,7 @@ using System.Linq;
 using System.Xml.Linq;
 using BugReport.Query;
 using BugReport.DataModel;
+using BugReport.Util;
 
 namespace BugReport.Reports
 {
@@ -178,6 +179,11 @@ namespace BugReport.Reports
 
                         IEnumerable<Alert.User> owners = alertNode.Descendants("owner").Select(e => FindUserOrThrow(e.Value));
                         IEnumerable<Alert.User> ccUsers = alertNode.Descendants("cc").Select(e => FindUserOrThrow(e.Value));
+
+                        if (ccUsers.Any() && owners.None())
+                        {
+                            throw new InvalidDataException($"Missing owner in alert '{alertName}'");
+                        }
 
                         Alert alert;
                         try
