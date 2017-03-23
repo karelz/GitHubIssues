@@ -4,6 +4,7 @@ using System.Linq;
 using BugReport.DataModel;
 using BugReport.Util;
 using System.Diagnostics;
+using System;
 
 namespace BugReport.Query
 {
@@ -164,6 +165,29 @@ namespace BugReport.Query
                 Debug.Assert(newMultiRepoExpression.IsNormalized());
                 return newMultiRepoExpression;
             }
+        }
+
+        protected override bool Equals(Expression e)
+        {
+            if (e is ExpressionMultiRepo)
+            {
+                ExpressionMultiRepo expr = (ExpressionMultiRepo)e;
+                if ((_expressions.Count != expr._expressions.Count) ||
+                    !_defaultExpression.Equals(expr._defaultExpression))
+                {
+                    return false;
+                }
+                foreach (Repository repo in _expressions.Keys)
+                {
+                    if (!expr._expressions.TryGetValue(repo, out Expression e2) ||
+                        !_expressions[repo].Equals(e2))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
         }
     }
 }

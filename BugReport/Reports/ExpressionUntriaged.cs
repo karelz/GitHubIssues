@@ -115,5 +115,12 @@ namespace BugReport.Reports
         {
             get => this;
         }
+
+        protected override bool Equals(Expression e)
+        {
+            // ExpressionUntriaged is unique (only one instance created in config)
+            // We might need to rethink it if we support instances per repo / per team in future
+            return (this == e);
+        }
     }
 }
