@@ -81,7 +81,7 @@ namespace BugReport.Reports.EmailReports
                 smtpClient.UseDefaultCredentials = true;
             }
 
-            foreach (Alert alert in _config.Alerts)
+            foreach (Alert alert in _config.Alerts.Where(alert => alert.Owners.Any()))
             {
                 Console.WriteLine("Alert: {0}", alert.Name);
                 if ((_filteredAlertNames != null) && !_filteredAlertNames.ContainsIgnoreCase(alert.Name))
