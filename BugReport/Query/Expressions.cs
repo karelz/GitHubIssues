@@ -21,12 +21,23 @@ namespace BugReport.Query
 
         public abstract string GetGitHubQueryURL();
 
-        // Normalized DNF form = Dusjuncite normal form:
+        private Expression _simplified;
+        // Try to normalize into DNF form = Dusjuncite normal form:
         //  [MultiRepo] -> [OR] -> [AND] -> [NOT] -> Leaf = Label|Milestone|IsIssue|IsOpen|Assignee|Untriaged
-        public abstract Expression Normalized
+        // May return non-normalized, just simplified expression if the expression is too complex
+        public Expression Simplified
         {
-            get;
+            get
+            {
+                if (_simplified == null)
+                {
+                    _simplified = IsNormalized() ? this : GetSimplified();
+                }
+                return _simplified;
+            }
         }
+
+        protected abstract Expression GetSimplified();
 
         internal enum NormalizedState
         {
@@ -37,9 +48,14 @@ namespace BugReport.Query
             Leaf = 4
         }
 
+        bool? _isNormalized = null;
         internal bool IsNormalized()
         {
-            return IsNormalized(NormalizedState.MultiRepo);
+            if (_isNormalized == null)
+            {
+                _isNormalized = IsNormalized(NormalizedState.MultiRepo);
+            }
+            return _isNormalized.Value;
         }
 
         internal abstract bool IsNormalized(NormalizedState minAllowedState);
@@ -161,6 +177,13 @@ namespace BugReport.Query
         }
     }
 
+    public class ExpressionTooComplexException : Exception
+    {
+        public ExpressionTooComplexException()
+        {
+        }
+    }
+
     public class ExpressionNot : Expression
     {
         readonly Expression _expr;
@@ -212,36 +235,33 @@ namespace BugReport.Query
             return (minAllowedState <= NormalizedState.Not) &&_expr.IsNormalized(NormalizedState.Leaf);
         }
 
-        public override Expression Normalized
+        protected override Expression GetSimplified()
         {
-            get
+            if (_expr is ExpressionNot)
             {
-                if (_expr is ExpressionNot)
-                {
-                    return ((ExpressionNot)_expr)._expr.Normalized;
-                }
-
-                Expression normalizedExpr = _expr.Normalized;
-                if (normalizedExpr is ExpressionOr)
-                {
-                    return Expression.And(((ExpressionOr)normalizedExpr).Expressions.Select(e => Expression.Not(e))).Normalized;
-                }
-                if (normalizedExpr is ExpressionAnd)
-                {
-                    return Expression.Or(((ExpressionAnd)normalizedExpr).Expressions.Select(e => Expression.Not(e))).Normalized;
-                }
-                if (normalizedExpr is ExpressionMultiRepo)
-                {
-                    return new ExpressionMultiRepo(((ExpressionMultiRepo)normalizedExpr).RepoExpressions.Select(repoExpr =>
-                        new RepoExpression(repoExpr.Repo, Expression.Not(repoExpr.Expr).Normalized)));
-                }
-                if (_expr is ExpressionConstant)
-                {
-                    Debug.Assert((_expr == ExpressionConstant.True) || (_expr == ExpressionConstant.False));
-                    return (_expr == ExpressionConstant.True) ? ExpressionConstant.False : ExpressionConstant.True;
-                }
-                return Expression.Not(normalizedExpr);
+                return ((ExpressionNot)_expr)._expr.Simplified;
             }
+
+            Expression simplifiedExpr = _expr.Simplified;
+            if (simplifiedExpr is ExpressionOr)
+            {
+                return Expression.And(((ExpressionOr)simplifiedExpr).Expressions.Select(e => Expression.Not(e))).Simplified;
+            }
+            if (simplifiedExpr is ExpressionAnd)
+            {
+                return Expression.Or(((ExpressionAnd)simplifiedExpr).Expressions.Select(e => Expression.Not(e))).Simplified;
+            }
+            if (simplifiedExpr is ExpressionMultiRepo)
+            {
+                return new ExpressionMultiRepo(((ExpressionMultiRepo)simplifiedExpr).RepoExpressions.Select(repoExpr =>
+                    new RepoExpression(repoExpr.Repo, Expression.Not(repoExpr.Expr).Simplified)));
+            }
+            if (_expr is ExpressionConstant)
+            {
+                Debug.Assert((_expr == ExpressionConstant.True) || (_expr == ExpressionConstant.False));
+                return (_expr == ExpressionConstant.True) ? ExpressionConstant.False : ExpressionConstant.True;
+            }
+            return Expression.Not(simplifiedExpr);
         }
 
         protected override bool Equals(Expression e)
@@ -306,107 +326,112 @@ namespace BugReport.Query
                 _expressions.Where(e => !e.IsNormalized(NormalizedState.And + 1)).None();
         }
 
-        public override Expression Normalized
+        static readonly int const_SubExpressionsLimit = 100;
+
+        protected override Expression GetSimplified()
         {
-            get
+            List<Expression> andExpressions = new List<Expression>();
+
+            // First flatten all ANDs
+            Queue<Expression> simplifiedExpressionsQueue = new Queue<Expression>(_expressions);
+            while (simplifiedExpressionsQueue.Count > 0)
             {
-                List<Expression> andExpressions = new List<Expression>();
-
-                // First flatten all ANDs
-                Queue<Expression> normalizedExpressionsQueue = new Queue<Expression>(_expressions);
-                while (normalizedExpressionsQueue.Count > 0)
-                {
-                    Expression normalizedExpression = normalizedExpressionsQueue.Dequeue();
-                    if (normalizedExpression is ExpressionAnd)
-                    {   // Fold all inner AND operands into this one
-                        foreach (Expression expr2 in ((ExpressionAnd)normalizedExpression)._expressions)
-                        {
-                            normalizedExpressionsQueue.Enqueue(expr2);
-                        }
-                    }
-                    else if (normalizedExpression == ExpressionConstant.True)
-                    {   // Skip 'True' expressions in AND list
-                    }
-                    else
+                Expression simplifiedExpression = simplifiedExpressionsQueue.Dequeue();
+                if (simplifiedExpression is ExpressionAnd)
+                {   // Fold all inner AND operands into this one
+                    foreach (Expression expr2 in ((ExpressionAnd)simplifiedExpression)._expressions)
                     {
-                        andExpressions.Add(normalizedExpression);
+                        simplifiedExpressionsQueue.Enqueue(expr2);
                     }
                 }
-                
-                // Now normalize the AND expressions (can't do it earlier, because AND(x,AND(y,OR(a,b))) would start to permutate too early
-                {
-                    List<Expression> andExpressionsNormalized = new List<Expression>(andExpressions.Select(e => e.Normalized));
-                    andExpressions = andExpressionsNormalized;
+                else if (simplifiedExpression == ExpressionConstant.True)
+                {   // Skip 'True' expressions in AND list
                 }
-
-                // Handle multi-repo sub-expressions if present - bubble merge multi-repo expression up
-                IEnumerable<ExpressionMultiRepo> multiRepoExpressions = andExpressions
-                    .Where(e => e is ExpressionMultiRepo)
-                    .Select(e => (ExpressionMultiRepo)e);
-                if (multiRepoExpressions.Any())
+                else
                 {
-                    IEnumerable<Repository> repos = multiRepoExpressions
-                        .SelectMany(e => e.RepoExpressions.Select(re => re.Repo))
-                        .Distinct();
-                    IEnumerable<RepoExpression> repoExpressions = repos
-                        .Select(repo =>
-                            new RepoExpression(repo,
-                                Expression.And(andExpressions.Select(e =>
+                    andExpressions.Add(simplifiedExpression);
+                }
+            }
+                
+            // Now normalize the AND expressions (can't do it earlier, because AND(x,AND(y,OR(a,b))) would start to permutate too early
+            {
+                List<Expression> andExpressionsSimplified = new List<Expression>(andExpressions.Select(e => e.Simplified));
+                andExpressions = andExpressionsSimplified;
+            }
+
+            // Handle multi-repo sub-expressions if present - bubble merge multi-repo expression up
+            IEnumerable<ExpressionMultiRepo> multiRepoExpressions = andExpressions
+                .Where(e => e is ExpressionMultiRepo)
+                .Select(e => (ExpressionMultiRepo)e);
+            if (multiRepoExpressions.Any())
+            {
+                IEnumerable<Repository> repos = multiRepoExpressions
+                    .SelectMany(e => e.RepoExpressions.Select(re => re.Repo))
+                    .Distinct();
+                IEnumerable<RepoExpression> repoExpressions = repos
+                    .Select(repo =>
+                        new RepoExpression(repo,
+                            Expression.And(andExpressions.Select(e =>
                                     (e is ExpressionMultiRepo)
                                         ? ((ExpressionMultiRepo)e).GetExpression(repo)
                                         : e))
-                                    // We need to normalize to bubble up all ORs on top
-                                    .Normalized
-                            )
-                        );
-                    Expression multiRepoExpr = new ExpressionMultiRepo(repoExpressions);
-                    Debug.Assert(multiRepoExpr.IsNormalized());
-                    return multiRepoExpr;
-                }
+                                // We need to normalize to bubble up all ORs on top
+                                .Simplified
+                        )
+                    );
+                Expression multiRepoExpr = new ExpressionMultiRepo(repoExpressions);
+                return multiRepoExpr;
+            }
 
-                // Handle OR sub-expressions if present - make sub-expression permutations and bubble OR up
-                IEnumerable<ExpressionOr> orSubExpressions = andExpressions
-                    .Where(e => e is ExpressionOr)
-                    .Select(e => (ExpressionOr)e).ToArray();
-                if (orSubExpressions.Any())
+            // Handle OR sub-expressions if present - make sub-expression permutations and bubble OR up
+            IEnumerable<ExpressionOr> orSubExpressions = andExpressions
+                .Where(e => e is ExpressionOr)
+                .Select(e => (ExpressionOr)e).ToArray();
+            if (orSubExpressions.Any())
+            {
+                IEnumerable<Expression> nonOrSubExpressions = andExpressions.Where(e => !(e is ExpressionOr)).ToArray();
+                Debug.Assert(andExpressions.Count() == orSubExpressions.Count() + nonOrSubExpressions.Count());
+
+                // Check for large expansions
+                int combinationsCount = 1;
+                foreach (ExpressionOr orSubExpression in orSubExpressions)
                 {
-                    IEnumerable<Expression> nonOrSubExpressions = andExpressions.Where(e => !(e is ExpressionOr)).ToArray();
-                    Debug.Assert(andExpressions.Count() == orSubExpressions.Count() + nonOrSubExpressions.Count());
-
+                    combinationsCount *= orSubExpression.Expressions.Count();
+                }
+                if (combinationsCount < const_SubExpressionsLimit)
+                {
                     List<Expression> orExpressions = new List<Expression>();
 
                     // (A || B) && Z ---> (A && Z) || (B && Z)
                     // (A || B) && (C || D) && Z ---> (A && C && Z) || (A && D && Z) || (B && C && Z) || (B && D && Z)
                     foreach (IEnumerable<Expression> orSubExpressionsAndPermutation in GeneratePermutations(orSubExpressions))
                     {
-                        orExpressions.Add(Expression.And(orSubExpressionsAndPermutation.Concat(nonOrSubExpressions)).Normalized);
+                        orExpressions.Add(Expression.And(orSubExpressionsAndPermutation.Concat(nonOrSubExpressions)).Simplified);
                     }
                     Expression orExpression = Expression.Or(orExpressions);
-                    Debug.Assert(orExpression.IsNormalized());
                     return orExpression;
                 }
-
-                // Simplify the expression
-                if (andExpressions.Contains(ExpressionConstant.False))
-                {
-                    return ExpressionConstant.False;
-                }
-                RemoveDuplicates(andExpressions);
-                if (ContainsNegatedExpressions(andExpressions))
-                {
-                    return ExpressionConstant.False;
-                }
-
-                if (andExpressions.Count == 1)
-                {
-                    return andExpressions[0];
-                }
-
-                // AND is on the top
-                Expression andExpression = Expression.And(andExpressions);
-                Debug.Assert(andExpression.IsNormalized());
-                return andExpression;
             }
+
+            // Simplify the expression
+            if (andExpressions.Contains(ExpressionConstant.False))
+            {
+                return ExpressionConstant.False;
+            }
+            RemoveDuplicates(andExpressions);
+            if (ContainsNegatedExpressions(andExpressions))
+            {
+                return ExpressionConstant.False;
+            }
+
+            if (andExpressions.Count == 1)
+            {
+                return andExpressions[0];
+            }
+
+            // AND is on the top
+            Expression andExpression = Expression.And(andExpressions);
+            return andExpression;
         }
 
         private IEnumerable<IEnumerable<Expression>> GeneratePermutations(IEnumerable<ExpressionOr> orExpressions)
@@ -493,73 +518,68 @@ namespace BugReport.Query
                 _expressions.Where(e => !e.IsNormalized(NormalizedState.Or + 1)).None();
         }
 
-        public override Expression Normalized
+        protected override Expression GetSimplified()
         {
-            get
+            List<Expression> orExpressions = new List<Expression>();
+
+            Queue<Expression> simplifiedExpressionsQueue = new Queue<Expression>(_expressions.Select(e => e.Simplified));
+            while (simplifiedExpressionsQueue.Count > 0)
             {
-                List<Expression> orExpressions = new List<Expression>();
-
-                Queue<Expression> normalizedExpressionsQueue = new Queue<Expression>(_expressions.Select(e => e.Normalized));
-                while (normalizedExpressionsQueue.Count > 0)
-                {
-                    Expression normalizedExpression = normalizedExpressionsQueue.Dequeue();
-                    if (normalizedExpression is ExpressionOr)
-                    {   // Fold all inner OR operands into this one
-                        foreach (Expression expr2 in ((ExpressionOr)normalizedExpression)._expressions)
-                        {
-                            normalizedExpressionsQueue.Enqueue(expr2);
-                        }
-                    }
-                    else if (normalizedExpression == ExpressionConstant.False)
-                    {   // Skip 'False' expression in OR list
-                    }
-                    else
+                Expression simplifiedExpression = simplifiedExpressionsQueue.Dequeue();
+                if (simplifiedExpression is ExpressionOr)
+                {   // Fold all inner OR operands into this one
+                    foreach (Expression expr2 in ((ExpressionOr)simplifiedExpression)._expressions)
                     {
-                        orExpressions.Add(normalizedExpression);
+                        simplifiedExpressionsQueue.Enqueue(expr2);
                     }
                 }
-
-                IEnumerable<ExpressionMultiRepo> multiRepoExpressions = orExpressions
-                    .Where(e => e is ExpressionMultiRepo)
-                    .Select(e => (ExpressionMultiRepo)e);
-                if (multiRepoExpressions.None())
-                {
-                    if (orExpressions.Contains(ExpressionConstant.True))
-                    {
-                        return ExpressionConstant.True;
-                    }
-                    RemoveDuplicates(orExpressions);
-                    if (ContainsNegatedExpressions(orExpressions))
-                    {
-                        return ExpressionConstant.True;
-                    }
-
-                    if (orExpressions.Count == 1)
-                    {
-                        return orExpressions[0];
-                    }
-
-                    Expression orExpr = Expression.Or(orExpressions.Distinct());
-                    Debug.Assert(orExpr.IsNormalized());
-                    return orExpr;
+                else if (simplifiedExpression == ExpressionConstant.False)
+                {   // Skip 'False' expression in OR list
                 }
-
-                IEnumerable<Repository> repos = multiRepoExpressions
-                    .SelectMany(e => e.RepoExpressions.Select(re => re.Repo))
-                    .Distinct();
-                IEnumerable<RepoExpression> repoExpressions = repos
-                    .Select(repo =>
-                        new RepoExpression(repo,
-                            Expression.Or(orExpressions.Select(e =>
-                                (e is ExpressionMultiRepo)
-                                    ? ((ExpressionMultiRepo)e).GetExpression(repo)
-                                    : e)).Normalized
-                        )
-                    );
-                Expression expr = new ExpressionMultiRepo(repoExpressions);
-                Debug.Assert(expr.IsNormalized());
-                return expr;
+                else
+                {
+                    orExpressions.Add(simplifiedExpression);
+                }
             }
+
+            IEnumerable<ExpressionMultiRepo> multiRepoExpressions = orExpressions
+                .Where(e => e is ExpressionMultiRepo)
+                .Select(e => (ExpressionMultiRepo)e);
+            if (multiRepoExpressions.None())
+            {
+                if (orExpressions.Contains(ExpressionConstant.True))
+                {
+                    return ExpressionConstant.True;
+                }
+                RemoveDuplicates(orExpressions);
+                if (ContainsNegatedExpressions(orExpressions))
+                {
+                    return ExpressionConstant.True;
+                }
+
+                if (orExpressions.Count == 1)
+                {
+                    return orExpressions[0];
+                }
+
+                Expression orExpr = Expression.Or(orExpressions.Distinct());
+                return orExpr;
+            }
+
+            IEnumerable<Repository> repos = multiRepoExpressions
+                .SelectMany(e => e.RepoExpressions.Select(re => re.Repo))
+                .Distinct();
+            IEnumerable<RepoExpression> repoExpressions = repos
+                .Select(repo =>
+                    new RepoExpression(repo,
+                        Expression.Or(orExpressions.Select(e =>
+                            (e is ExpressionMultiRepo)
+                                ? ((ExpressionMultiRepo)e).GetExpression(repo)
+                                : e)).Simplified
+                    )
+                );
+            Expression expr = new ExpressionMultiRepo(repoExpressions);
+            return expr;
         }
 
         protected override bool Equals(Expression e)
@@ -611,9 +631,9 @@ namespace BugReport.Query
             return true;
         }
 
-        public override Expression Normalized
+        protected override Expression GetSimplified()
         {
-            get => this;
+            return this;
         }
 
         protected override bool Equals(Expression e)
@@ -667,9 +687,9 @@ namespace BugReport.Query
             return true;
         }
 
-        public override Expression Normalized
+        protected override Expression GetSimplified()
         {
-            get => this;
+            return this;
         }
 
         protected override bool Equals(Expression e)
@@ -713,9 +733,9 @@ namespace BugReport.Query
             return true;
         }
 
-        public override Expression Normalized
+        protected override Expression GetSimplified()
         {
-            get => this;
+            return this;
         }
 
         protected override bool Equals(Expression e)
@@ -756,9 +776,9 @@ namespace BugReport.Query
             return true;
 
         }
-        public override Expression Normalized
+        protected override Expression GetSimplified()
         {
-            get => this;
+            return this;
         }
 
         protected override bool Equals(Expression e)
@@ -810,9 +830,9 @@ namespace BugReport.Query
             return true;
         }
 
-        public override Expression Normalized
+        protected override Expression GetSimplified()
         {
-            get => this;
+            return this;
         }
 
         protected override bool Equals(Expression e)
@@ -864,9 +884,9 @@ namespace BugReport.Query
             return true;
         }
 
-        public override Expression Normalized
+        protected override Expression GetSimplified()
         {
-            get => this;
+            return this;
         }
 
         protected override bool Equals(Expression e)
@@ -914,9 +934,9 @@ namespace BugReport.Query
             return true;
         }
 
-        public override Expression Normalized
+        protected override Expression GetSimplified()
         {
-            get => this;
+            return this;
         }
 
         protected override bool Equals(Expression e)
@@ -963,9 +983,9 @@ namespace BugReport.Query
             return true;
         }
 
-        public override Expression Normalized
+        protected override Expression GetSimplified()
         {
-            get => this;
+            return this;
         }
 
         protected override bool Equals(Expression e)

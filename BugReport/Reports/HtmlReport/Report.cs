@@ -22,13 +22,11 @@ namespace BugReport.Reports
         {
             int count = issues.Count();
 
-            // TODO: Delete and remove once we have CSV export
-            if (!shouldHyperLink)
+            query = query.TryNormalize();
+            if (!shouldHyperLink || !query.IsNormalized())
             {
                 return count.ToString();
             }
-
-            query = query.Normalized;
 
             IEnumerable<Repository> repos = useRepositoriesFromIssues 
                 ? Repository.GetReposOrDefault(issues) 

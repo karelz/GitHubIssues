@@ -167,7 +167,7 @@ namespace BugReport.Reports
                 ReportTableRow(file, "  ",
                     "&nbsp;",
                     columns.SelectMany(col => new string[] {
-                        $"<b title=\"{col.Query.Normalized.ToString()}\">{col.Name}</b>",
+                        $"<b title=\"{col.Query.ToString()}\">{col.Name}</b>",
                         "<i>(diff)</i>",
                         "<i>(new)</i>",
                         "<i>(gone)</i>" }));
@@ -234,7 +234,7 @@ namespace BugReport.Reports
         {
             ReportTableRow(file,
                 "  ",
-                $"<b title=\"{row.Query.Normalized.ToString()}\">{row.Name}</b>" + 
+                $"<b title=\"{row.Query.ToString()}\">{row.Name}</b>" + 
                     (row.Team == null ? "" : $" - <small>{row.Team.Name}</small>"),
                 row.Columns.SelectMany(filteredIssues =>
                 {
