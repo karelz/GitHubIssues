@@ -33,7 +33,7 @@ namespace BugReport.Reports
             using (StreamWriter file = new StreamWriter(outputHtmlFile))
             {
                 file.WriteLine("<html><body>");
-                file.WriteLine($"Report create on {DateTime.Now}<br/>");
+                file.WriteLine($"Report created on {DateTime.Now}<br/>");
 
                 file.WriteLine("/begin");
                 file.WriteLine("<ul>");
