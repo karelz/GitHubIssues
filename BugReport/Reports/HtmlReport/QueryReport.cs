@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Web;
 using BugReport.DataModel;
-using BugReport.Query;
 
 namespace BugReport.Reports
 {
@@ -84,7 +83,7 @@ namespace BugReport.Reports
                 text.AppendLine("  <tr>");
                 text.AppendLine($"    <td>{issue.IssueId}</td>");
                 text.AppendLine("    <td>");
-                text.AppendLine($"      {issue.Title}");
+                text.AppendLine($"      {HttpUtility.HtmlEncode(issue.Title)}");
                 if (issue.LabelsText != null)
                 {
                     text.AppendLine($"      <br/><div class=\"labels\">Labels: {issue.LabelsText}</div>");
