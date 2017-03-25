@@ -22,7 +22,7 @@ namespace BugReport.Reports
         {
             int count = issues.Count();
 
-            query = query.TryNormalize();
+            query = query.Simplified;
             if (!shouldHyperLink || !query.IsNormalized())
             {
                 return count.ToString();
