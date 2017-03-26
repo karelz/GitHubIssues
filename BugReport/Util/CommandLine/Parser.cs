@@ -145,7 +145,7 @@ namespace BugReport.CommandLine
             return true;
         }
 
-        private void ReportError(string error)
+        public void ReportError(string error)
         {
             Console.Error.WriteLine(error);
             Console.Error.WriteLine();

@@ -9,12 +9,12 @@ using BugReport.Query;
 
 namespace BugReport.Reports
 {
-    public class Report
+    public class HtmlQueryCountLink
     {
         // Maximum of count links breakdown
         private static readonly int CountLinksMax = 8;
 
-        protected static string GetQueryCountLinked(
+        public static string Create(
             Expression query,
             IEnumerable<DataModelIssue> issues, 
             bool shouldHyperLink = true,

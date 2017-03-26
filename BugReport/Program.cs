@@ -38,6 +38,8 @@ class Program
     static readonly OptionSingleValue _commentsPrefixOption = new OptionSingleValue("comments_prefix");
     static readonly OptionMultipleValues _inputOption = new OptionMultipleValues("in", "input");
     static readonly OptionSingleValue _outputOption = new OptionSingleValue("out", "output");
+    static readonly OptionSingleValue _outputCsvOption = new OptionSingleValue("out_csv");
+    static readonly OptionSingleValue _nameOption = new OptionSingleValue("name");
     static readonly OptionMultipleValues _beginOption = new OptionMultipleValues("begin");
     static readonly OptionMultipleValues _endOption = new OptionMultipleValues("end");
     static readonly OptionSingleValue _templateOption = new OptionSingleValue("template");
@@ -52,7 +54,8 @@ class Program
   cache /config <.xml> /prefix <name> [/comments_prefix <comments>] [/authToken <token>]
     * Will cache all GitHub issues into file <name>YYYY-MM-DD@HH-MM.json
     * If /comments is set, will also cache all GitHub comments into file <comments>YYY-MM-DD@HH-MM.json
-  report /begin [<issues1.json> [...]] /end <issues1_end.json> [...] /out <.html> /config <.xml>
+  report /begin [<issues1.json> [...]] /end <issues1_end.json> [...] [/out <.html>] [/out_csv <file_prefix>] 
+        [/name <report_name>] /config <.xml>
     * Creates report with alerts/areas as rows and queries as columns from cached .json file
   query /in <issues.json> [...] /out <.html> /config <.xml>
     * Creates query report (list of issues) from cached .json file
@@ -152,18 +155,41 @@ class Program
                 case ActionCommand.report:
                     {
                         if (!optionsParser.Parse(
-                            new Option[] { _configOption, _endOption, _outputOption },
-                            new Option[] { _beginOption }))
+                            new Option[] { _configOption, _endOption },
+                            new Option[] { _beginOption, _outputOption, _outputCsvOption, _nameOption }))
                         {
                             return ErrorCode.InvalidCommand;
                         }
                         IEnumerable<string> configFiles = _configOption.GetValues(optionsParser);
                         IEnumerable<string> beginFiles = _beginOption.GetValues(optionsParser);
                         IEnumerable<string> endFiles = _endOption.GetValues(optionsParser);
-                        string outputFile = _outputOption.GetValue(optionsParser);
 
-                        HtmlReport report = new HtmlReport(configFiles);
-                        report.Write(beginFiles, endFiles, outputFile);
+                        string outputFile = _outputOption.GetValue(optionsParser);
+                        string csvFileNamePrefix = _outputCsvOption.GetValue(optionsParser);
+                        string reportName = _nameOption.GetValue(optionsParser);
+
+                        if ((outputFile == null) && (csvFileNamePrefix == null))
+                        {
+                            optionsParser.ReportError("Required at least one option: '/out' or '/out_csv'.");
+                            return ErrorCode.InvalidCommand;
+                        }
+                        if ((csvFileNamePrefix != null) && 
+                            csvFileNamePrefix.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                        {
+                            optionsParser.ReportError($"Option '/out_csv' takes file name prefix, not file name {csvFileNamePrefix}.");
+                            return ErrorCode.InvalidCommand;
+                        }
+
+                        TableReport report = new TableReport(configFiles, beginFiles, endFiles);
+                        if (outputFile != null)
+                        {
+                            HtmlTableReport.Write(report, outputFile, reportName);
+                        }
+                        // Note we can have both options
+                        if (csvFileNamePrefix != null)
+                        {
+                            CsvTableReport.Write(report, csvFileNamePrefix, reportName);
+                        }
                         return ErrorCode.Success;
                     }
                 case ActionCommand.alerts:

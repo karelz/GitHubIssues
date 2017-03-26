@@ -54,7 +54,10 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Query\ExpressionMultiRepo.cs" />
-    <Compile Include="Reports\HtmlReport\Report.cs" />
+    <Compile Include="Reports\CsvReport\CsvWriter.cs" />
+    <Compile Include="Reports\HtmlReport\HtmlQueryCountLink.cs" />
+    <Compile Include="Reports\CsvReport\CsvTableReport.cs" />
+    <Compile Include="Reports\TableReport.cs" />
     <Compile Include="Repository.cs" />
     <Compile Include="DataModel\IssueCollection.cs" />
     <Compile Include="DataModel\DataModelIssue.cs" />
@@ -76,7 +79,7 @@
     <Compile Include="Reports\EmailReport\AlertReport_Diff.cs" />
     <Compile Include="Reports\EmailReport\AlertReport_Untriaged.cs" />
     <Compile Include="Reports\HtmlReport\QueryReport.cs" />
-    <Compile Include="Reports\HtmlReport\HtmlReport.cs" />
+    <Compile Include="Reports\HtmlReport\HtmlTableReport.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

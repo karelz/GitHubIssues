@@ -8,7 +8,7 @@ using BugReport.DataModel;
 
 namespace BugReport.Reports
 {
-    public class QueryReport : Report
+    public class QueryReport
     {
         Config _config;
 
@@ -54,8 +54,8 @@ namespace BugReport.Reports
 
                     file.WriteLine($"<h2>Query: {query.Name}</h2>");
                     file.WriteLine($"<p>Query: <code>{query.Query}</code></p>");
-                    file.WriteLine("Count: " + 
-                        GetQueryCountLinked(
+                    file.WriteLine("Count: " +
+                        HtmlQueryCountLink.Create(
                             query.Query, 
                             queryIssues, 
                             shouldHyperLink: true, 
