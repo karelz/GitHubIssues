@@ -76,6 +76,23 @@ public class Repository
         }
     }
 
+    public void UpdateFilterQuery(string filterQuery)
+    {
+        Debug.Assert(filterQuery != null);
+        if (FilterQuery == null)
+        {
+            FilterQuery = QueryParser.Parse(filterQuery, null);
+        }
+        else
+        {
+            Expression filterQueryExpr = QueryParser.Parse(filterQuery, null);
+            if (!filterQueryExpr.Equals(FilterQuery) && !filterQueryExpr.Simplified.Equals(FilterQuery.Simplified))
+            {
+                throw new InvalidDataException($"Repository '{RepoName}' has 2 filter queries defined '{FilterQuery.ToString()}' and '{filterQuery}'");
+            }
+        }
+    }
+
     // TODO - Move to config
     private static readonly string s_GitHubProductIdentifier = "GitHubBugReporter";
 
@@ -122,6 +139,10 @@ public class Repository
             if (alias != null)
             {
                 repo.UpdateAlias(alias);
+            }
+            if (filterQuery != null)
+            {
+                repo.UpdateFilterQuery(filterQuery);
             }
         }
         return repo;
