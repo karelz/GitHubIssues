@@ -265,7 +265,11 @@ namespace BugReport.Reports
 
         private IEnumerable<Alert> FilterAlerts(IEnumerable<Alert> alerts, IEnumerable<AlertFilter> filters)
         {
-            return alerts.Where(alert => filters.Where(filter => filter.IsMatch(alert)).Any());
+            if (filters.Any())
+            {
+                return alerts.Where(alert => filters.Where(filter => filter.IsMatch(alert)).Any());
+            }
+            return alerts;
         }
 
         private IEnumerable<NamedQuery> LoadQueryReports(IReadOnlyDictionary<string, Expression> customIsValues)
@@ -415,10 +419,13 @@ namespace BugReport.Reports
 
         private IEnumerable<Label> FilterAreaLabels(IEnumerable<AreaLabel> areaLabels, IEnumerable<AreaLabelFilter> filters)
         {
-            return areaLabels
-                .Where(areaLabel => 
-                    filters.Where(filter => filter.IsMatch(areaLabel)).Any())
-                .Select(areaLabel => areaLabel.Label);
+            IEnumerable<AreaLabel> filteredAreaLabels = areaLabels;
+            if (filters.Any())
+            {
+                areaLabels = areaLabels.Where(areaLabel =>
+                    filters.Where(filter => filter.IsMatch(areaLabel)).Any());
+            }
+            return areaLabels.Select(areaLabel => areaLabel.Label);
         }
 
         private Dictionary<string, Label> LoadLabelAliases()
