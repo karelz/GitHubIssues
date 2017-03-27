@@ -24,6 +24,7 @@ class Program
         report,
         query,
         alerts,
+        history,
         untriaged,
         needsResponse
     }
@@ -62,6 +63,8 @@ class Program
   alerts /begin <issues1.json> [...] /end <issues1_end.json> [...] /template <.html> /config <.xml> 
         [/filter <alert_name> [...]] [/skipEmail] [/out <out.html>]
     * Sends alert emails based on config.xml, optinally filtered to just alert_name
+  history /in <summary.csv> [...] /out <.xlsx>
+    * Creates history report from .csv files (produced by report command above)
   untriaged /in <issues.json> [...] /template <.html> /config <.xml> 
         [/filter <alert_name> [...]] [/skipEmail] [/out <out.html>]
     * Sends alert emails based on config.xml, optinally filtered to just alert_name
@@ -227,6 +230,20 @@ class Program
                             alertFilters,
                             beginIssues,
                             endIssues));
+                    }
+                case ActionCommand.history:
+                    {
+                        if (!optionsParser.Parse(
+                            new Option[] { _inputOption, _outputOption },
+                            Option.EmptyList))
+                        {
+                            return ErrorCode.InvalidCommand;
+                        }
+                        IEnumerable<string> inputFiles = _inputOption.GetValues(optionsParser);
+                        string outputFile = _outputOption.GetValue(optionsParser);
+
+                        HistoryReport.Create(inputFiles, outputFile);
+                        return ErrorCode.Success;
                     }
                 case ActionCommand.untriaged:
                     {
