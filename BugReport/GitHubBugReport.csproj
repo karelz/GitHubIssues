@@ -58,6 +58,8 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Query\ExpressionMultiRepo.cs" />
+    <Compile Include="Query\Expressions_Logical.cs" />
+    <Compile Include="Query\Expressions_Leaf.cs" />
     <Compile Include="Reports\CsvReport\CsvWriter.cs" />
     <Compile Include="Reports\HtmlReport\HtmlQueryCountLink.cs" />
     <Compile Include="Reports\CsvReport\CsvTableReport.cs" />
