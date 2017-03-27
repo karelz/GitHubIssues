@@ -162,7 +162,7 @@ namespace BugReport.Query
             return newMultiRepoExpression;
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             if (e is ExpressionMultiRepo)
             {

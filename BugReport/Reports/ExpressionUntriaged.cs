@@ -116,7 +116,7 @@ namespace BugReport.Reports
             return this;
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             // ExpressionUntriaged is unique (only one instance created in config)
             // We might need to rethink it if we support instances per repo / per team in future

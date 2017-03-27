@@ -97,7 +97,7 @@ namespace BugReport.Query
             return new ExpressionNot(ex);
         }
 
-        protected abstract bool Equals(Expression e);
+        public abstract bool Equals(Expression e);
 
         // Common logic for AND and OR
         protected static bool Equals(IEnumerable<Expression> expressions1, IEnumerable<Expression> expressions2)
@@ -264,7 +264,7 @@ namespace BugReport.Query
             return Expression.Not(simplifiedExpr);
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             return (e is ExpressionNot) &&
                 ((ExpressionNot)e)._expr.Equals(_expr);
@@ -461,7 +461,7 @@ namespace BugReport.Query
             }
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             return (e is ExpressionAnd) ? 
                 Equals(_expressions, ((ExpressionAnd)e).Expressions) : 
@@ -582,7 +582,7 @@ namespace BugReport.Query
             return expr;
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             return (e is ExpressionOr) ? 
                 Equals(_expressions, ((ExpressionOr)e).Expressions) : 
@@ -636,7 +636,7 @@ namespace BugReport.Query
             return this;
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             return (e is ExpressionLabel) ? 
                 _labelName == ((ExpressionLabel)e)._labelName : 
@@ -692,7 +692,7 @@ namespace BugReport.Query
             return this;
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             return (e is ExpressionLabelPattern) ?
                 _labelPattern == ((ExpressionLabelPattern)e)._labelPattern :
@@ -738,7 +738,7 @@ namespace BugReport.Query
             return this;
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             return (e is ExpressionIsIssue) ?
                 _isIssue == ((ExpressionIsIssue)e)._isIssue :
@@ -781,7 +781,7 @@ namespace BugReport.Query
             return this;
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             return (e is ExpressionIsOpen) ?
                 _isOpen == ((ExpressionIsOpen)e)._isOpen :
@@ -835,7 +835,7 @@ namespace BugReport.Query
             return this;
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             return (e is ExpressionMilestone) ?
                 _milestoneName == ((ExpressionMilestone)e)._milestoneName :
@@ -889,7 +889,7 @@ namespace BugReport.Query
             return this;
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             return (e is ExpressionMilestonePattern) ?
                 _milestonePattern == ((ExpressionMilestonePattern)e)._milestonePattern :
@@ -939,7 +939,7 @@ namespace BugReport.Query
             return this;
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             return (e is ExpressionAssignee) ?
                 _assigneeName == ((ExpressionAssignee)e)._assigneeName :
@@ -988,7 +988,7 @@ namespace BugReport.Query
             return this;
         }
 
-        protected override bool Equals(Expression e)
+        public override bool Equals(Expression e)
         {
             // Only 2 static instances exist (True & False), so it is sufficient to compare object references
             return (this == e);
