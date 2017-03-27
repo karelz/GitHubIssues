@@ -50,12 +50,20 @@ namespace BugReport.Reports
                     _report.BeginIssues,
                     _report.EndIssues);
 
+                TableReport.Row totalRow = new TableReport.Row(
+                    "Total",
+                    ExpressionConstant.True,
+                    null,
+                    _report.Columns,
+                    _report.BeginIssues,
+                    _report.EndIssues);
+
                 // Write heading row
                 file.Write(_reportName ?? "");
                 file.WriteLine(_report.Columns.SelectMany(col => new string[] { col.Name, "new", "gone" }));
 
                 // Write all "middle" rows and last row
-                foreach (TableReport.Row row in rows.Concat(otherRow.ToEnumerable()))
+                foreach (TableReport.Row row in rows.Concat(new TableReport.Row[] { otherRow, totalRow }))
                 {
                     file.Write(row.Name);
                     file.WriteLine(row.Columns.SelectMany(filteredIssues => new string[] {
