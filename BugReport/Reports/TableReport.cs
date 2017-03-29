@@ -14,16 +14,23 @@ namespace BugReport.Reports
         private Config _config;
 
         public readonly IEnumerable<string> BeginFiles;
+        public readonly IEnumerable<string> MiddleFiles;
         public readonly IEnumerable<string> EndFiles;
 
         public readonly IEnumerable<DataModelIssue> BeginIssues;
+        public readonly IEnumerable<DataModelIssue> MiddleIssues;
         public readonly IEnumerable<DataModelIssue> EndIssues;
 
-        public TableReport(IEnumerable<string> configFiles, IEnumerable<string> beginFiles, IEnumerable<string> endFiles)
+        public TableReport(
+            IEnumerable<string> configFiles, 
+            IEnumerable<string> beginFiles,
+            IEnumerable<string> middleFiles,
+            IEnumerable<string> endFiles)
         {
             _config = new Config(configFiles);
 
             BeginFiles = beginFiles;
+            MiddleFiles = middleFiles ?? new string[] { };
             EndFiles = endFiles;
 
             IEnumerable<DataModelIssue> beginIssuesAll = IssueCollection.LoadIssues(beginFiles, _config);
@@ -31,6 +38,21 @@ namespace BugReport.Reports
 
             BeginIssues = beginIssuesAll.Where(i => i.IsIssueOrComment).ToArray();
             EndIssues = endIssuesAll.Where(i => i.IsIssueOrComment).ToArray();
+
+            List<DataModelIssue> middleIssues = new List<DataModelIssue>();
+            if (middleFiles != null)
+            {
+                // Enumerate the middle files in reverse order to capture the latest bug snapshot (the most 
+                // "accurate" before its disappearance)
+                foreach (string middleFile in middleFiles.Reverse())
+                {
+                    IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(beginFiles, _config);
+                    middleIssues.AddRange(issues.Where(i => i.IsIssueOrComment)
+                        .Except_ByIssueNumber(BeginIssues)
+                        .Except_ByIssueNumber(EndIssues));
+                }
+            }
+            MiddleIssues = middleIssues;
         }
 
         public IEnumerable<NamedQuery> Columns
@@ -42,11 +64,12 @@ namespace BugReport.Reports
         {
             return sortRows(rowQueries.Select(rowQuery =>
                 new Row(
-                    rowQuery.Name, 
-                    rowQuery.Query, 
-                    rowQuery.Team, 
-                    Columns, 
-                    BeginIssues, 
+                    rowQuery.Name,
+                    rowQuery.Query,
+                    rowQuery.Team,
+                    Columns,
+                    BeginIssues,
+                    MiddleIssues,
                     EndIssues))).ToList();
         }
 
@@ -101,32 +124,36 @@ namespace BugReport.Reports
                 NamedQuery namedQuery,
                 IEnumerable<NamedQuery> columns,
                 IEnumerable<DataModelIssue> beginIssues,
+                IEnumerable<DataModelIssue> middleIssues,
                 IEnumerable<DataModelIssue> endIssues)
                 : base(namedQuery.Name, namedQuery.Query)
             {
-                InitializeColumns(columns, beginIssues, endIssues);
+                InitializeColumns(columns, beginIssues, middleIssues, endIssues);
             }
 
             public Row(
-                string name, 
+                string name,
                 Expression query,
                 Team team,
-                IEnumerable<NamedQuery> columns, 
-                IEnumerable<DataModelIssue> beginIssues, 
+                IEnumerable<NamedQuery> columns,
+                IEnumerable<DataModelIssue> beginIssues,
+                IEnumerable<DataModelIssue> middleIssues,
                 IEnumerable<DataModelIssue> endIssues)
                 : base(name, query, team)
             {
-                InitializeColumns(columns, beginIssues, endIssues);
+                InitializeColumns(columns, beginIssues, middleIssues, endIssues);
             }
 
             private void InitializeColumns(
                 IEnumerable<NamedQuery> columns,
                 IEnumerable<DataModelIssue> beginIssues,
+                IEnumerable<DataModelIssue> middleIssues,
                 IEnumerable<DataModelIssue> endIssues)
             {
                 Columns = columns.Select(col => new FilteredIssues(
                     Expression.And(Query, col.Query),
                     beginIssues,
+                    middleIssues,
                     endIssues)).ToArray();
             }
 
@@ -140,22 +167,28 @@ namespace BugReport.Reports
         public class FilteredIssues
         {
             public Expression Query { get; private set; }
-            public IEnumerable<DataModelIssue> BeginOnly
+            public IEnumerable<DataModelIssue> BeginOrMiddleOnly
             {
-                get => Begin.Except_ByIssueNumber(End);
+                get => Begin.Except_ByIssueNumber(End).Concat(_middle);
             }
-            public IEnumerable<DataModelIssue> EndOnly
+            public IEnumerable<DataModelIssue> EndOrMiddleOnly
             {
-                get => End.Except_ByIssueNumber(Begin);
+                get => End.Except_ByIssueNumber(Begin).Concat(_middle);
             }
             public IEnumerable<DataModelIssue> Begin { get; private set; }
             public IEnumerable<DataModelIssue> End { get; private set; }
+            private DataModelIssue[] _middle;
 
-            public FilteredIssues(Expression query, IEnumerable<DataModelIssue> beginIssues, IEnumerable<DataModelIssue> endIssues)
+            public FilteredIssues(
+                Expression query,
+                IEnumerable<DataModelIssue> beginIssues,
+                IEnumerable<DataModelIssue> middleIssues,
+                IEnumerable<DataModelIssue> endIssues)
             {
                 Query = query;
                 Begin = query.Evaluate(beginIssues).ToArray();
                 End = query.Evaluate(endIssues).ToArray();
+                _middle = query.Evaluate(middleIssues).ToArray();
             }
         }
     }
