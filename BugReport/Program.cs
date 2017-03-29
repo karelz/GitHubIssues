@@ -40,6 +40,7 @@ class Program
     static readonly OptionMultipleValues _inputOption = new OptionMultipleValues("in", "input");
     static readonly OptionSingleValue _outputOption = new OptionSingleValue("out", "output");
     static readonly OptionSingleValue _outputCsvOption = new OptionSingleValue("out_csv");
+    static readonly OptionSingleValue _outputJsonOption = new OptionSingleValue("out_json");
     static readonly OptionSingleValue _nameOption = new OptionSingleValue("name");
     static readonly OptionMultipleValues _beginOption = new OptionMultipleValues("begin");
     static readonly OptionMultipleValues _middleOption = new OptionMultipleValues("middle");
@@ -59,7 +60,7 @@ class Program
   report [/begin <issues1.json> [...]] /end <issues1_end.json> [...] [/out <.html>] [/out_csv <file_prefix>] 
         [/name <report_name>] [/middle <issues.json> [...]] /config <.xml>
     * Creates report with alerts/areas as rows and queries as columns from cached .json file
-  query /in <issues.json> [...] /out <.html> /config <.xml>
+  query [/begin <issues1.json> [...]] /end <issues1_end.json> [...] [/out_json <out.json>] /out <.html> /config <.xml>
     * Creates query report (list of issues) from cached .json file
   alerts /begin <issues1.json> [...] /end <issues1_end.json> [...] /template <.html> /config <.xml> 
         [/filter <alert_name> [...]] [/skipEmail] [/out <out.html>]
@@ -142,18 +143,20 @@ class Program
                 case ActionCommand.query:
                     {
                         if (!optionsParser.Parse(
-                            new Option[] { _configOption, _inputOption, _outputOption },
-                            Option.EmptyList))
+                            new Option[] { _configOption, _endOption, _outputOption },
+                            new Option[] { _beginOption, _outputJsonOption }))
                         {
                             return ErrorCode.InvalidCommand;
                         }
                         IEnumerable<string> configFiles = _configOption.GetValues(optionsParser);
-                        IEnumerable<string> inputFiles = _inputOption.GetValues(optionsParser);
+                        IEnumerable<string> beginFiles = _beginOption.GetValues(optionsParser);
+                        IEnumerable<string> endFiles = _endOption.GetValues(optionsParser);
+                        string outputJsonFile = _outputJsonOption.GetValue(optionsParser);
                         string outputFile = _outputOption.GetValue(optionsParser);
 
                         Config config = new Config(configFiles);
-                        QueryReport report = new QueryReport(config);
-                        report.Write(IssueCollection.LoadIssues(inputFiles, config), outputFile);
+                        QueryReport report = new QueryReport(config, beginFiles, endFiles);
+                        report.Write(outputFile, outputJsonFile);
                         return ErrorCode.Success;
                     }
                 case ActionCommand.report:
@@ -360,16 +363,16 @@ class Program
 
         DateTime currentTime = DateTime.Now;
         repo.LoadIssues();
-        repo.SerializeToFile(
+        Repository.SerializeToFile(
             string.Format("{0}{1:yyyy-MM-dd@HH-mm}.json", prefix, currentTime), 
             repo.Issues);
 
         if (commentsPrefix != null)
         {
             repo.LoadIssueComments();
-            repo.SerializeToFile(
+            Repository.SerializeToFile(
                 string.Format("{0}{1:yyyy-MM-dd@HH-mm}.json", commentsPrefix, currentTime), 
-                repo.IssueComments);
+                (IReadOnlyCollection<Octokit.IssueComment>)repo.IssueComments);
         }
 
         return ErrorCode.Success;
