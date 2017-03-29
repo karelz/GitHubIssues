@@ -12,7 +12,15 @@ namespace BugReport.DataModel
     {
         public static IEnumerable<DataModelIssue> Except_ByIssueNumber(this IEnumerable<DataModelIssue> issues, IEnumerable<DataModelIssue> exceptIssues)
         {
-            return issues.Where(i => exceptIssues.Where(i2 => i2.EqualsByNumber(i)).None());
+            return issues.Where(i => !exceptIssues.Contains_ByIssueNumber(i));
+        }
+        public static bool Contains_ByIssueNumber(this IEnumerable<DataModelIssue> issues, DataModelIssue issue)
+        {
+            return issues.Where(i => issue.EqualsByNumber(i)).Any();
+        }
+        public static IEnumerable<DataModelIssue> Intersect_ByIssueNumber(this IEnumerable<DataModelIssue> issues, IEnumerable<DataModelIssue> intersectIssues)
+        {
+            return issues.Where(i => intersectIssues.Contains_ByIssueNumber(i));
         }
         public static IEnumerable<DataModelIssue> Where(this IEnumerable<DataModelIssue> issues, Repository repo)
         {

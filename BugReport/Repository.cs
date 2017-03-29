@@ -254,7 +254,20 @@ public class Repository
         Issues = issues;
     }
 
-    public void SerializeToFile(string fileName, object objToSerialize)
+    public static void SerializeToFile(string fileName, IReadOnlyCollection<Octokit.Issue> issues)
+    {
+        SerializeToFile(fileName, (object)issues);
+    }
+    public static void SerializeToFile(string fileName, IReadOnlyCollection<Octokit.IssueComment> issueComments)
+    {
+        SerializeToFile(fileName, (object)issueComments);
+    }
+    public static void SerializeToFile(string fileName, IEnumerable<DataModelIssue> issues)
+    {
+        SerializeToFile(fileName, (object)issues);
+    }
+
+    private static void SerializeToFile(string fileName, object objToSerialize)
     {
         JsonSerializer serializer = new JsonSerializer();
         serializer.Formatting = Formatting.Indented;
