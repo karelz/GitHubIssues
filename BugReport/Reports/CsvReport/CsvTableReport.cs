@@ -48,6 +48,7 @@ namespace BugReport.Reports
                     null,
                     _report.Columns,
                     _report.BeginIssues,
+                    _report.MiddleIssues,
                     _report.EndIssues);
 
                 TableReport.Row totalRow = new TableReport.Row(
@@ -56,6 +57,7 @@ namespace BugReport.Reports
                     null,
                     _report.Columns,
                     _report.BeginIssues,
+                    _report.MiddleIssues,
                     _report.EndIssues);
 
                 // Write heading row
@@ -68,8 +70,8 @@ namespace BugReport.Reports
                     file.Write(row.Name);
                     file.WriteLine(row.Columns.SelectMany(filteredIssues => new string[] {
                             filteredIssues.End.Count().ToString(),
-                            filteredIssues.EndOnly.Count().ToString(),
-                            filteredIssues.BeginOnly.Count().ToString() }));
+                            filteredIssues.EndOrMiddleOnly.Count().ToString(),
+                            filteredIssues.BeginOrMiddleOnly.Count().ToString() }));
                 }
             }
         }

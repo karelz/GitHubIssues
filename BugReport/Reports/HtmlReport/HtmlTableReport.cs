@@ -46,6 +46,17 @@ namespace BugReport.Reports
                     file.WriteLine("</ul>");
                 }
 
+                if (_report.MiddleFiles != null)
+                {
+                    file.WriteLine("/middle");
+                    file.WriteLine("<ul>");
+                    foreach (string fileName in _report.MiddleFiles)
+                    {
+                        file.WriteLine($"    <li>{fileName}</li>");
+                    }
+                    file.WriteLine("</ul>");
+                }
+
                 file.WriteLine("/end");
                 file.WriteLine("<ul>");
                 foreach (string fileName in _report.EndFiles)
@@ -107,6 +118,7 @@ namespace BugReport.Reports
                     null,
                     _report.Columns,
                     _report.BeginIssues,
+                    _report.MiddleIssues,
                     _report.EndIssues);
 
                 ReportTableRow(file, "  ", otherRow, shouldHyperLink, useRepositoriesFromIssues: false, makeCountBold: true);
@@ -120,6 +132,7 @@ namespace BugReport.Reports
                     null,
                     _report.Columns,
                     _report.BeginIssues,
+                    _report.MiddleIssues,
                     _report.EndIssues);
 
                 ReportTableRow(file, "  ", totalRow, shouldHyperLink, useRepositoriesFromIssues: false, makeCountBold: true);
@@ -150,8 +163,8 @@ namespace BugReport.Reports
                     return new string[] {
                         makeCountBold ? $"<b>{count}</b>" : count,
                         $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
-                        $"<i>+{filteredIssues.EndOnly.Count()}</i>",
-                        $"<i>-{filteredIssues.BeginOnly.Count()}</i>" };
+                        $"<i>+{filteredIssues.EndOrMiddleOnly.Count()}</i>",
+                        $"<i>-{filteredIssues.BeginOrMiddleOnly.Count()}</i>" };
                 }));
         }
 
