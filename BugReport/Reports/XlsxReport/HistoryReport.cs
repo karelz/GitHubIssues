@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using Microsoft.VisualBasic.FileIO;
 using OfficeOpenXml;
 
@@ -112,7 +110,7 @@ namespace BugReport.Reports
                     throw new InvalidDataException($"Unexpected number of columns {allHeaders.Length} in file '{inputFileName}'.");
                 }
 
-                string name = allHeaders[0];
+                string name = ConvertToDate(allHeaders[0]);
                 string[] columnHeaders = new string[allHeaders.Length / 3];
                 for (int i = 0; i < columnHeaders.Length; i++)
                 {
@@ -224,6 +222,16 @@ namespace BugReport.Reports
 
                 return new Row(name, entries, lineNumber);
             }
+        }
+
+        private static string ConvertToDate(string value)
+        {
+            Regex regex = new Regex("^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$");
+            if (regex.IsMatch(value))
+            {
+                return value.Replace('-', '/');
+            }
+            return value;
         }
     }
 }
