@@ -35,13 +35,16 @@ namespace BugReport.Reports
                 }
                 file.WriteLine($"Report created on {DateTime.Now}<br/>");
 
-                file.WriteLine("/begin");
-                file.WriteLine("<ul>");
-                foreach (string fileName in _report.BeginFiles)
+                if (_report.BeginFiles != null)
                 {
-                    file.WriteLine($"    <li>{fileName}</li>");
+                    file.WriteLine("/begin");
+                    file.WriteLine("<ul>");
+                    foreach (string fileName in _report.BeginFiles)
+                    {
+                        file.WriteLine($"    <li>{fileName}</li>");
+                    }
+                    file.WriteLine("</ul>");
                 }
-                file.WriteLine("</ul>");
 
                 file.WriteLine("/end");
                 file.WriteLine("<ul>");
