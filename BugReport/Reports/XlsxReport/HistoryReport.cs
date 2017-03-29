@@ -31,7 +31,7 @@ namespace BugReport.Reports
                 table.ValidateSchema(firstTable);
             }
 
-            using (ExcelPackage package = new ExcelPackage(new FileInfo(outputFileName)))
+            using (ExcelPackage package = new ExcelPackage(new FileStream(outputFileName, FileMode.Create)))
             {
                 string[] columnHeaders = firstTable.ColumnHeaders;
                 for (int i = 0; i < columnHeaders.Length; i++)
