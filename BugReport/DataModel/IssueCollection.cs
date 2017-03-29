@@ -95,6 +95,12 @@ namespace BugReport.DataModel
             IssueKindFlags issueKind = IssueKindFlags.All)
         {
             IEnumerable<DataModelIssue> issues = new DataModelIssue[] {};
+
+            if (fileNames == null)
+            {
+                return issues;
+            }
+
             foreach (string fileName in fileNames)
             {
                 JsonSerializer serializer = new JsonSerializer();
@@ -105,17 +111,20 @@ namespace BugReport.DataModel
                                                         .Where(i => i.IsIssueKind(issueKind)));
                 }
             }
+            
             // Process label/milestone aliases before repo filtering - its query might rely on the aliases
             foreach (DataModelIssue issue in issues)
             {
                 issue.Labels = ApplyLabelAliases(issue.Labels, config.LabelAliases).ToArray();
                 ApplyMilestoneAliases(issue.Milestone, config.MilestoneAliases);
             }
+            
             // Process repo filters after label aliases, the filter query might depend on them
             foreach (Repository repo in Repository.Repositories)
             {
                 issues = repo.Filter(issues);
             }
+
             return issues.ToArray();
         }
 
