@@ -16,8 +16,13 @@ namespace BugReport.Reports.EmailReports
             bool skipEmail,
             string outputHtmlFileName,
             IEnumerable<string> filteredAlertNames,
-            IEnumerable<DataModelIssue> issues)
+            IEnumerable<string> inputFiles)
         {
+            IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(
+                inputFiles,
+                config,
+                IssueKindFlags.Issue);
+
             return AlertReport.SendEmails(
                 config,
                 htmlTemplateFileName,
@@ -25,7 +30,7 @@ namespace BugReport.Reports.EmailReports
                 outputHtmlFileName,
                 filteredAlertNames,
                 (Alert alert, string htmlTemplate) =>
-                    GenerateReport(alert, htmlTemplate, issues, config.UntriagedExpression));
+                    GenerateReport(alert, htmlTemplate, issues, inputFiles, config.UntriagedExpression));
         }
 
         // Returns null if the report is empty
@@ -33,6 +38,7 @@ namespace BugReport.Reports.EmailReports
             Alert alert,
             string htmlTemplate,
             IEnumerable<DataModelIssue> issues,
+            IEnumerable<string> inputFiles,
             ExpressionUntriaged untriagedExpression)
         {
             IEnumerable<DataModelIssue> matchingIssues = alert.Query.Evaluate(issues);
@@ -63,6 +69,8 @@ namespace BugReport.Reports.EmailReports
 
             IEnumerable<IssueEntry> untriagedIssueEntries = untriagedFlagsMap.Keys.Select(issue => new IssueEntry(issue));
             text = text.Replace("%UNTRIAGED_ISSUES_TABLE%", FormatIssueTable(untriagedFlagsMap));
+
+            text = text.Replace("%INPUT_FILES_LIST%", FormatInputFilesList(inputFiles));
 
             return text;
         }
@@ -101,6 +109,20 @@ namespace BugReport.Reports.EmailReports
                 text.AppendLine("  </tr>");
             }
             text.AppendLine("</table>");
+
+            return text.ToString();
+        }
+
+        private static string FormatInputFilesList(IEnumerable<string> inputFiles)
+        {
+            StringBuilder text = new StringBuilder();
+
+            text.AppendLine("<ul>");
+            foreach (string fileName in inputFiles)
+            {
+                text.AppendLine($"    <li>{fileName}</li>");
+            }
+            text.AppendLine("</ul>");
 
             return text.ToString();
         }

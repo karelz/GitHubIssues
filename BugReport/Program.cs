@@ -267,10 +267,6 @@ class Program
                         string outputFile = _outputOption.GetValue(optionsParser);
 
                         Config config = new Config(configFiles);
-                        IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(
-                            inputFiles, 
-                            config, 
-                            IssueKindFlags.Issue);
 
                         return GetSendEmailErrorCode(AlertReport_Untriaged.SendEmails(
                             config,
@@ -278,7 +274,7 @@ class Program
                             skipEmail,
                             outputFile,
                             alertFilters,
-                            issues));
+                            inputFiles));
                     }
                 case ActionCommand.needsResponse:
                     {
