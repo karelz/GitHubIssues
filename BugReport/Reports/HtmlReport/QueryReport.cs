@@ -61,11 +61,11 @@ namespace BugReport.Reports
         }
         tr.new
         {
-            background-color: #cffcb3; /* light green */
+            background-color: #f0fff0; /* light green */
         }
         tr.gone
         {
-            background-color: #fcb3b3; /* light red */
+            background-color: #fff0f0; /* light red */
         }
     </style>
 </head>
