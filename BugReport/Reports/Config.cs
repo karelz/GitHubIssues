@@ -80,7 +80,10 @@ namespace BugReport.Reports
             Teams = LoadTeams();
 
             IEnumerable<AreaLabel> allAreaLabels = LoadAreaLabels().Distinct().ToList();
-            AreaLabels = FilterAreaLabels(allAreaLabels, LoadAreaLabelFilters(allAreaLabels)).ToList();
+            AreaLabels = FilterAreaLabels(
+                allAreaLabels,
+                LoadAreaLabelFilters(allAreaLabels, FilterKind.In),
+                LoadAreaLabelFilters(allAreaLabels, FilterKind.Out)).ToList();
             IssueTypeLabels = LoadLabels("issueType").ToList();
             UntriagedLabels = LoadLabels("untriaged").ToList();
 
@@ -94,7 +97,10 @@ namespace BugReport.Reports
             var customIsValues = new Dictionary<string, Expression>() { { "untriaged", UntriagedExpression } };
 
             IEnumerable<Alert> allAlerts = LoadAlerts(customIsValues);
-            Alerts = FilterAlerts(allAlerts, LoadAlertFilters(allAlerts).ToList()).ToList();
+            Alerts = FilterAlerts(
+                allAlerts,
+                LoadAlertFilters(allAlerts, FilterKind.In).ToList(),
+                LoadAlertFilters(allAlerts, FilterKind.Out).ToList()).ToList();
             Queries = LoadQueryReports(customIsValues).ToList();
         }
 
@@ -232,11 +238,16 @@ namespace BugReport.Reports
             }
         }
 
-        private IEnumerable<AlertFilter> LoadAlertFilters(IEnumerable<Alert> alerts)
+        private IEnumerable<AlertFilter> LoadAlertFilters(
+            IEnumerable<Alert> alerts,
+            FilterKind filterKind)
         {
+            string kindValue = GetFilterKindValue(filterKind);
+
             foreach (ConfigFile configFile in _configFiles)
             {
-                foreach (XElement alertsNode in configFile.Root.Descendants("alertFilters"))
+                foreach (XElement alertsNode in configFile.Root.Descendants("alertFilters")
+                    .Where(n => (n.Attribute("kind").Value == kindValue)))
                 {
                     foreach (XElement alertNode in alertsNode.Descendants("alertFilter"))
                     {
@@ -263,11 +274,18 @@ namespace BugReport.Reports
             }
         }
 
-        private IEnumerable<Alert> FilterAlerts(IEnumerable<Alert> alerts, IEnumerable<AlertFilter> filters)
+        private IEnumerable<Alert> FilterAlerts(
+            IEnumerable<Alert> alerts,
+            IEnumerable<AlertFilter> inFilters,
+            IEnumerable<AlertFilter> outFilters)
         {
-            if (filters.Any())
+            if (inFilters.Any())
             {
-                return alerts.Where(alert => filters.Where(filter => filter.IsMatch(alert)).Any());
+                alerts = alerts.Where(alert => inFilters.Where(filter => filter.IsMatch(alert)).Any());
+            }
+            if (outFilters.Any())
+            {
+                alerts = alerts.Where(alert => outFilters.Where(filter => filter.IsMatch(alert)).None());
             }
             return alerts;
         }
@@ -360,6 +378,18 @@ namespace BugReport.Reports
             }
         }
 
+        private enum FilterKind
+        {
+            In,
+            Out
+        }
+
+        private static string GetFilterKindValue(FilterKind kind)
+        {
+            Debug.Assert((kind == FilterKind.In) || (kind == FilterKind.Out));
+            return (kind == FilterKind.In) ? "in" : "out";
+        }
+
         private class AreaLabelFilter
         {
             private Team _team;
@@ -387,14 +417,19 @@ namespace BugReport.Reports
             }
         }
 
-        private IEnumerable<AreaLabelFilter> LoadAreaLabelFilters(IEnumerable<AreaLabel> areaLabels)
+        private IEnumerable<AreaLabelFilter> LoadAreaLabelFilters(
+            IEnumerable<AreaLabel> areaLabels,
+            FilterKind filterKind)
         {
             // Teams have to load first
             Debug.Assert(Teams != null);
 
+            string kindValue = GetFilterKindValue(filterKind);
+
             foreach (ConfigFile configFile in _configFiles)
             {
-                foreach (XElement alertsNode in configFile.Root.Descendants("areaLabelFilters"))
+                foreach (XElement alertsNode in configFile.Root.Descendants("areaLabelFilters")
+                    .Where(n => (n.Attribute("kind").Value == kindValue)))
                 {
                     foreach (XElement alertNode in alertsNode.Descendants("areaLabelFilter"))
                     {
@@ -417,13 +452,20 @@ namespace BugReport.Reports
             }
         }
 
-        private IEnumerable<Label> FilterAreaLabels(IEnumerable<AreaLabel> areaLabels, IEnumerable<AreaLabelFilter> filters)
+        private IEnumerable<Label> FilterAreaLabels(
+            IEnumerable<AreaLabel> areaLabels,
+            IEnumerable<AreaLabelFilter> inFilters,
+            IEnumerable<AreaLabelFilter> outFilters)
         {
-            IEnumerable<AreaLabel> filteredAreaLabels = areaLabels;
-            if (filters.Any())
+            if (inFilters.Any())
             {
                 areaLabels = areaLabels.Where(areaLabel =>
-                    filters.Where(filter => filter.IsMatch(areaLabel)).Any());
+                    inFilters.Where(filter => filter.IsMatch(areaLabel)).Any());
+            }
+            if (outFilters.Any())
+            {
+                areaLabels = areaLabels.Where(areaLabel =>
+                    outFilters.Where(filter => filter.IsMatch(areaLabel)).None());
             }
             return areaLabels.Select(areaLabel => areaLabel.Label);
         }
