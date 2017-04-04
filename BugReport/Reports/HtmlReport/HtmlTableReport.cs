@@ -35,6 +35,21 @@ namespace BugReport.Reports
                 }
                 file.WriteLine($"Report created on {DateTime.Now}<br/>");
 
+                file.WriteLine("<h2>Alerts</h2>");
+                Report(file, _report.GetAlertRows(TableReport.Row.SortRows_ByFirstColumn));
+
+                file.WriteLine("<h2>Teams</h2>");
+                Report(file, _report.GetTeamAlertRows(TableReport.Row.SortRows_ByFirstColumn));
+
+                file.WriteLine("<h2>Organizations</h2>");
+                Report(file, _report.GetOrganizationAlertRows(TableReport.Row.SortRows_ByFirstColumn));
+
+                file.WriteLine("<h2>Alerts - alphabetically</h2>");
+                Report(file, _report.GetAlertRows(TableReport.Row.SortRows_ByName));
+
+                file.WriteLine("<h2>Areas - alphabetically</h2>");
+                Report(file, _report.GetAreaLabelRows(TableReport.Row.SortRows_ByName));
+
                 if (_report.BeginFiles != null)
                 {
                     file.WriteLine("/begin");
@@ -64,21 +79,6 @@ namespace BugReport.Reports
                     file.WriteLine($"    <li>{fileName}</li>");
                 }
                 file.WriteLine("</ul>");
-
-                file.WriteLine("<h2>Alerts</h2>");
-                Report(file, _report.GetAlertRows(TableReport.Row.SortRows_ByFirstColumn));
-
-                file.WriteLine("<h2>Teams</h2>");
-                Report(file, _report.GetTeamAlertRows(TableReport.Row.SortRows_ByFirstColumn));
-
-                file.WriteLine("<h2>Organizations</h2>");
-                Report(file, _report.GetOrganizationAlertRows(TableReport.Row.SortRows_ByFirstColumn));
-
-                file.WriteLine("<h2>Alerts - alphabetically</h2>");
-                Report(file, _report.GetAlertRows(TableReport.Row.SortRows_ByName));
-
-                file.WriteLine("<h2>Areas - alphabetically</h2>");
-                Report(file, _report.GetAreaLabelRows(TableReport.Row.SortRows_ByName));
 
                 file.WriteLine("</body></html>");
             }
