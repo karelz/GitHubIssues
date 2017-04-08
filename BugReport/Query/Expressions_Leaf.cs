@@ -54,8 +54,8 @@ namespace BugReport.Query
 
         public override bool Equals(Expression e)
         {
-            return (e is ExpressionLabel) ? 
-                _labelName == ((ExpressionLabel)e)._labelName : 
+            return (e is ExpressionLabel) ?
+                StringComparer.InvariantCultureIgnoreCase.Equals(_labelName, ((ExpressionLabel)e)._labelName) : 
                 false;
         }
     }
@@ -68,7 +68,7 @@ namespace BugReport.Query
         public ExpressionLabelPattern(string labelPattern)
         {
             _labelPattern = labelPattern;
-            _labelRegex = new Regex("^" + labelPattern + "$");
+            _labelRegex = new Regex("^" + labelPattern + "$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
         }
 
         public override bool Evaluate(DataModelIssue issue)
@@ -254,7 +254,7 @@ namespace BugReport.Query
         public override bool Equals(Expression e)
         {
             return (e is ExpressionMilestone) ?
-                _milestoneName == ((ExpressionMilestone)e)._milestoneName :
+                StringComparer.InvariantCultureIgnoreCase.Equals(_milestoneName, ((ExpressionMilestone)e)._milestoneName) :
                 false;
         }
     }
@@ -267,7 +267,7 @@ namespace BugReport.Query
         public ExpressionMilestonePattern(string milestonePattern)
         {
             _milestonePattern = milestonePattern;
-            _milestoneRegex = new Regex("^" + milestonePattern + "$");
+            _milestoneRegex = new Regex("^" + milestonePattern + "$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
         }
 
         public override bool Evaluate(DataModelIssue issue)
@@ -358,7 +358,7 @@ namespace BugReport.Query
         public override bool Equals(Expression e)
         {
             return (e is ExpressionAssignee) ?
-                _assigneeName == ((ExpressionAssignee)e)._assigneeName :
+                StringComparer.InvariantCultureIgnoreCase.Equals(_assigneeName, ((ExpressionAssignee)e)._assigneeName) :
                 false;
         }
     }

@@ -68,6 +68,11 @@ namespace BugReport.Reports
                 }
             }
         }
+
+        public bool EqualsByName(string name)
+        {
+            return Name.Equals(name, StringComparison.InvariantCultureIgnoreCase);
+        }
     }
 
     public class Alert : NamedQuery
@@ -116,6 +121,11 @@ namespace BugReport.Reports
             Name = name;
             Description = description;
         }
+
+        public bool EqualsByName(string name)
+        {
+            return Name.Equals(name, StringComparison.InvariantCultureIgnoreCase);
+        }
     }
 
     public class Team
@@ -128,5 +138,12 @@ namespace BugReport.Reports
             Name = name;
             Organization = organization;
         }
+
+        public bool EqualsByName(string name)
+        {
+            return Name.Equals(name, StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        public static StringComparer NameComparer = StringComparer.InvariantCultureIgnoreCase;
     }
 }

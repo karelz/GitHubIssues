@@ -23,8 +23,8 @@ namespace BugReport.Reports
         public IEnumerable<Label> UntriagedLabels { get; private set; }
         public ExpressionUntriaged UntriagedExpression { get; private set; }
 
-        public IDictionary<string, Label> LabelAliases { get; private set; }
-        public IDictionary<string, string> MilestoneAliases { get; private set; }
+        public IDictionary<string, Label> LabelAliasesMap { get; private set; }
+        public IDictionary<string, string> MilestoneAliasesMap { get; private set; }
 
         public IEnumerable<Repository> Repositories { get; private set; }
 
@@ -87,8 +87,8 @@ namespace BugReport.Reports
             IssueTypeLabels = LoadLabels("issueType").ToList();
             UntriagedLabels = LoadLabels("untriaged").ToList();
 
-            LabelAliases = LoadLabelAliases();
-            MilestoneAliases = LoadMilestoneAliases();
+            LabelAliasesMap = LoadLabelAliasesMap();
+            MilestoneAliasesMap = LoadMilestoneAliasesMap();
 
             UntriagedExpression = new ExpressionUntriaged(
                 IssueTypeLabels,
@@ -234,7 +234,7 @@ namespace BugReport.Reports
                     return (_team == alert.Team);
                 }
                 Debug.Assert(_alertName != null);
-                return _alertName == alert.Name;
+                return alert.EqualsByName(_alertName);
             }
         }
 
@@ -263,7 +263,7 @@ namespace BugReport.Reports
                             throw new InvalidDataException($"Invalid alert filter '{alertName}' for team '{teamName}' - cannot filter on both 'name' and 'team' attributes at once.");
                         }
                         if ((alertName != null) &&
-                            alerts.Where(alert => (alert.Name == alertName)).None())
+                            alerts.Where(alert => alert.EqualsByName(alertName)).None())
                         {
                             throw new InvalidDataException($"Invalid alert filter on name '{alertName}' - cannot find alert with that name");
                         }
@@ -408,12 +408,12 @@ namespace BugReport.Reports
                 {
                     if (_labelName != null)
                     {
-                        return ((areaLabel.Team == _team) && (areaLabel.Label.Name == _labelName));
+                        return ((areaLabel.Team == _team) && areaLabel.Label.Equals(_labelName));
                     }
                     return (areaLabel.Team == _team);
                 }
                 Debug.Assert(_labelName != null);
-                return (areaLabel.Label.Name == _labelName);
+                return areaLabel.Label.Equals(_labelName);
             }
         }
 
@@ -441,7 +441,7 @@ namespace BugReport.Reports
                             throw new InvalidDataException("Invalid area label filter - either 'name' or 'team' attribute has to be defined.");
                         }
                         if ((labelName != null) && 
-                            areaLabels.Where(areaLabel => (areaLabel.Label.Name == labelName)).None())
+                            areaLabels.Where(areaLabel => areaLabel.Label.Equals(labelName)).None())
                         {
                             throw new InvalidDataException($"Invalid areal label filter on name '{labelName}' - cannot find label with that name");
                         }
@@ -470,9 +470,9 @@ namespace BugReport.Reports
             return areaLabels.Select(areaLabel => areaLabel.Label);
         }
 
-        private Dictionary<string, Label> LoadLabelAliases()
+        private Dictionary<string, Label> LoadLabelAliasesMap()
         {
-            Dictionary<string, Label> labelAliases = new Dictionary<string, Label>();
+            Dictionary<string, Label> labelAliases = new Dictionary<string, Label>(Label.NameEqualityComparer);
             foreach (ConfigFile configFile in _configFiles)
             {
                 foreach (XElement labelsNode in
@@ -495,9 +495,9 @@ namespace BugReport.Reports
             return labelAliases;
         }
 
-        private Dictionary<string, string> LoadMilestoneAliases()
+        private Dictionary<string, string> LoadMilestoneAliasesMap()
         {
-            Dictionary<string, string> milestoneAliases = new Dictionary<string, string>();
+            Dictionary<string, string> milestoneAliases = new Dictionary<string, string>(Milestone.TitleComparer);
             foreach (ConfigFile configFile in _configFiles)
             {
                 foreach (XElement labelsNode in
@@ -548,7 +548,7 @@ namespace BugReport.Reports
         }
         private Organization FindOrganization(string organizationName)
         {
-            return _organizations.Where(org => org.Name == organizationName).FirstOrDefault();
+            return _organizations.Where(org => org.EqualsByName(organizationName)).FirstOrDefault();
         }
 
         private Dictionary<string, Team> _teams;
@@ -558,7 +558,7 @@ namespace BugReport.Reports
             Debug.Assert(_organizations != null);
             Debug.Assert(_teams == null);
 
-            _teams = new Dictionary<string, Team>();
+            _teams = new Dictionary<string, Team>(Team.NameComparer);
             foreach (ConfigFile configFile in _configFiles)
             {
                 foreach (XElement teamsNode in configFile.Root.Descendants("teams"))
