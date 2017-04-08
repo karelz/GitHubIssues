@@ -84,7 +84,8 @@ namespace BugReport.Reports.EmailReports
             foreach (Alert alert in _config.Alerts.Where(alert => alert.Owners.Any()))
             {
                 Console.WriteLine("Alert: {0}", alert.Name);
-                if ((_filteredAlertNames != null) && !_filteredAlertNames.ContainsIgnoreCase(alert.Name))
+                if ((_filteredAlertNames != null) && 
+                    _filteredAlertNames.Where(name => alert.EqualsByName(name)).None())
                 {
                     Console.WriteLine("    Filtered alert");
                     Console.WriteLine();

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 
@@ -88,7 +89,7 @@ namespace BugReport.DataModel
             {
                 return (assigneeName == null);
             }
-            return (Assignee.Name == assigneeName);
+            return Assignee.Name.Equals(assigneeName, StringComparison.InvariantCultureIgnoreCase);
         }
 
         public override string ToString()
@@ -145,6 +146,13 @@ namespace BugReport.DataModel
         {
             Name = name;
         }
+
+        public bool Equals(string name)
+        {
+            return NameEqualityComparer.Equals(Name, name);
+        }
+
+        public static StringComparer NameEqualityComparer = StringComparer.InvariantCultureIgnoreCase;
     }
 
     public class User
@@ -166,6 +174,13 @@ namespace BugReport.DataModel
         public DateTimeOffset CreatedAt;
         public DateTimeOffset? DueOn;
         public DateTimeOffset? ClosedAt;
+
+        public bool Equals(string title)
+        {
+            return TitleComparer.Equals(Title, title);
+        }
+
+        public static StringComparer TitleComparer = StringComparer.InvariantCultureIgnoreCase;
     }
 
     public class PullRequest

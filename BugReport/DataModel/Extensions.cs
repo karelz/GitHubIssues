@@ -34,7 +34,7 @@ namespace BugReport.DataModel
 
         public static bool ContainsLabel(this IEnumerable<Label> labels, string labelName)
         {
-            return labels.Where(l => l.Name == labelName).Any();
+            return labels.Where(l => l.Equals(labelName)).Any();
         }
 
         public static IEnumerable<Label> Intersect_ByName(this IEnumerable<Label> labels, IEnumerable<Label> labels2)

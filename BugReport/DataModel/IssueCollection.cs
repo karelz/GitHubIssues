@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -10,15 +11,15 @@ namespace BugReport.DataModel
 {
     public class IssueCollection
     {
-        private Dictionary<string, Label> LabelsMap;
+        private Dictionary<string, Label> _labelsMap;
         public IEnumerable<Label> Labels
         {
-            get { return LabelsMap.Values; }
+            get { return _labelsMap.Values; }
         }
         public Label GetLabel(string name)
         {
             Label label;
-            if (LabelsMap.TryGetValue(name, out label))
+            if (_labelsMap.TryGetValue(name, out label))
             {
                 return label;
             }
@@ -26,7 +27,7 @@ namespace BugReport.DataModel
         }
         public bool HasLabel(string labelName)
         {
-            return LabelsMap.ContainsKey(labelName);
+            return _labelsMap.ContainsKey(labelName);
         }
 
         public bool HasUser(string userName)
@@ -35,16 +36,16 @@ namespace BugReport.DataModel
             return true;
         }
 
-        private Dictionary<string, Milestone> MilestonesMap;
+        private Dictionary<string, Milestone> _milestonesMap;
         public bool HasMilestone(string milestoneName)
         {
-            return MilestonesMap.ContainsKey(milestoneName);
+            return _milestonesMap.ContainsKey(milestoneName);
         }
 
         public IssueCollection(IEnumerable<DataModelIssue> issues)
         {
-            LabelsMap = new Dictionary<string, Label>();
-            MilestonesMap = new Dictionary<string, Milestone>();
+            _labelsMap = new Dictionary<string, Label>(Label.NameEqualityComparer);
+            _milestonesMap = new Dictionary<string, Milestone>(Milestone.TitleComparer);
 
             foreach (DataModelIssue issue in issues)
             {
@@ -53,13 +54,13 @@ namespace BugReport.DataModel
                     for (int i = 0; i < issue.Labels.Length; i++)
                     {
                         string labelName = issue.Labels[i].Name;
-                        if (LabelsMap.ContainsKey(labelName))
+                        if (_labelsMap.ContainsKey(labelName))
                         {
-                            issue.Labels[i] = LabelsMap[labelName];
+                            issue.Labels[i] = _labelsMap[labelName];
                         }
                         else
                         {
-                            LabelsMap[labelName] = issue.Labels[i];
+                            _labelsMap[labelName] = issue.Labels[i];
                         }
                     }
                 }
@@ -67,15 +68,15 @@ namespace BugReport.DataModel
                 if (issue.Milestone != null)
                 {
                     string milestoneName = issue.Milestone.Title;
-                    if (MilestonesMap.ContainsKey(milestoneName))
+                    if (_milestonesMap.ContainsKey(milestoneName))
                     {
                         // Milestone names should be unique - if not, we need to use Number as unique identifier
-                        Debug.Assert(issue.Milestone.Number == MilestonesMap[milestoneName].Number);
-                        issue.Milestone = MilestonesMap[milestoneName];
+                        Debug.Assert(issue.Milestone.Number == _milestonesMap[milestoneName].Number);
+                        issue.Milestone = _milestonesMap[milestoneName];
                     }
                     else
                     {
-                        MilestonesMap[milestoneName] = issue.Milestone;
+                        _milestonesMap[milestoneName] = issue.Milestone;
                     }
                 }
             }
@@ -115,8 +116,8 @@ namespace BugReport.DataModel
             // Process label/milestone aliases before repo filtering - its query might rely on the aliases
             foreach (DataModelIssue issue in issues)
             {
-                issue.Labels = ApplyLabelAliases(issue.Labels, config.LabelAliases).ToArray();
-                ApplyMilestoneAliases(issue.Milestone, config.MilestoneAliases);
+                issue.Labels = ApplyLabelAliases(issue.Labels, config.LabelAliasesMap).ToArray();
+                ApplyMilestoneAliases(issue.Milestone, config.MilestoneAliasesMap);
             }
             
             // Process repo filters after label aliases, the filter query might depend on them
