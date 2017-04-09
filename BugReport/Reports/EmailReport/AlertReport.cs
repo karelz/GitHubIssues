@@ -181,7 +181,7 @@ namespace BugReport.Reports.EmailReports
                     Console.WriteLine("        FAILED!!!");
                 }
             }
-            Console.WriteLine("    Email: {0}", emailSent ? "sent" : (_skipEmail ? "skipped" : "FAILED!!!"));
+            Console.WriteLine("    Email: {0}", emailSent ? (_skipEmail ? "skipped" : "sent") : "FAILED!!!");
             Console.WriteLine("        Subject: {0}", reportEmail.Subject);
             Console.WriteLine("        To:");
             foreach (Alert.User user in alert.Owners)

@@ -11,16 +11,16 @@ using BugReport.DataModel;
 
 namespace BugReport.Reports
 {
-    public struct IssueEntry
+    public class IssueEntry
     {
-        public string IssueId;
-        public string Title;
-        public string LabelsText;
-        public string AssignedToText;
-        public string MilestoneText;
+        public string IssueId { get; private set; }
+        public string Title { get; private set; }
+        public string LabelsText { get; private set; }
+        public string AssignedToText { get; private set; }
+        public string MilestoneText { get; private set; }
 
         // assignedToOverride - used for using 'Closed' as AssignedTo value in reports
-        public IssueEntry(DataModelIssue issue, string assignedToOverride = null)
+        public IssueEntry(DataModelIssue issue, IEnumerable<Label> styledLabels = null, string styleName = null)
         {
             string idPrefix = "";
             if (issue.IsPullRequest)
@@ -32,13 +32,12 @@ namespace BugReport.Reports
 
             Title = issue.Title;
 
-            LabelsText = string.Join(", ", issue.Labels.Select(l => l.Name));
+            styledLabels = styledLabels ?? new Label[] { };
 
-            if (assignedToOverride != null)
-            {
-                AssignedToText = assignedToOverride;
-            }
-            else if (issue.Assignee != null)
+            LabelsText = string.Join(", ", issue.Labels.Select(l =>
+                styledLabels.Contains_ByName(l.Name) ? $"<span class=\"{styleName}\">{l.Name}</span>" : l.Name));
+
+            if (issue.Assignee != null)
             {
                 AssignedToText = $"<a href=\"{issue.Assignee.HtmlUrl}\">@{issue.Assignee.Login}</a>";
             }

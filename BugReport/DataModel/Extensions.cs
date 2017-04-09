@@ -32,14 +32,18 @@ namespace BugReport.DataModel
             return issues.Where(i => i.EqualsByNumber(issue)).FirstOrDefault();
         }
 
-        public static bool ContainsLabel(this IEnumerable<Label> labels, string labelName)
+        public static bool Contains_ByName(this IEnumerable<Label> labels, string labelName)
         {
             return labels.Where(l => l.Equals(labelName)).Any();
+        }
+        public static bool Contains_ByName(this IEnumerable<Label> labels, Label label)
+        {
+            return labels.Contains_ByName(label.Name);
         }
 
         public static IEnumerable<Label> Intersect_ByName(this IEnumerable<Label> labels, IEnumerable<Label> labels2)
         {
-            return labels.Where(label => labels2.ContainsLabel(label.Name));
+            return labels.Where(label => labels2.Contains_ByName(label.Name));
         }
     }
 }
