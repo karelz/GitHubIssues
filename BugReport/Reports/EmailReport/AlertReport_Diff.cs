@@ -27,15 +27,16 @@ namespace BugReport.Reports.EmailReports
                 outputHtmlFileName,
                 filteredAlertNames,
                 (Alert alert, string htmlTemplate) => 
-                    GenerateReport(alert, htmlTemplate, beginIssues, endIssues));
+                    GenerateReport(alert, htmlTemplate, beginIssues, endIssues, config.AreaLabels));
         }
 
         // Returns null if the report is empty
         protected static string GenerateReport(
-            Alert alert, 
-            string htmlTemplate, 
-            IEnumerable<DataModelIssue> beginIssues, 
-            IEnumerable<DataModelIssue> endIssues)
+            Alert alert,
+            string htmlTemplate,
+            IEnumerable<DataModelIssue> beginIssues,
+            IEnumerable<DataModelIssue> endIssues,
+            IEnumerable<Label> areaLabels)
         {
             IEnumerable<DataModelIssue> beginQuery = alert.Query.Evaluate(beginIssues);
             IEnumerable<DataModelIssue> endQuery = alert.Query.Evaluate(endIssues);
@@ -52,50 +53,72 @@ namespace BugReport.Reports.EmailReports
 
             string text = htmlTemplate;
 
-            if (goneIssues.None() || newIssues.None())
-            {
-                Regex regex = new Regex("%ALL_ISSUES_START%(.|\n)*%ALL_ISSUES_END%");
-                text = regex.Replace(text, "");
+            text = text.Replace("%ISSUES_LINKED_COUNTS%", 
+                AlertReport.GetLinkedCount("", newIssues.Concat(goneIssues)));
 
-                if (goneIssues.None())
+            IEnumerable<IssueEntry> newIssueEntries = newIssues
+                .Select(issue => new IssueEntry(issue, IssueEntry.EntryKind.New));
+            IEnumerable<IssueEntry> goneIssueEntries = goneIssues
+                .Select(issue =>
                 {
-                    regex = new Regex("%GONE_ISSUES_START%(.|\n)*%GONE_ISSUES_END%");
-                    text = regex.Replace(text, "");
-                }
-                if (newIssues.None())
-                {
-                    regex = new Regex("%NEW_ISSUES_START%(.|\n)*%NEW_ISSUES_END%");
-                    text = regex.Replace(text, "");
-                }
-            }
-            text = text.Replace("%ALL_ISSUES_START%", "");
-            text = text.Replace("%ALL_ISSUES_END%", "");
-            text = text.Replace("%GONE_ISSUES_START%", "");
-            text = text.Replace("%GONE_ISSUES_END%", "");
-            text = text.Replace("%NEW_ISSUES_START%", "");
-            text = text.Replace("%NEW_ISSUES_END%", "");
-
-            text = text.Replace("%ALL_ISSUES_LINKED_COUNTS%", 
-                AlertReport.GetLinkedCount("is:issue is:open", newIssues.Concat(goneIssues)));
-            text = text.Replace("%GONE_ISSUES_LINKED_COUNTS%",
-                AlertReport.GetLinkedCount("is:issue is:open", goneIssues));
-            text = text.Replace("%NEW_ISSUES_LINKED_COUNTS%",
-                AlertReport.GetLinkedCount("is:issue is:open", newIssues));
-
-            IEnumerable<IssueEntry> newIssueEntries = newIssues.Select(issue => new IssueEntry(issue));
-            text = text.Replace("%NEW_ISSUES_TABLE%", FormatIssueTable(newIssueEntries));
-            IEnumerable<IssueEntry> goneIssueEntries = goneIssues.Select(issue =>
-            {
-                DataModelIssue newIssue = endIssues.FirstOrNull_ByIssueNumber(issue);
-                if (newIssue == null)
-                {   // Closed issue
-                    return new IssueEntry(issue, "Closed");
-                }
-                return new IssueEntry(newIssue);
-            });
-            text = text.Replace("%GONE_ISSUES_TABLE%", FormatIssueTable(goneIssueEntries));
+                    DataModelIssue newIssue = endIssues.FirstOrNull_ByIssueNumber(issue);
+                    if (newIssue == null)
+                    {   // Closed issue
+                        return new IssueEntry(issue, IssueEntry.EntryKind.Closed);
+                    }
+                    return new IssueEntry(newIssue, IssueEntry.EntryKind.Moved, areaLabels, "moved_area");
+                });
+            text = text.Replace("%ISSUES_TABLE%", FormatIssueTable(newIssueEntries.Concat(goneIssueEntries)
+                .OrderBy(entry => entry.OrderType)
+                .ThenBy(entry => entry.IssueNumber)));
 
             return text;
+        }
+
+        public class IssueEntry : Reports.IssueEntry
+        {
+            public bool IsPullRequest { get; private set; }
+            public EntryKind Kind { get; private set; }
+            public int IssueNumber { get; private set; }
+
+            public string Class => GetKindClassPrefix(Kind) + "_" + (IsPullRequest ? "pr" : "issue");
+            public string Status => Kind.ToString();
+
+            // In order of EntryKind, PR go first
+            public int OrderType => (int)Kind * 2 + (IsPullRequest ? 0 : 1);
+
+            public enum EntryKind
+            {
+                // Order used in OrderType
+                // Names used in Status
+                New = 0,
+                Moved = 1,
+                Closed = 2
+            }
+
+            public IssueEntry(
+                DataModelIssue issue, EntryKind kind, 
+                IEnumerable<Label> styledLabels = null, 
+                string styleName = null)
+                    : base(issue, styledLabels, styleName)
+            {
+                Kind = kind;
+                IsPullRequest = issue.IsPullRequest;
+                IssueNumber = issue.Number;
+            }
+
+            private static string GetKindClassPrefix(EntryKind kind)
+            {
+                if (kind == EntryKind.New)
+                {
+                    return "new";
+                }
+                if ((kind == EntryKind.Moved) || (kind == EntryKind.Closed))
+                {
+                    return "gone";
+                }
+                throw new InvalidProgramException($"Unexpected issue kind {kind}");
+            }
         }
 
         private static string FormatIssueTable(IEnumerable<IssueEntry> issues)
@@ -103,6 +126,7 @@ namespace BugReport.Reports.EmailReports
             StringBuilder text = new StringBuilder();
             text.AppendLine("<table>");
             text.AppendLine("  <tr>");
+            text.AppendLine("    <th>Status</th>");
             text.AppendLine("    <th>Issue #</th>");
             text.AppendLine("    <th>Title</th>");
             text.AppendLine("    <th>Assigned To</th>");
@@ -110,7 +134,8 @@ namespace BugReport.Reports.EmailReports
             text.AppendLine("  </tr>");
             foreach (IssueEntry issue in issues)
             {
-                text.AppendLine("  <tr>");
+                text.AppendLine($"  <tr class=\"{issue.Class}\">");
+                text.AppendLine($"    <td>{issue.Status}</td>");
                 text.AppendLine($"    <td>{issue.IssueId}</td>");
                 text.AppendLine("    <td>");
                 text.AppendLine($"      {HttpUtility.HtmlEncode(issue.Title)}");

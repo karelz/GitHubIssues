@@ -72,7 +72,7 @@ namespace BugReport.DataModel
             get => (State == Octokit.ItemState.Closed);
         }
 
-        public bool HasLabel(string labelName) => Labels.ContainsLabel(labelName);
+        public bool HasLabel(string labelName) => Labels.Contains_ByName(labelName);
 
         public bool IsMilestone(string milestoneName)
         {
