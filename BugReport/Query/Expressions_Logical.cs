@@ -60,29 +60,24 @@ namespace BugReport.Query
 
         protected override Expression GetSimplified()
         {
-            if (_expr is ExpressionNot)
+            if (_expr is ExpressionNot not)
             {
-                return ((ExpressionNot)_expr)._expr.Simplified;
+                return not._expr.Simplified;
             }
 
             Expression simplifiedExpr = _expr.Simplified;
-            if (simplifiedExpr is ExpressionOr)
+            switch (simplifiedExpr)
             {
-                return Expression.And(((ExpressionOr)simplifiedExpr).Expressions.Select(e => Expression.Not(e))).Simplified;
-            }
-            if (simplifiedExpr is ExpressionAnd)
-            {
-                return Expression.Or(((ExpressionAnd)simplifiedExpr).Expressions.Select(e => Expression.Not(e))).Simplified;
-            }
-            if (simplifiedExpr is ExpressionMultiRepo)
-            {
-                return new ExpressionMultiRepo(((ExpressionMultiRepo)simplifiedExpr).RepoExpressions.Select(repoExpr =>
-                    new RepoExpression(repoExpr.Repo, Expression.Not(repoExpr.Expr).Simplified)));
-            }
-            if (_expr is ExpressionConstant)
-            {
-                Debug.Assert((_expr == ExpressionConstant.True) || (_expr == ExpressionConstant.False));
-                return (_expr == ExpressionConstant.True) ? ExpressionConstant.False : ExpressionConstant.True;
+                case ExpressionOr or:
+                    return Expression.And(or.Expressions.Select(e => Expression.Not(e))).Simplified;
+                case ExpressionAnd and:
+                    return Expression.Or(and.Expressions.Select(e => Expression.Not(e))).Simplified;
+                case ExpressionMultiRepo multiRepo:
+                    return new ExpressionMultiRepo(multiRepo.RepoExpressions.Select(repoExpr =>
+                        new RepoExpression(repoExpr.Repo, Expression.Not(repoExpr.Expr).Simplified)));
+                case ExpressionConstant constant:
+                    Debug.Assert((constant == ExpressionConstant.True) || (constant == ExpressionConstant.False));
+                    return (constant == ExpressionConstant.True) ? ExpressionConstant.False : ExpressionConstant.True;
             }
             return Expression.Not(simplifiedExpr);
         }
