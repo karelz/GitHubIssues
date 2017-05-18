@@ -26,7 +26,8 @@ class Program
         alerts,
         history,
         untriaged,
-        needsResponse
+        needsResponse,
+        cache_timeline
     }
 
     static readonly IEnumerable<string> _helpActions = new List<string>() { "?", "help", "h" };
@@ -49,14 +50,18 @@ class Program
     static readonly OptionMultipleValues _filterOption = new OptionMultipleValues("filter");
     static readonly OptionWithoutValue _skipEmailOption = new OptionWithoutValue("skipEmail", "noEmail", "skipMail", "noMail");
     static readonly OptionMultipleValues _commentsOption = new OptionMultipleValues("comments");
+    static readonly OptionSingleValue _timelinesPrefixOption = new OptionSingleValue("timelines_prefix");
+    static readonly OptionSingleValue _startIndexOption = new OptionSingleValue("startIndex");
+    static readonly OptionSingleValue _endIndexOption = new OptionSingleValue("endIndex");
 
     static void PrintUsage()
     {
         Console.WriteLine(
 @"Usage:
+  cache_timeline /config <.xml> /prefix <name> /timelines_prefix <timeline> [/startIndex <index>] /endIndex <index> [/authToken <token>]
   cache /config <.xml> /prefix <name> [/comments_prefix <comments>] [/authToken <token>]
     * Will cache all GitHub issues into file <name>YYYY-MM-DD@HH-MM.json
-    * If /comments is set, will also cache all GitHub comments into file <comments>YYY-MM-DD@HH-MM.json
+    * If /comments_prefix is set, will also cache all GitHub comments into file <comments>YYY-MM-DD@HH-MM.json
   report [/begin <issues1.json> [...]] /end <issues1_end.json> [...] [/out <.html>] [/out_csv <file_prefix>] 
         [/name <report_name>] [/middle <issues.json> [...]] /config <.xml>
     * Creates report with alerts/areas as rows and queries as columns from cached .json file
@@ -124,6 +129,24 @@ class Program
 
             switch (action)
             {
+                case ActionCommand.cache_timeline:
+                    {
+                        if (!optionsParser.Parse(
+                            new Option[] { _configOption, _prefixOption, _timelinesPrefixOption, _endIndexOption },
+                            new Option[] { _authenticationTokenOption, _startIndexOption }))
+                        {
+                            return ErrorCode.InvalidCommand;
+                        }
+                        IEnumerable<string> configFiles = _configOption.GetValues(optionsParser);
+                        string filePrefix = _prefixOption.GetValue(optionsParser);
+                        string timelinePrefix = _timelinesPrefixOption.GetValue(optionsParser);
+                        // Optional args
+                        string authenticationToken = _authenticationTokenOption.GetValue(optionsParser);
+                        int startIndex = int.Parse(_startIndexOption.GetValue(optionsParser) ?? "0");
+                        int endIndex = int.Parse(_endIndexOption.GetValue(optionsParser));
+
+                        return CacheGitHubTimeline(configFiles, filePrefix, timelinePrefix, authenticationToken, startIndex, endIndex);
+                    }
                 case ActionCommand.cache:
                     {
                         if (!optionsParser.Parse(
@@ -372,5 +395,71 @@ class Program
         }
 
         return ErrorCode.Success;
+    }
+
+    private static ErrorCode CacheGitHubTimeline(
+        IEnumerable<string> configFiles,
+        string prefix,
+        string timelinesPrefix,
+        string authenticationToken,
+        int startIndex,
+        int endIndex)
+    {
+        Config config = new Config(configFiles);
+        if (config.Repositories.Count() != 1)
+        {
+            if (config.Repositories.Count() == 0)
+            {
+                ReportError("No repository definition found in config file(s).");
+                return ErrorCode.InvalidCommand;
+            }
+            else
+            {
+                ReportError("Multiple repositories found in config file(s).");
+                return ErrorCode.InvalidCommand;
+            }
+        }
+
+        Repository repo = config.Repositories.First();
+        repo.AuthenticationToken = authenticationToken;
+
+        DateTime currentTime = DateTime.Now;
+        /*
+        repo.LoadIssues(Octokit.ItemStateFilter.All);
+        Repository.SerializeToFile(
+            string.Format("{0}{1:yyyy-MM-dd@HH-mm}.json", prefix, currentTime),
+            repo.Issues);
+        */
+
+        try
+        {
+            repo.LoadIssueTimelines(
+                /*
+                repo.Issues
+                .Where(i => i.PullRequest == null)
+                .Select(i => i.Number)
+                .Where(n => n >= startIndex)
+                */
+                GenerateRange(startIndex, endIndex)
+                .OrderBy(n => n));
+        }
+        catch (Octokit.RateLimitExceededException ex)
+        {
+            Console.WriteLine(ex);
+        }
+        
+        Repository.SerializeToFile(
+            string.Format("{0}{1:yyyy-MM-dd@HH-mm}_{2}-{3}.json", timelinesPrefix, currentTime, startIndex, endIndex),
+            repo.IssueTimelines);
+
+        return ErrorCode.Success;
+    }
+
+    static IEnumerable<int> GenerateRange(int min, int max)
+    {
+        for (int i = min; i <= max; i++)
+        {
+            yield return i;
+        }
     }
 }

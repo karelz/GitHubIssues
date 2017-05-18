@@ -89,7 +89,7 @@ namespace BugReport.DataModel
             {
                 return (assigneeName == null);
             }
-            return Assignee.Name.Equals(assigneeName, StringComparison.InvariantCultureIgnoreCase);
+            return Assignee.Login.Equals(assigneeName, StringComparison.InvariantCultureIgnoreCase);
         }
 
         public override string ToString()
@@ -99,8 +99,7 @@ namespace BugReport.DataModel
             sw.WriteLine("Type: {0}", (PullRequest == null) ? "Issue" : "PullRequest");
             sw.WriteLine("URL: {0}", HtmlUrl);
             sw.WriteLine("State: {0}", State);
-            sw.WriteLine("Assignee.Name:  {0}", (Assignee == null) ? "<null>" : Assignee.Name);
-            sw.WriteLine("        .Login: {0}", (Assignee == null) ? "<null>" : Assignee.Login);
+            sw.WriteLine("Assignee.Login: {0}", (Assignee == null) ? "<null>" : Assignee.Login);
             sw.WriteLine("Labels.Name:");
             foreach (Label label in Labels)
             {
@@ -108,13 +107,11 @@ namespace BugReport.DataModel
             }
             sw.WriteLine("Title: {0}", Title);
             //sw.WriteLine("Milestone.Title: {0}", (issue.Milestone == null) ? "<null>" : issue.Milestone.Title);
-            sw.WriteLine("User.Name:  {0}", (User == null) ? "<null>" : User.Name);
-            sw.WriteLine("    .Login: {0}", (User == null) ? "<null>" : User.Login);
+            sw.WriteLine("User.Login: {0}", (User == null) ? "<null>" : User.Login);
             sw.WriteLine("CreatedAt: {0}", CreatedAt);
             sw.WriteLine("UpdatedAt: {0}", UpdatedAt);
             sw.WriteLine("ClosedAt:  {0}", ClosedAt);
-            sw.WriteLine("ClosedBy.Name:  {0}", (ClosedBy == null) ? "<null>" : ClosedBy.Name);
-            sw.Write("        .Login: {0}", (ClosedBy == null) ? "<null>" : ClosedBy.Login);
+            sw.Write(    "ClosedBy.Login: {0}", (ClosedBy == null) ? "<null>" : ClosedBy.Login);
 
             string text = sw.ToString();
             sw.Close();
@@ -157,7 +154,6 @@ namespace BugReport.DataModel
 
     public class User
     {
-        public string Name;
         public string Login;
         public string HtmlUrl;
     }

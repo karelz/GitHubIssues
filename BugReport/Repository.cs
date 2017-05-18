@@ -94,10 +94,12 @@ public class Repository
     }
 
     // TODO - Move to config
-    private static readonly string s_GitHubProductIdentifier = "GitHubBugReporter";
+    private static readonly string s_GitHubProductIdentifier = "GitHubBugReporter_Timeline";
 
     public IReadOnlyList<Issue> Issues { get; private set; }
     public ConcurrentBag<IssueComment> IssueComments { get; private set; }
+    //public Dictionary<int, IReadOnlyList<TimelineEventInfo>> IssueTimelines { get; private set; }
+    public Dictionary<int, object> IssueTimelines { get; private set; }
 
     public string GetQueryUrl(string queryArgs)
     {
@@ -185,7 +187,7 @@ public class Repository
     /// <summary>
     /// Gets all of the issues in the repository, closed and open
     /// </summary>
-    public void LoadIssues()
+    public void LoadIssues(ItemStateFilter itemStateFilter = ItemStateFilter.Open)
     {
         GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
         if (AuthenticationToken != null)
@@ -194,9 +196,22 @@ public class Repository
         }
         RepositoryIssueRequest issueRequest = new RepositoryIssueRequest
         {
-            State = ItemStateFilter.Open,
+            State = itemStateFilter,
             Filter = IssueFilter.All
         };
+
+        /*
+        RepositoryCollection repoCollection = new RepositoryCollection();
+        repoCollection.Add(Owner, Name);
+
+        SearchIssuesRequest searchRequest = new SearchIssuesRequest
+        {
+            Repos = repoCollection,
+            Type = IssueTypeQualifier.Issue
+        };
+
+        client.Search.SearchIssues(searchRequest).Result.
+        */
 
         Task.Run(async () =>
         {
@@ -225,7 +240,9 @@ public class Repository
                 {
                     IReadOnlyList<IssueComment> comments = await client.Issue.Comment.GetAllForIssue(Owner, Name, issue.Number);
                     foreach (IssueComment comment in comments)
+                    {
                         IssueComments.Add(comment);
+                    }
                 }));
             }
         }
@@ -254,6 +271,33 @@ public class Repository
         Issues = issues;
     }
 
+    public void LoadIssueTimelines(IEnumerable<int> issueNumbers)
+    {
+        GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
+        if (AuthenticationToken != null)
+        {
+            client.Credentials = new Credentials(AuthenticationToken);
+        }
+
+        //IssueTimelines = new Dictionary<int, IReadOnlyList<TimelineEventInfo>>();
+        IssueTimelines = new Dictionary<int, object>();
+        foreach (int issueNumber in issueNumbers)
+        {
+            try
+            {
+                System.Console.WriteLine($"Downloading issue #{issueNumber} ...");
+                IReadOnlyList<TimelineEventInfo> timelineEvents =
+                    client.Issue.Timeline.GetAllForIssue(Owner, Name, issueNumber).Result;
+                IssueTimelines[issueNumber] = timelineEvents;
+            }
+            catch (System.AggregateException ex)
+            {
+                IssueTimelines[issueNumber] = new { Exception = ex.ToString() };
+                System.Console.WriteLine($"  -- {ex.GetType()}");
+            }
+        }
+    }
+
     public static void SerializeToFile(string fileName, IReadOnlyCollection<Octokit.Issue> issues)
     {
         SerializeToFile(fileName, (object)issues);
@@ -267,7 +311,7 @@ public class Repository
         SerializeToFile(fileName, (object)issues);
     }
 
-    private static void SerializeToFile(string fileName, object objToSerialize)
+    public static void SerializeToFile(string fileName, object objToSerialize)
     {
         JsonSerializer serializer = new JsonSerializer();
         serializer.Formatting = Formatting.Indented;
