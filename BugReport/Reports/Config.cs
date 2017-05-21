@@ -1,20 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using BugReport.Query;
-using BugReport.DataModel;
 using BugReport.Util;
+using GitHubBugReport.Core.Issues.Models;
+using GitHubBugReport.Core.Repositories.Models;
 
 namespace BugReport.Reports
 {
     public class Config
     {
-        private List<ConfigFile> _configFiles;
+        private readonly List<ConfigFile> _configFiles;
 
-        private List<Alert.User> _users = new List<Alert.User>();
+        private readonly List<Alert.User> _users = new List<Alert.User>();
 
         public IEnumerable<Alert> Alerts { get; private set; }
         public IEnumerable<NamedQuery> Queries { get; private set; }
@@ -33,8 +33,8 @@ namespace BugReport.Reports
 
         private class ConfigFile
         {
-            public string FileName;
-            public XElement Root;
+            public readonly string FileName;
+            public readonly XElement Root;
 
             public ConfigFile(string fileName, XElement root)
             {
@@ -131,6 +131,7 @@ namespace BugReport.Reports
                         {
                             throw new InvalidDataException($"GitHub login expected to start with @ '{gitHubLogin}'");
                         }
+
                         if (emailAlias.StartsWith("@"))
                         {
                             throw new InvalidDataException($"Alias cannot start with @ '{emailAlias}'");
@@ -140,6 +141,7 @@ namespace BugReport.Reports
                         {
                             throw new InvalidDataException($"Duplicate user defined with GitHub login '{gitHubLogin}'");
                         }
+
                         if (FindUser(emailAlias) != null)
                         {
                             throw new InvalidDataException($"Duplicate user defined with alias '{emailAlias}'");
@@ -173,6 +175,7 @@ namespace BugReport.Reports
                 }
                 element = element.Parent;
             }
+
             return null;
         }
 
@@ -387,6 +390,7 @@ namespace BugReport.Reports
         private static string GetFilterKindValue(FilterKind kind)
         {
             Debug.Assert((kind == FilterKind.In) || (kind == FilterKind.Out));
+
             return (kind == FilterKind.In) ? "in" : "out";
         }
 
@@ -459,14 +463,15 @@ namespace BugReport.Reports
         {
             if (inFilters.Any())
             {
-                areaLabels = areaLabels.Where(areaLabel =>
-                    inFilters.Where(filter => filter.IsMatch(areaLabel)).Any());
+                areaLabels = areaLabels.Where(areaLabel => inFilters.Any(filter => filter.IsMatch(areaLabel)));
             }
+
             if (outFilters.Any())
             {
                 areaLabels = areaLabels.Where(areaLabel =>
                     outFilters.Where(filter => filter.IsMatch(areaLabel)).None());
             }
+
             return areaLabels.Select(areaLabel => areaLabel.Label);
         }
 
@@ -548,7 +553,7 @@ namespace BugReport.Reports
         }
         private Organization FindOrganization(string organizationName)
         {
-            return _organizations.Where(org => org.EqualsByName(organizationName)).FirstOrDefault();
+            return _organizations.FirstOrDefault(org => org.EqualsByName(organizationName));
         }
 
         private Dictionary<string, Team> _teams;
@@ -592,10 +597,12 @@ namespace BugReport.Reports
             {
                 return null;
             }
+
             if (_teams.TryGetValue(teamName, out Team team))
             {
                 return team;
             }
+
             throw new InvalidDataException($"Team '{teamName}' does not exist.");
         }
 
@@ -608,16 +615,19 @@ namespace BugReport.Reports
                     return user;
                 }
             }
+
             return null;
         }
 
         private Alert.User FindUserOrThrow(string id)
         {
             Alert.User user = FindUser(id);
+
             if (user == null)
             {
                 throw new InvalidDataException($"Cannot find user '{id}'");
             }
+
             return user;
         }
     }

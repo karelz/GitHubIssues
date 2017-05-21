@@ -5,11 +5,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using System.Xml;
 using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Repositories.Services;
+using Octokit;
+using ProductHeaderValue = System.Net.Http.Headers.ProductHeaderValue;
 
 namespace GitHubBugReport.Core.Repositories.Models
 {
@@ -209,34 +209,6 @@ namespace GitHubBugReport.Core.Repositories.Models
             Issues = issues;
         }
 
-        public static void SerializeToFile(string fileName, IReadOnlyCollection<Octokit.Issue> issues)
-        {
-            SerializeToFile(fileName, (object)issues);
-        }
-
-        public static void SerializeToFile(string fileName, IReadOnlyCollection<Octokit.IssueComment> issueComments)
-        {
-            SerializeToFile(fileName, (object)issueComments);
-        }
-
-        public static void SerializeToFile(string fileName, IEnumerable<DataModelIssue> issues)
-        {
-            SerializeToFile(fileName, (object)issues);
-        }
-
-        private static void SerializeToFile(string fileName, object objToSerialize)
-        {
-            JsonSerializer serializer = new JsonSerializer();
-            serializer.Formatting = Formatting.Indented;
-
-            using (StreamWriter sw = new StreamWriter(fileName))
-            using (JsonWriter writer = new JsonTextWriter(sw))
-            {
-                serializer.Serialize(writer, objToSerialize);
-            }
-
-        }
-
         public override string ToString()
         {
             if (FilterQuery == null)
@@ -247,4 +219,6 @@ namespace GitHubBugReport.Core.Repositories.Models
             return $"{RepoName} filtered by '{FilterQuery}'";
         }
     }
+
+    // TODO: Rename this based on intent, wasn't sure.
 }

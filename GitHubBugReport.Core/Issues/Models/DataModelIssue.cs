@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using GitHubBugReport.Core.Issues.Extensions;
+using GitHubBugReport.Core.Repositories.Models;
 
 namespace GitHubBugReport.Core.Issues.Models
 {

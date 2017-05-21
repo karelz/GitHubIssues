@@ -7,8 +7,10 @@ using BugReport.DataModel;
 using BugReport.Reports;
 using BugReport.Reports.EmailReports;
 using BugReport.Util;
+using GitHubBugReport.Core.Repositories.Models;
+using GitHubBugReport.Core.Storage.Services;
 
-class Program
+public class Program
 {
     enum ErrorCode
     {
@@ -340,6 +342,7 @@ class Program
         string authenticationToken)
     {
         Config config = new Config(configFiles);
+
         if (config.Repositories.Count() != 1)
         {
             if (config.Repositories.Count() == 0)
@@ -354,20 +357,22 @@ class Program
             }
         }
 
+        // TODO: Move this when the time is right.
+        IFileWriter fileWriter = new FileWriter();
+
         Repository repo = config.Repositories.First();
         repo.AuthenticationToken = authenticationToken;
 
         DateTime currentTime = DateTime.Now;
         repo.LoadIssues();
-        Repository.SerializeToFile(
-            string.Format("{0}{1:yyyy-MM-dd@HH-mm}.json", prefix, currentTime), 
-            repo.Issues);
+        fileWriter.SerializeToFile($"{prefix}{currentTime:yyyy-MM-dd@HH-mm}.json", repo.Issues);
 
         if (commentsPrefix != null)
         {
             repo.LoadIssueComments();
-            Repository.SerializeToFile(
-                string.Format("{0}{1:yyyy-MM-dd@HH-mm}.json", commentsPrefix, currentTime), 
+
+            fileWriter.SerializeToFile(
+                $"{commentsPrefix}{currentTime:yyyy-MM-dd@HH-mm}.json", 
                 (IReadOnlyCollection<Octokit.IssueComment>)repo.IssueComments);
         }
 
