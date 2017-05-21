@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Net.Mail;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
-using BugReport.Query;
-using BugReport.DataModel;
+using GitHubBugReport.Core.Issues.Extensions;
+using GitHubBugReport.Core.Issues.Models;
 
 namespace BugReport.Reports
 {

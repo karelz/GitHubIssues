@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using BugReport.Query;
 using BugReport.DataModel;
-using System.Diagnostics;
+using GitHubBugReport.Core.Issues.Extensions;
+using GitHubBugReport.Core.Issues.Models;
 
 namespace BugReport.Reports
 {

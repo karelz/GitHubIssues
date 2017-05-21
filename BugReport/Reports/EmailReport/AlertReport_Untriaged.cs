@@ -5,6 +5,7 @@ using System.Text;
 using System.Web;
 using BugReport.DataModel;
 using BugReport.Util;
+using GitHubBugReport.Core.Issues.Models;
 
 namespace BugReport.Reports.EmailReports
 {
@@ -83,6 +84,7 @@ namespace BugReport.Reports.EmailReports
         private static string FormatIssueTable(Dictionary<DataModelIssue, ExpressionUntriaged.Flags> issuesMap)
         {
             StringBuilder text = new StringBuilder();
+
             text.AppendLine("<table>");
             text.AppendLine("  <tr>");
             text.AppendLine("    <th>Issue #</th>");
@@ -91,6 +93,7 @@ namespace BugReport.Reports.EmailReports
             text.AppendLine("    <th>Assigned To</th>");
             text.AppendLine("    <th>Milestone</th>");
             text.AppendLine("  </tr>");
+
             foreach (KeyValuePair<DataModelIssue, ExpressionUntriaged.Flags> mapEntry in issuesMap)
             {
                 IssueEntry issue = new IssueEntry(mapEntry.Key);
@@ -108,6 +111,7 @@ namespace BugReport.Reports.EmailReports
                 text.AppendLine($"    <td>{issue.MilestoneText}</td>");
                 text.AppendLine("  </tr>");
             }
+
             text.AppendLine("</table>");
 
             return text.ToString();

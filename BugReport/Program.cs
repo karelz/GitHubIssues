@@ -7,6 +7,7 @@ using BugReport.DataModel;
 using BugReport.Reports;
 using BugReport.Reports.EmailReports;
 using BugReport.Util;
+using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Repositories.Models;
 using GitHubBugReport.Core.Storage.Services;
 
@@ -35,6 +36,7 @@ public class Program
     // Prefixed with option prefix /, -, or --, see code:Parser._optionPrefixes
     static readonly IEnumerable<string> _helpOptions = new List<string>() { "?", "help", "h" };
 
+    // TODO: Move to static Options class.
     static readonly OptionMultipleValues _configOption = new OptionMultipleValues("config");
     static readonly OptionSingleValue _prefixOption = new OptionSingleValue("prefix");
     static readonly OptionSingleValue _authenticationTokenOption = new OptionSingleValue("authToken", "authenticationToken", "gitHubToken", "token");
@@ -326,6 +328,7 @@ public class Program
             Console.Error.WriteLine();
             Console.Error.WriteLine("Catastrophic failure:");
             Console.Error.WriteLine(ex);
+
             return ErrorCode.CatastrophicFailure;
         }
     }

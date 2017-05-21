@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
 using GitHubBugReport.Core.Issues.Models;
-using GitHubBugReport.Core.Repositories.Models;
 using Newtonsoft.Json;
 using Formatting = System.Xml.Formatting;
 
@@ -26,8 +25,8 @@ namespace GitHubBugReport.Core.Storage.Services
 
         private void SerializeToFile(string fileName, object objToSerialize)
         {
-            JsonSerializer serializer = new JsonSerializer();
-            serializer.Formatting = Formatting.Indented;
+            JsonSerializer serializer =
+                new JsonSerializer {Formatting = (Newtonsoft.Json.Formatting) Formatting.Indented};
 
             using (StreamWriter sw = new StreamWriter(fileName))
             using (JsonWriter writer = new JsonTextWriter(sw))

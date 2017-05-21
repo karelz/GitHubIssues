@@ -23,7 +23,7 @@ namespace GitHubBugReport.Core.Repositories.Services
             return _repositories.FirstOrDefault(repo => repo.IsRepoName(respositoryName));
         }
 
-        public Repository FindRepositoryByAlias(string alias)
+        public Repository FindByAlias(string alias)
         {
             return _repositories.FirstOrDefault(repo => repo.IsAlias(alias));
         }

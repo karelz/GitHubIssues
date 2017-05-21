@@ -7,7 +7,7 @@ namespace GitHubBugReport.Core.Repositories.Services
     public interface IRepositoryService
     {
         Repository Find(string respositoryName);
-        Repository FindRepositoryByAlias(string alias);
+        Repository FindByAlias(string alias);
         Repository FromHtmlUrl(string htmlUrl);
         IEnumerable<Repository> GetReposOrDefault(IEnumerable<DataModelIssue> issues);
     }

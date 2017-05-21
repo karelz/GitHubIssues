@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Web;
-using BugReport.DataModel;
 using BugReport.Util;
+using GitHubBugReport.Core.Issues.Extensions;
+using GitHubBugReport.Core.Issues.Models;
 
 namespace BugReport.Reports.EmailReports
 {
@@ -124,6 +124,7 @@ namespace BugReport.Reports.EmailReports
         private static string FormatIssueTable(IEnumerable<IssueEntry> issues)
         {
             StringBuilder text = new StringBuilder();
+
             text.AppendLine("<table>");
             text.AppendLine("  <tr>");
             text.AppendLine("    <th>Status</th>");
@@ -132,6 +133,7 @@ namespace BugReport.Reports.EmailReports
             text.AppendLine("    <th>Assigned To</th>");
             text.AppendLine("    <th>Milestone</th>");
             text.AppendLine("  </tr>");
+
             foreach (IssueEntry issue in issues)
             {
                 text.AppendLine($"  <tr class=\"{issue.Class}\">");
@@ -148,6 +150,7 @@ namespace BugReport.Reports.EmailReports
                 text.AppendLine($"    <td>{issue.MilestoneText}</td>");
                 text.AppendLine("  </tr>");
             }
+
             text.AppendLine("</table>");
 
             return text.ToString();

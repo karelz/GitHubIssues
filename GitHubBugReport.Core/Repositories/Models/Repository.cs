@@ -116,11 +116,14 @@ namespace GitHubBugReport.Core.Repositories.Models
 
         public static Repository From(string repoName, string alias = null, string filterQuery = null)
         {
-            Repository repo = RepositoryService.FindRepo(repoName) ?? RepositoryService.FindRepoByAlias(repoName);
+            // TODO: When the time is right, move this or refactor it.
+            IRepositoryService repositoryService = new OctoKitRepositoryService();
+
+            Repository repo = repositoryService.Find(repoName) ?? repositoryService.FindByAlias(repoName);
             if (repo == null)
             {
                 repo = new Repository(repoName, alias, filterQuery);
-                Debug.Assert(RepositoryService.FindRepo(repoName) == repo);
+                Debug.Assert(repositoryService.Find(repoName) == repo);
             }
             else
             {

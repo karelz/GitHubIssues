@@ -1,26 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Mail;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
-using BugReport.Query;
-using BugReport.DataModel;
 using BugReport.Util;
+using GitHubBugReport.Core.Issues.Models;
+using GitHubBugReport.Core.Repositories.Models;
+using GitHubBugReport.Core.Repositories.Services;
 
 namespace BugReport.Reports.EmailReports
 {
     public class AlertReport
     {
-        private bool _skipEmail;
-        private Config _config;
-        private string _htmlTemplateFileName;
-        private string _outputHtmlFileName;
-        private IEnumerable<string> _filteredAlertNames;
-        private GenerateReport _generateReport;
+        private readonly bool _skipEmail;
+        private readonly Config _config;
+        private readonly string _htmlTemplateFileName;
+        private readonly string _outputHtmlFileName;
+        private readonly IEnumerable<string> _filteredAlertNames;
+        private readonly GenerateReport _generateReport;
 
         public delegate string GenerateReport(Alert alert, string htmlTemplate);
 
@@ -181,22 +179,28 @@ namespace BugReport.Reports.EmailReports
                     Console.WriteLine("        FAILED!!!");
                 }
             }
+
             Console.WriteLine("    Email: {0}", emailSent ? (_skipEmail ? "skipped" : "sent") : "FAILED!!!");
             Console.WriteLine("        Subject: {0}", reportEmail.Subject);
             Console.WriteLine("        To:");
+
             foreach (Alert.User user in alert.Owners)
             {
                 Console.WriteLine("            {0} - {1}", user.Name, user.EmailAddress);
             }
+
             Console.WriteLine("        CC:");
+
             foreach (Alert.User user in alert.CCs)
             {
                 Console.WriteLine("            {0} - {1}", user.Name, user.EmailAddress);
             }
+
             if (string.IsNullOrEmpty(_outputHtmlFileName))
             {
                 Console.Write(reportEmail.BodyText.Replace("<br/>", ""));
             }
+
             Console.WriteLine();
         }
 
@@ -211,7 +215,7 @@ namespace BugReport.Reports.EmailReports
                 BodyText = bodyText;
             }
 
-            public bool HasContent { get => (BodyText != null); }
+            public bool HasContent => (BodyText != null);
         }
 
         private ReportEmail CreateReportEmail(Alert alert, string htmlTemplateFileName)
@@ -233,12 +237,12 @@ namespace BugReport.Reports.EmailReports
             Match match = regex.Match(bodyText);
             if (!match.Success)
             {
-                throw new InvalidDataException(string.Format("Missing {0} entry in email template {1}", tag, htmlTemplateFileName));
+                throw new InvalidDataException($"Missing {tag} entry in email template {htmlTemplateFileName}");
             }
             string foundValue = match.Groups[1].Value;
             if (match.NextMatch().Success)
             {
-                throw new InvalidDataException(string.Format("Multiple {0} entries in email template {1}", tag, htmlTemplateFileName));
+                throw new InvalidDataException($"Multiple {tag} entries in email template {htmlTemplateFileName}");
             }
             bodyText = regex.Replace(bodyText, "");
             return foundValue;
@@ -247,7 +251,12 @@ namespace BugReport.Reports.EmailReports
         public static string GetLinkedCount(string queryPrefix, IEnumerable<DataModelIssue> issues)
         {
             int count = issues.Count();
-            IEnumerable<Repository> repos = Repository.GetReposOrDefault(issues);
+
+            // TODO: When the time is right, inject this.
+            IRepositoryService repositoryService = new OctoKitRepositoryService();
+
+            IEnumerable<Repository> repos = repositoryService.GetReposOrDefault(issues);
+
             if (repos.Count() <= 1)
             {
                 Repository repo = repos.First();
