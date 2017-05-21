@@ -60,15 +60,14 @@
     <Compile Include="Query\ExpressionMultiRepo.cs" />
     <Compile Include="Query\Expressions_Logical.cs" />
     <Compile Include="Query\Expressions_Leaf.cs" />
+    <Compile Include="Query\InvalidQueryException.cs" />
+    <Compile Include="Query\RepoExpression.cs" />
     <Compile Include="Reports\CsvReport\CsvWriter.cs" />
     <Compile Include="Reports\HtmlReport\HtmlQueryCountLink.cs" />
     <Compile Include="Reports\CsvReport\CsvTableReport.cs" />
     <Compile Include="Reports\TableReport.cs" />
     <Compile Include="Reports\XlsxReport\HistoryReport.cs" />
-    <Compile Include="Repository.cs" />
     <Compile Include="DataModel\IssueCollection.cs" />
-    <Compile Include="DataModel\DataModelIssue.cs" />
-    <Compile Include="DataModel\Extensions.cs" />
     <Compile Include="Util\CommandLine\Option.cs" />
     <Compile Include="Util\CommandLine\Parser.cs" />
     <Compile Include="Util\Extensions.cs" />
@@ -92,7 +91,12 @@
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\GitHubBugReport.Core\GitHubBugReport.Core.csproj">
+      <Project>{7A6F3C45-079B-4363-80D0-EE7D7F1DD80D}</Project>
+      <Name>GitHubBugReport.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

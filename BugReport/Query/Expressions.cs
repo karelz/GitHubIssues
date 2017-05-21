@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using BugReport.DataModel;
 using BugReport.Util;
+using GitHubBugReport.Core.Issues.Models;
 
 namespace BugReport.Query
 {
@@ -79,18 +80,22 @@ namespace BugReport.Query
         {
             return new ExpressionAnd(expressions);
         }
+
         public static Expression And(IEnumerable<Expression> expressions)
         {
             return new ExpressionAnd(expressions);
         }
+
         public static Expression Or(params Expression[] expressions)
         {
             return new ExpressionOr(expressions);
         }
+
         public static Expression Or(IEnumerable<Expression> expressions)
         {
             return new ExpressionOr(expressions);
         }
+
         public static Expression Not(Expression ex)
         {
             return new ExpressionNot(ex);

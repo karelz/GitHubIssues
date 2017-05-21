@@ -1,11 +1,5 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BugReport.DataModel;
 
 namespace BugReport.Query
 {
@@ -55,6 +49,7 @@ namespace BugReport.Query
             OperatorOr,     // ||
             KeyValuePair    // word1:word2
         }
+
         public Type TokenType { get; private set; }
         public string Word1 { get; private set; }
         public string Word2 { get; private set; }
@@ -64,26 +59,32 @@ namespace BugReport.Query
         {
             return (TokenType == Type.EndOfQuery);
         }
+
         public bool IsInitialized()
         {
             return (TokenType != Type.Uninitialized);
         }
+
         public bool IsOperatorNot()
         {
             return (TokenType == Type.OperatorNot);
         }
+
         public bool IsOperatorAnd()
         {
             return (TokenType == Type.OperatorAnd);
         }
+
         public bool IsOperatorOr()
         {
             return (TokenType == Type.OperatorOr);
         }
+
         public bool IsBracketLeft()
         {
             return (TokenType == Type.BracketLeft);
         }
+
         public bool IsBracketRight()
         {
             return (TokenType == Type.BracketRight);
@@ -99,15 +100,18 @@ namespace BugReport.Query
             return ((TokenType == Type.Word) &&
                     Word1.Equals(word, comparisonType));
         }
+
         public bool IsKeyValuePair()
         {
             return (TokenType == Type.KeyValuePair);
         }
+
         public bool IsKeyValuePair(string key, StringComparison comparisonType = StringComparison.Ordinal)
         {
             return ((TokenType == Type.KeyValuePair) &&
                     Word1.Equals(key, comparisonType));
         }
+
         public bool IsKeyValuePair(string key, string value, StringComparison comparisonType = StringComparison.Ordinal)
         {
             return ((TokenType == Type.KeyValuePair) &&

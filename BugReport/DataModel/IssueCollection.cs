@@ -1,30 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
 using BugReport.Util;
 using BugReport.Reports;
+using GitHubBugReport.Core.Issues.Models;
+using GitHubBugReport.Core.Repositories.Models;
+
+//using Octokit;
+//using Label = Octokit.Label;
+//using Milestone = Octokit.Milestone;
 
 namespace BugReport.DataModel
 {
+    // TODO: Find out how this is being used then refactor.
     public class IssueCollection
     {
-        private Dictionary<string, Label> _labelsMap;
-        public IEnumerable<Label> Labels
-        {
-            get { return _labelsMap.Values; }
-        }
+        private readonly Dictionary<string, Label> _labelsMap;
+        public IEnumerable<Label> Labels => _labelsMap.Values;
+
         public Label GetLabel(string name)
         {
             Label label;
+
             if (_labelsMap.TryGetValue(name, out label))
             {
                 return label;
             }
+
             return null;
         }
+
         public bool HasLabel(string labelName)
         {
             return _labelsMap.ContainsKey(labelName);
@@ -36,7 +43,7 @@ namespace BugReport.DataModel
             return true;
         }
 
-        private Dictionary<string, Milestone> _milestonesMap;
+        private readonly Dictionary<string, Milestone> _milestonesMap;
         public bool HasMilestone(string milestoneName)
         {
             return _milestonesMap.ContainsKey(milestoneName);
@@ -82,6 +89,7 @@ namespace BugReport.DataModel
             }
         }
 
+        // TODO: Find out how these are being used and move them.
         public static IEnumerable<DataModelIssue> LoadIssues(
             string fileName, 
             Config config,
@@ -109,7 +117,7 @@ namespace BugReport.DataModel
                 using (JsonReader reader = new JsonTextReader(sr))
                 {
                     issues = issues.Concat(serializer.Deserialize<List<DataModelIssue>>(reader)
-                                                        .Where(i => i.IsIssueKind(issueKind)));
+                                                     .Where(i => i.IsIssueKind(issueKind)));
                 }
             }
             

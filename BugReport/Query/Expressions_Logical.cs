@@ -11,10 +11,7 @@ namespace BugReport.Query
     {
         readonly Expression _expr;
 
-        public Expression Expression
-        {
-            get => _expr;
-        }
+        public Expression Expression => _expr;
 
         public ExpressionNot(Expression expr)
         {

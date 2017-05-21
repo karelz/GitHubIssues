@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26228.0
+VisualStudioVersion = 15.0.26430.6
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitHubBugReport", "GitHubBugReport.csproj", "{EBB2C051-3A00-4B7C-A64D-C23267652D06}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitHubBugReport.Core", "..\GitHubBugReport.Core\GitHubBugReport.Core.csproj", "{7A6F3C45-079B-4363-80D0-EE7D7F1DD80D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{EBB2C051-3A00-4B7C-A64D-C23267652D06}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EBB2C051-3A00-4B7C-A64D-C23267652D06}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EBB2C051-3A00-4B7C-A64D-C23267652D06}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7A6F3C45-079B-4363-80D0-EE7D7F1DD80D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A6F3C45-079B-4363-80D0-EE7D7F1DD80D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A6F3C45-079B-4363-80D0-EE7D7F1DD80D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A6F3C45-079B-4363-80D0-EE7D7F1DD80D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -4,21 +4,11 @@ using System.Linq;
 using BugReport.DataModel;
 using BugReport.Util;
 using System.Diagnostics;
-using System;
+using GitHubBugReport.Core.Issues.Models;
+using Octokit;
 
 namespace BugReport.Query
 {
-    public struct RepoExpression
-    {
-        public Repository Repo { get; private set; }
-        public Expression Expr { get; private set; }
-        public RepoExpression(Repository repo, Expression expr)
-        {
-            Repo = repo;
-            Expr = expr;
-        }
-    }
-
     public class ExpressionMultiRepo : Expression
     {
         readonly Dictionary<Repository, Expression> _expressions;
@@ -55,7 +45,7 @@ namespace BugReport.Query
                 {
                     if (_expressions.ContainsKey(repoExpr.Repo))
                     {
-                        throw new InvalidDataException($"Duplicate repo query defined for repo {repoExpr.Repo.RepoName}.");
+                        throw new InvalidDataException($"Duplicate repo query defined for repo {repoExpr.Repo.Name}.");
                     }
                     _expressions[repoExpr.Repo] = repoExpr.Expr;
                 }
@@ -74,11 +64,14 @@ namespace BugReport.Query
             {
                 return _defaultExpression;
             }
+
             Expression expr;
+
             if (_expressions.TryGetValue(repo, out expr))
             {
                 return expr;
             }
+
             return _defaultExpression;
         }
 

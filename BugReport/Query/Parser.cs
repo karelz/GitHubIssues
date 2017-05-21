@@ -1,27 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BugReport.DataModel;
 
 namespace BugReport.Query
 {
-    public class InvalidQueryException : Exception
-    {
-        public InvalidQueryException(string message, string queryString, int position)
-            : base(String.Format("{0} at position {1}", message, position))
-        {
-        }
-    }
-
     public class QueryParser : IDisposable
     {
         QuerySyntaxParser _parser;
-        string _queryString;
-        IReadOnlyDictionary<string, Expression> _customIsValues;
+        readonly string _queryString;
+        readonly IReadOnlyDictionary<string, Expression> _customIsValues;
 
         public QueryParser(string queryString, IReadOnlyDictionary<string, Expression> customIsValues)
         {
@@ -39,10 +26,12 @@ namespace BugReport.Query
         public Expression Parse()
         {
             Expression expr = ParseExpression_Or();
+
             if (expr == null)
             {
                 throw new InvalidQueryException("The query is empty", _queryString, 0);
             }
+
             return expr;
         }
 
@@ -50,10 +39,12 @@ namespace BugReport.Query
         {
             Expression expr = ParseExpression_And();
             Token token = _parser.Peek();
+
             if (!token.IsOperatorOr())
             {
                 return expr;
             }
+
             _parser.Skip();
 
             if (expr == null)
@@ -61,8 +52,7 @@ namespace BugReport.Query
                 throw new InvalidQueryException("Expression expected before OR operator", _queryString, token.Position);
             }
 
-            List<Expression> expressions = new List<Expression>();
-            expressions.Add(expr);
+            List<Expression> expressions = new List<Expression> {expr};
 
             for (;;)
             {
@@ -100,8 +90,7 @@ namespace BugReport.Query
                 return expr;
             }
 
-            List<Expression> expressions = new List<Expression>();
-            expressions.Add(expr);
+            List<Expression> expressions = new List<Expression> {expr};
 
             for (;;)
             {
@@ -258,7 +247,8 @@ namespace BugReport.Query
 
         public static bool IsRegex(string value)
         {
-            return (value.Contains(".*") || value.Contains(".."));
+            return value.Contains(".*") || 
+                   value.Contains("..");
         }
 
         public void Close()
@@ -268,6 +258,7 @@ namespace BugReport.Query
                 _parser.Close();
             }
         }
+
         public void Dispose()
         {
             if (_parser != null)

@@ -1,11 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BugReport.DataModel;
 
 namespace BugReport.Query
 {
@@ -70,6 +63,7 @@ namespace BugReport.Query
                 tokenizer.Close();
             }
         }
+
         public void Dispose()
         {
             if (tokenizer != null)
