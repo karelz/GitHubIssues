@@ -3,8 +3,9 @@ using System.Diagnostics;
 using System.Linq;
 using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Issues.Models;
-using GitHubBugReport.Core.Repositories.Models;
+//using GitHubBugReport.Core.Repositories.Models;
 using GitHubBugReport.Core.Util;
+using Octokit;
 
 namespace GitHubBugReport.Core.Query
 {
@@ -206,6 +207,7 @@ namespace GitHubBugReport.Core.Query
             IEnumerable<ExpressionOr> orSubExpressions = andExpressions
                 .Where(e => e is ExpressionOr)
                 .Select(e => (ExpressionOr)e).ToArray();
+
             if (orSubExpressions.Any())
             {
                 IEnumerable<Expression> nonOrSubExpressions = andExpressions.Where(e => !(e is ExpressionOr)).ToArray();
@@ -237,7 +239,9 @@ namespace GitHubBugReport.Core.Query
             {
                 return ExpressionConstant.False;
             }
+
             RemoveDuplicates(andExpressions);
+
             if (ContainsNegatedExpressions(andExpressions))
             {
                 return ExpressionConstant.False;
@@ -293,10 +297,7 @@ namespace GitHubBugReport.Core.Query
     {
         readonly IEnumerable<Expression> _expressions;
 
-        public IEnumerable<Expression> Expressions
-        {
-            get => _expressions;
-        }
+        public IEnumerable<Expression> Expressions => _expressions;
 
         public ExpressionOr(IEnumerable<Expression> expressions)
         {
@@ -312,6 +313,7 @@ namespace GitHubBugReport.Core.Query
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -322,6 +324,7 @@ namespace GitHubBugReport.Core.Query
                 expr.Validate(collection);
             }
         }
+
         public override string ToString()
         {
             return string.Join(" OR ", _expressions.Select(e => (e is ExpressionAnd) ? $"({e})" : e.ToString()));
@@ -365,6 +368,7 @@ namespace GitHubBugReport.Core.Query
             IEnumerable<ExpressionMultiRepo> multiRepoExpressions = orExpressions
                 .Where(e => e is ExpressionMultiRepo)
                 .Select(e => (ExpressionMultiRepo)e);
+
             if (multiRepoExpressions.None())
             {
                 if (orExpressions.Contains(ExpressionConstant.True))
@@ -389,6 +393,7 @@ namespace GitHubBugReport.Core.Query
             IEnumerable<Repository> repos = multiRepoExpressions
                 .SelectMany(e => e.RepoExpressions.Select(re => re.Repo))
                 .Distinct();
+
             IEnumerable<RepoExpression> repoExpressions = repos
                 .Select(repo =>
                     new RepoExpression(repo,

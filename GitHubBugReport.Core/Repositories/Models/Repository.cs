@@ -7,7 +7,7 @@ using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Query;
 using GitHubBugReport.Core.Repositories.Services;
 using Octokit;
-using Expression = System.Linq.Expressions.Expression;
+//using Expression = System.Linq.Expressions.Expression;
 
 namespace GitHubBugReport.Core.Repositories.Models
 {

@@ -176,6 +176,7 @@ public partial class Program
                             beginFiles, 
                             config, 
                             IssueKindFlags.Issue | IssueKindFlags.PullRequest);
+
                         IEnumerable<DataModelIssue> endIssues = IssueCollection.LoadIssues(
                             endFiles, 
                             config, 
