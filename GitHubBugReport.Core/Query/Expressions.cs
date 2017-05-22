@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Issues.Models;
+using GitHubBugReport.Core.Util;
 
 namespace GitHubBugReport.Core.Query
 {
@@ -15,7 +16,7 @@ namespace GitHubBugReport.Core.Query
 
         public IEnumerable<DataModelIssue> Evaluate(IEnumerable<DataModelIssue> issues)
         {
-            return issues.Where(i => Evaluate((DataModelIssue) i));
+            return issues.Where(i => Evaluate(i));
         }
 
         public abstract string GetGitHubQueryURL();
@@ -32,6 +33,7 @@ namespace GitHubBugReport.Core.Query
                 {
                     _simplified = IsNormalized() ? this : GetSimplified();
                 }
+
                 return _simplified;
             }
         }
@@ -161,6 +163,7 @@ namespace GitHubBugReport.Core.Query
             for (int i = 0; i < expressions.Count; i++)
             {
                 Expression expr = expressions[i];
+
                 if (expr is ExpressionNot)
                 {
                     Expression subExpr = ((ExpressionNot)expr).Expression;
@@ -183,8 +186,5 @@ namespace GitHubBugReport.Core.Query
 
     public class ExpressionTooComplexException : Exception
     {
-        public ExpressionTooComplexException()
-        {
-        }
     }
 }

@@ -1,6 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Query;
+using GitHubBugReport.Core.Repositories.Models;
+using GitHubBugReport.Core.Repositories.Services;
 
 namespace GitHubBugReport.Core.Reports.HtmlReport
 {
@@ -23,20 +26,25 @@ namespace GitHubBugReport.Core.Reports.HtmlReport
                 return count.ToString();
             }
 
+            // TODO: Inject or pass as parameter when we can.
+            IRepositoryService repositoryService = new OctoKitRepositoryService();
+
             IEnumerable<Repository> repos = useRepositoriesFromIssues 
-                ? Repository.GetReposOrDefault(issues) 
+                ? repositoryService.GetReposOrDefault(issues) 
                 : Repository.Repositories;
 
             IEnumerable<CountLink> countLinks = repos.SelectMany(repo => GetCountLinks(query, issues, repo)).ToArray();
 
-            if ((countLinks.Count() == 0) || (countLinks.Count() > CountLinksMax))
+            if (!countLinks.Any() || (countLinks.Count() > CountLinksMax))
             {
                 return count.ToString();
             }
+
             if (countLinks.Count() == 1)
             {
                 return countLinks.First().ToString();
             }
+
             return $"{count} <small>(" + string.Join(" + ", countLinks.Select(cl => cl.ToString())) + ")</small>";
         }
 
@@ -96,7 +104,7 @@ namespace GitHubBugReport.Core.Reports.HtmlReport
                 string queryArgs = query.GetGitHubQueryURL();
                 return new CountLink(
                     (queryArgs != null) ? repo.GetQueryUrl(queryArgs) : null,
-                    $"[{repo.Alias}] {query.ToString()}",
+                    $"[{repo.Alias}] {query}",
                     query.Evaluate(issues.Where(repo)).Count());
             }
         }

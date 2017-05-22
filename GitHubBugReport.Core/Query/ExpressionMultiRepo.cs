@@ -2,15 +2,18 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Issues.Models;
+using GitHubBugReport.Core.Util;
 using Octokit;
 
 namespace GitHubBugReport.Core.Query
 {
     public class ExpressionMultiRepo : Expression
     {
+        private static readonly string RepoQuerySeparator = "\r\n";
+        private static readonly ExpressionConstant FilteredOutRepoExpression = ExpressionConstant.False;
         readonly Dictionary<Repository, Expression> _expressions;
-
         readonly Expression _defaultExpression;
 
         public IEnumerable<RepoExpression> RepoExpressions => 
@@ -51,9 +54,7 @@ namespace GitHubBugReport.Core.Query
                 _defaultExpression = FilteredOutRepoExpression;
             }
         }
-
-        private static readonly ExpressionConstant FilteredOutRepoExpression = ExpressionConstant.False;
-
+        
         public Expression GetExpression(Repository repo)
         {
             if (repo == null)
@@ -76,7 +77,6 @@ namespace GitHubBugReport.Core.Query
             return GetExpression(issue.Repo).Evaluate(issue);
         }
 
-        private static readonly string RepoQuerySeparator = "\r\n";
         public override string ToString()
         {
             if (!_expressions.Any())
@@ -109,6 +109,7 @@ namespace GitHubBugReport.Core.Query
             {
                 expr.Validate(collection);
             }
+
             _defaultExpression.Validate(collection);
         }
 
@@ -122,6 +123,7 @@ namespace GitHubBugReport.Core.Query
         protected override Expression GetSimplified()
         {
             Dictionary<Repository, Expression> simplifiedExpressions = new Dictionary<Repository, Expression>();
+
             foreach (KeyValuePair<Repository, Expression> entry in _expressions)
             {
                 Expression simplifiedExpression = entry.Value.Simplified;
@@ -131,6 +133,7 @@ namespace GitHubBugReport.Core.Query
                 }
                 simplifiedExpressions[entry.Key] = simplifiedExpression;
             }
+
             Expression simplifiedDefaultExpression = _defaultExpression.Simplified;
 
             if (simplifiedDefaultExpression is ExpressionMultiRepo)
@@ -148,6 +151,7 @@ namespace GitHubBugReport.Core.Query
             ExpressionMultiRepo newMultiRepoExpression = new ExpressionMultiRepo(
                 simplifiedExpressions, 
                 simplifiedDefaultExpression);
+
             return newMultiRepoExpression;
         }
 

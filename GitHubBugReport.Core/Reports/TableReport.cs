@@ -1,13 +1,15 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using GitHubBugReport.Core.DataModel;
+using GitHubBugReport.Core.Issues.Extensions;
+using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Query;
 
 namespace GitHubBugReport.Core.Reports
 {
     public class TableReport
     {
-        private Config _config;
+        private readonly Config _config;
 
         public readonly IEnumerable<string> BeginFiles;
         public readonly IEnumerable<string> MiddleFiles;
@@ -51,10 +53,7 @@ namespace GitHubBugReport.Core.Reports
             MiddleIssues = middleIssues;
         }
 
-        public IEnumerable<NamedQuery> Columns
-        {
-            get => _config.Queries;
-        }
+        public IEnumerable<NamedQuery> Columns => _config.Queries;
 
         private IEnumerable<Row> GetSortedRows(IEnumerable<NamedQuery> rowQueries, Row.SortRows sortRows)
         {
@@ -100,7 +99,7 @@ namespace GitHubBugReport.Core.Reports
                 sortRows);
         }
 
-        private IEnumerable<NamedQuery> _areaLabelQueries = null;
+        private IEnumerable<NamedQuery> _areaLabelQueries;
         public IEnumerable<Row> GetAreaLabelRows(Row.SortRows sortRows)
         {
             if (_areaLabelQueries == null)
@@ -163,17 +162,11 @@ namespace GitHubBugReport.Core.Reports
         public class FilteredIssues
         {
             public Expression Query { get; private set; }
-            public IEnumerable<DataModelIssue> BeginOrMiddleOnly
-            {
-                get => Begin.Except_ByIssueNumber(End).Concat(_middle);
-            }
-            public IEnumerable<DataModelIssue> EndOrMiddleOnly
-            {
-                get => End.Except_ByIssueNumber(Begin).Concat(_middle);
-            }
+            public IEnumerable<DataModelIssue> BeginOrMiddleOnly => Begin.Except_ByIssueNumber(End).Concat(_middle);
+            public IEnumerable<DataModelIssue> EndOrMiddleOnly => End.Except_ByIssueNumber(Begin).Concat(_middle);
             public IEnumerable<DataModelIssue> Begin { get; private set; }
             public IEnumerable<DataModelIssue> End { get; private set; }
-            private DataModelIssue[] _middle;
+            private readonly DataModelIssue[] _middle;
 
             public FilteredIssues(
                 Expression query,

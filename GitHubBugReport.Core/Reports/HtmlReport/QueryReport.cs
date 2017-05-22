@@ -3,19 +3,23 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Web;
 using GitHubBugReport.Core.DataModel;
+using GitHubBugReport.Core.Issues.Extensions;
+using GitHubBugReport.Core.Issues.Models;
+using GitHubBugReport.Core.Storage.Services;
 
 namespace GitHubBugReport.Core.Reports.HtmlReport
 {
     public class QueryReport
     {
-        private Config _config;
+        private readonly Config _config;
 
-        private IEnumerable<string> _beginFiles;
-        private IEnumerable<string> _endFiles;
+        private readonly IEnumerable<string> _beginFiles;
+        private readonly IEnumerable<string> _endFiles;
 
-        private IEnumerable<DataModelIssue> _beginIssues;
-        private IEnumerable<DataModelIssue> _endIssues;
+        private readonly IEnumerable<DataModelIssue> _beginIssues;
+        private readonly IEnumerable<DataModelIssue> _endIssues;
 
         public QueryReport(Config config, IEnumerable<string> beginFiles, IEnumerable<string> endFiles)
         {
@@ -110,9 +114,11 @@ namespace GitHubBugReport.Core.Reports.HtmlReport
                 file.WriteLine("</body></html>");
             }
 
+            IFileWriter fileWriter = new FileWriter();
+
             if (outputJsonFile != null)
             {
-                Repository.SerializeToFile(outputJsonFile, _endIssues);
+                fileWriter.SerializeToFile(outputJsonFile, _endIssues);
             }
         }
 
@@ -170,6 +176,7 @@ namespace GitHubBugReport.Core.Reports.HtmlReport
                 .OrderBy(i => i.IsPullRequest ? 1 : 0)
                 .ThenBy(i => i.Number)
                 .Select(i => new IssueEntry(i));
+
             foreach (IssueEntry issue in issueEntries)
             {
                 text.AppendLine($"  <tr class=\"{issueStyle}\">");

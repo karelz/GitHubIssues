@@ -137,16 +137,18 @@ namespace GitHubBugReport.Core.Reports.EmailReport
         private bool SendEmail(Alert alert, ReportEmail reportEmail, SmtpClient smtpClient)
         {
             // Prepare email
-            MailMessage message = new MailMessage();
-            message.From = new MailAddress(Environment.UserName + "@microsoft.com");
+            MailMessage message = new MailMessage { From = new MailAddress(Environment.UserName + "@microsoft.com") };
+
             foreach (Alert.User user in alert.Owners)
             {
                 message.To.Add(user.EmailAddress);
             }
+
             foreach (Alert.User user in alert.CCs)
             {
                 message.CC.Add(user.EmailAddress);
             }
+
             message.IsBodyHtml = true;
             message.Subject = reportEmail.Subject;
             message.Body = reportEmail.BodyText;

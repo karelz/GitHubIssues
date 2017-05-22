@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.VisualBasic.FileIO;
+using OfficeOpenXml;
 
 namespace GitHubBugReport.Core.Reports.XlsxReport
 {
@@ -10,7 +12,7 @@ namespace GitHubBugReport.Core.Reports.XlsxReport
     {
         public static void Create(IEnumerable<string> inputFiles, string outputFileName)
         {
-            Debug.Assert(inputFiles.Count() > 0);
+            Debug.Assert(inputFiles.Any());
 
             List<Table> tables = new List<Table>();
             foreach (string inputFile in inputFiles)
@@ -98,9 +100,11 @@ namespace GitHubBugReport.Core.Reports.XlsxReport
 
             public static Table Parse(string inputFileName)
             {
-                TextFieldParser csvParser = new TextFieldParser(inputFileName);
-                csvParser.TextFieldType = FieldType.Delimited;
-                csvParser.Delimiters = new string[] { "," };
+                TextFieldParser csvParser = new TextFieldParser(inputFileName)
+                {
+                    TextFieldType = FieldType.Delimited,
+                    Delimiters = new string[] {","}
+                };
 
                 string[] allHeaders = csvParser.ReadFields();
                 if ((allHeaders.Length % 3) != 1)
@@ -146,6 +150,7 @@ namespace GitHubBugReport.Core.Reports.XlsxReport
                 {
                     throw new InvalidDataException($"Inconsistent number of column headers between files '{table.FileName}' and '{FileName}'");
                 }
+
                 for (int i = 0; i < ColumnHeaders.Length; i++)
                 {
                     if (table.ColumnHeaders[i] != ColumnHeaders[i])
@@ -154,11 +159,12 @@ namespace GitHubBugReport.Core.Reports.XlsxReport
                     }
                 }
 
-                if (Rows.Count() != table.Rows.Count())
+                if (Rows.Count != table.Rows.Count)
                 {
                     throw new InvalidDataException($"Inconsistent number of rows between files '{table.FileName}' and '{FileName}'");
                 }
-                for (int i = 0; i < Rows.Count(); i++)
+
+                for (int i = 0; i < Rows.Count; i++)
                 {
                     if (table.Rows[i].Name != Rows[i].Name)
                     {
