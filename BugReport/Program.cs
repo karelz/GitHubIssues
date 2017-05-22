@@ -348,7 +348,7 @@ public class Program
 
         if (config.Repositories.Count() != 1)
         {
-            if (config.Repositories.Count() == 0)
+            if (!config.Repositories.Any())
             {
                 ReportError("No repository definition found in config file(s).");
                 return ErrorCode.InvalidCommand;
