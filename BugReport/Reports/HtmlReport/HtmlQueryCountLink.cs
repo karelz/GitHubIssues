@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using BugReport.Util;
-using BugReport.DataModel;
 using GitHubBugReport.Core.Query;
 
 namespace BugReport.Reports

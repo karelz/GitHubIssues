@@ -46,6 +46,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DataModel\IssueCollection.cs" />
     <Compile Include="Issues\Extensions\DataModelExtensions.cs" />
     <Compile Include="Issues\Models\DataModelIssue.cs" />
     <Compile Include="Issues\Models\IssueKindFlags.cs" />

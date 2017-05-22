@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Web;
-using BugReport.DataModel;
+using GitHubBugReport.Core.DataModel;
 
 namespace BugReport.Reports
 {

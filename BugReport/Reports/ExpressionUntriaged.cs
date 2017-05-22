@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using BugReport.DataModel;
+using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Issues.Extensions;
 using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Query;

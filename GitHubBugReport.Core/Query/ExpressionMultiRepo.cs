@@ -13,11 +13,9 @@ namespace GitHubBugReport.Core.Query
 
         readonly Expression _defaultExpression;
 
-        public IEnumerable<RepoExpression> RepoExpressions
-        {
-            get => _expressions.Select(entry => new RepoExpression(entry.Key, entry.Value))
-                    .Concat(new RepoExpression(null, _defaultExpression).ToEnumerable());
-        }
+        public IEnumerable<RepoExpression> RepoExpressions => 
+            _expressions.Select(entry => new RepoExpression(entry.Key, entry.Value))
+                        .Concat(new RepoExpression(null, _defaultExpression).ToEnumerable());
 
         private ExpressionMultiRepo(Dictionary<Repository, Expression> expressions, Expression defaultExpression)
         {

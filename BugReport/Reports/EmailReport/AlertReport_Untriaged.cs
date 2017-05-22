@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Web;
-using BugReport.DataModel;
 using BugReport.Util;
+using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Issues.Models;
 
 namespace BugReport.Reports.EmailReports
