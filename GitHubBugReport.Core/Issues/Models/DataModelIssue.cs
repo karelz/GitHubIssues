@@ -1,8 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using GitHubBugReport.Core.Issues.Extensions;
+using GitHubBugReport.Core.Issues.Services;
 using GitHubBugReport.Core.Repositories.Models;
+using GitHubBugReport.Core.Repositories.Services;
 
 namespace GitHubBugReport.Core.Issues.Models
 {
@@ -23,6 +26,8 @@ namespace GitHubBugReport.Core.Issues.Models
         public PullRequest PullRequest;
         public Milestone Milestone;
 
+        public IReadOnlyList<DataModelComment> Comments { get; set; } // TODO: Load this and all properties through constructor so it's immutable. DO get; private set;
+
         private Repository _repo;
         public Repository Repo
         {
@@ -30,7 +35,10 @@ namespace GitHubBugReport.Core.Issues.Models
             {
                 if (_repo == null)
                 {
-                    _repo = Repository.FromHtmlUrl(HtmlUrl);
+                    // TODO: Decouple this, shouldn't exist here
+                    IRepositoryService repositoryService = new OctoKitRepositoryService();
+
+                    _repo = repositoryService.FromHtmlUrl(HtmlUrl);
                 }
 
                 return _repo;

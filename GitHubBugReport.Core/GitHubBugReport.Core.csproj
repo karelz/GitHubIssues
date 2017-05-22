@@ -54,6 +54,7 @@
     <Compile Include="Issues\Models\PullRequest.cs" />
     <Compile Include="Issues\Models\User.cs" />
     <Compile Include="Issues\Services\IIssueService.cs" />
+    <Compile Include="Issues\Services\OctokitIssueService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Repositories\Models\Repository.cs" />
     <Compile Include="Repositories\Services\IRepositoryService.cs" />

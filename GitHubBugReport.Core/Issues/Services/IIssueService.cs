@@ -17,12 +17,18 @@ namespace GitHubBugReport.Core.Issues.Services
         /// </summary>
         /// <param name="id">Id of the issue we are looking for.</param>
         /// <returns>The issue if it exists, null otherwise.</returns>
-        DataModelIssue Get(int id);
+        DataModelIssue Get(string owner, string name, int id);
+
+        /// <summary>
+        /// Get a list of issues by id.
+        /// </summary>
+        /// <returns>Issues for the given set of ids.</returns>
+        IEnumerable<DataModelIssue> GetList(IEnumerable<int> issueNumbers);
 
         /// <summary>
         /// Get all issues.
         /// </summary>
         /// <returns>All issues.</returns>
-        IEnumerable<DataModelIssue> GetAll();
+        IEnumerable<DataModelIssue> GetAll(string owner, string name);
     }
 }

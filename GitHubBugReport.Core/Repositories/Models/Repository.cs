@@ -35,10 +35,13 @@ namespace GitHubBugReport.Core.Repositories.Models
 
         private Repository(string repoName, string alias, string filterQuery)
         {
+            // TODO: Decouple this, shouldn't exist here
+            IRepositoryService repositoryService = new OctoKitRepositoryService();
+
             RepoName = repoName.ToLower();
-            Debug.Assert(RepositoryService._repositories.Where(repo => (repo.RepoName == RepoName)).None());
+            Debug.Assert(repositoryService._repositories.Where(repo => (repo.RepoName == RepoName)).None());
             Alias = (alias != null) ? alias.ToLower() : RepoName;
-            Debug.Assert(RepositoryService._repositories.Where(repo => (repo.Alias == Alias)).None());
+            Debug.Assert(repositoryService._repositories.Where(repo => (repo.Alias == Alias)).None());
 
             // TODO: This code is duplicated in OctoKitRepositoryService.FromHtmlUrl
             string[] repoNameParts = RepoName.Split('/');
@@ -140,78 +143,6 @@ namespace GitHubBugReport.Core.Repositories.Models
             return repo;
         }
 
-        /// <summary>
-        /// Gets all of the issues in the repository, closed and open
-        /// </summary>
-        public void LoadIssues()
-        {
-            GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
-            if (AuthenticationToken != null)
-            {
-                client.Credentials = new Credentials(AuthenticationToken);
-            }
-            RepositoryIssueRequest issueRequest = new RepositoryIssueRequest
-            {
-                State = ItemStateFilter.Open,
-                Filter = IssueFilter.All
-            };
-
-            Task.Run((Func<Task>) (async () =>
-            {
-                Issues = await client.Issue.GetAllForRepository(Owner, Name, issueRequest);
-            })).Wait();
-        }
-
-        /// <summary>
-        /// Get all comment info for each open issue in the repo
-        /// </summary>
-        public void LoadIssueComments()
-        {
-            GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
-            if (AuthenticationToken != null)
-            {
-                client.Credentials = new Credentials(AuthenticationToken);
-            }
-
-            IssueComments = new ConcurrentBag<IssueComment>();
-            List<Task> tasks = new List<Task>();
-            foreach (Issue issue in Issues)
-            {
-                if (issue.State == ItemState.Open)
-                {
-                    tasks.Add(Task.Run((Func<Task>) (async () =>
-                    {
-                        IReadOnlyList<IssueComment> comments = await client.Issue.Comment.GetAllForIssue(Owner, Name, issue.Number);
-                        foreach (IssueComment comment in comments)
-                            IssueComments.Add(comment);
-                    })));
-                }
-            }
-            Task.WaitAll(tasks.ToArray());
-        }
-
-        public void LoadIssues(IEnumerable<int> issueNumbers)
-        {
-            GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
-            if (AuthenticationToken != null)
-            {
-                client.Credentials = new Credentials(AuthenticationToken);
-            }
-
-            List<Issue> issues = new List<Issue>();
-            foreach (int issueNumber in issueNumbers)
-            {
-                Issue issue = null;
-                Task.Run((Func<Task>) (async () =>
-                {
-                    issue = await client.Issue.Get(Owner, Name, issueNumber);
-                })).Wait();
-                issues.Add(issue);
-            }
-
-            Issues = issues;
-        }
-
         public override string ToString()
         {
             if (FilterQuery == null)
@@ -222,6 +153,4 @@ namespace GitHubBugReport.Core.Repositories.Models
             return $"{RepoName} filtered by '{FilterQuery}'";
         }
     }
-
-    // TODO: Rename this based on intent, wasn't sure.
 }
