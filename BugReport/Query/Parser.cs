@@ -183,6 +183,17 @@ namespace BugReport.Query
                         expr = new ExpressionMilestone(token.Word2);
                     }
                 }
+                else if (token.IsKeyValuePair("-milestone"))
+                {
+                    if (IsRegex(token.Word2))
+                    {
+                        expr = new ExpressionNot(new ExpressionMilestonePattern(token.Word2));
+                    }
+                    else
+                    {
+                        expr = new ExpressionNot(new ExpressionMilestone(token.Word2));
+                    }
+                }
                 else if (token.IsKeyValuePair("is"))
                 {
                     if (token.IsKeyValuePair("is", "issue"))
@@ -212,6 +223,10 @@ namespace BugReport.Query
                 else if (token.IsKeyValuePair("assignee"))
                 {
                     expr = new ExpressionAssignee(token.Word2);
+                }
+                else if (token.IsKeyValuePair("-assignee"))
+                {
+                    expr = new ExpressionNot(new ExpressionAssignee(token.Word2));
                 }
                 else if (token.IsKeyValuePair("no"))
                 {
