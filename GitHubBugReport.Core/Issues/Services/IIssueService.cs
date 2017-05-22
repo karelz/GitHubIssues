@@ -8,9 +8,11 @@ namespace GitHubBugReport.Core.Issues.Services
         /// <summary>
         /// Create a new issue.
         /// </summary>
+        /// <param name="name"></param>
         /// <param name="issue">The issue to create.</param>
+        /// <param name="owner"></param>
         /// <returns>Id of the issue created.</returns>
-        int Create(DataModelIssue issue);
+        int Create(string owner, string name, DataModelIssue issue);
 
         /// <summary>
         /// Retrieve a specific issue.
@@ -25,7 +27,7 @@ namespace GitHubBugReport.Core.Issues.Services
         /// Get a list of issues by id.
         /// </summary>
         /// <returns>Issues for the given set of ids.</returns>
-        IEnumerable<DataModelIssue> GetList(IEnumerable<int> issueNumbers);
+        IEnumerable<DataModelIssue> GetList(string owner, string name, IEnumerable<int> issueNumbers);
 
         /// <summary>
         /// Get all issues.

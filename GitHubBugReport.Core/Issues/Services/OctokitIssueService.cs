@@ -19,7 +19,7 @@ namespace GitHubBugReport.Core.Issues.Services
             _client = client;
         }
 
-        public int Create(DataModelIssue issue)
+        public int Create(string owner, string name, DataModelIssue issue)
         {
             throw new System.NotImplementedException();
         }
@@ -45,7 +45,7 @@ namespace GitHubBugReport.Core.Issues.Services
             return dataModelIssue;
         }
 
-        public IEnumerable<DataModelIssue> GetList(IEnumerable<int> issueNumbers)
+        public IEnumerable<DataModelIssue> GetList(string owner, string name, IEnumerable<int> issueNumbers)
         {
             if (issueNumbers == null) { throw new ArgumentNullException(nameof(issueNumbers)); }
             if (!issueNumbers.Any()) { return new List<DataModelIssue>(); }
@@ -54,7 +54,7 @@ namespace GitHubBugReport.Core.Issues.Services
 
             foreach (int issueNumber in issueNumbers)
             {
-                issues.Add(Get(issueNumber));
+                issues.Add(Get(owner, name, issueNumber));
             }
 
             return issues;
