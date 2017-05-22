@@ -8,8 +8,10 @@ using BugReport.Reports;
 using BugReport.Reports.EmailReports;
 using BugReport.Util;
 using GitHubBugReport.Core.Issues.Models;
-using GitHubBugReport.Core.Repositories.Models;
+using GitHubBugReport.Core.Issues.Services;
 using GitHubBugReport.Core.Storage.Services;
+using Octokit;
+using Repository = GitHubBugReport.Core.Repositories.Models.Repository;
 
 public partial class Program
 {
@@ -343,6 +345,15 @@ public partial class Program
 
         // TODO: Move this when the time is right.
         IFileWriter fileWriter = new FileWriter();
+
+
+        GitHubClient client =
+            new GitHubClient(new ProductHeaderValue("GitHubBugReporter"))
+            {
+                Credentials = new Credentials(authenticationToken)
+            };
+
+        IIssueService issueService = new OctokitIssueService(client);
 
         Repository repo = config.Repositories.First();
         repo.AuthenticationToken = authenticationToken;

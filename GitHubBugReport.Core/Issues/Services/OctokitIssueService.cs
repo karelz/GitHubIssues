@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using GitHubBugReport.Core.Issues.Models;
 using Octokit;
-using ProductHeaderValue = System.Net.Http.Headers.ProductHeaderValue;
+//using ProductHeaderValue = System.Net.Http.Headers.ProductHeaderValue;
 
 namespace GitHubBugReport.Core.Issues.Services
 {
@@ -12,15 +12,11 @@ namespace GitHubBugReport.Core.Issues.Services
     {
         private readonly GitHubClient _client;
 
-        public OctokitIssueService()
+        public OctokitIssueService(GitHubClient client)
         {
-            // TODO: Inject into constructor instead.
-            _client = new GitHubClient(new ProductHeaderValue("GitHubBugReporter"));
+            if (client == null) { throw new ArgumentNullException(nameof(client)); }
 
-            if (AuthenticationToken != null)
-            {
-                client.Credentials = new Credentials(AuthenticationToken);
-            }
+            _client = client;
         }
 
         public int Create(DataModelIssue issue)
