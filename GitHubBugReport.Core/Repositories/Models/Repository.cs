@@ -1,15 +1,12 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Threading.Tasks;
 using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Repositories.Services;
 using Octokit;
-using ProductHeaderValue = System.Net.Http.Headers.ProductHeaderValue;
 
 namespace GitHubBugReport.Core.Repositories.Models
 {
@@ -30,7 +27,7 @@ namespace GitHubBugReport.Core.Repositories.Models
         // TODO - Move to config
         private static readonly string s_GitHubProductIdentifier = "GitHubBugReporter";
 
-        public IReadOnlyList<Issue> Issues { get; private set; }
+        public IReadOnlyList<Issue> Issues { get; set; }
         public ConcurrentBag<IssueComment> IssueComments { get; private set; }
 
         private Repository(string repoName, string alias, string filterQuery)

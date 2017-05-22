@@ -68,18 +68,14 @@ namespace GitHubBugReport.Core.Issues.Services
                 Filter = IssueFilter.All
             };
 
-            IReadOnlyList<Issue> issues;
+            IReadOnlyList<Issue> issues = null;
 
             Task.Run(async () =>
             {
                 issues = await _client.Issue.GetAllForRepository(owner, name, issueRequest);
             }).Wait();
 
-            // now load comments for each issue
-            foreach (Issue issue in issues)
-            {
-                LoadComments(issue);
-            }
+            if (issues == null) { return null; }
 
             // map to DataModelIssue
             var dataModelIssueList = new List<DataModelIssue>();
@@ -87,6 +83,12 @@ namespace GitHubBugReport.Core.Issues.Services
             foreach (Issue issue in issues)
             {
                 dataModelIssueList.Add(MapIssueToDataModel(issue));
+            }
+
+            // now load comments for each issue
+            foreach (DataModelIssue issue in dataModelIssueList)
+            {
+                LoadComments(owner, name, issue);
             }
 
             return dataModelIssueList;

@@ -345,21 +345,19 @@ public partial class Program
 
         // TODO: Move this when the time is right.
         IFileWriter fileWriter = new FileWriter();
-
-
         GitHubClient client =
             new GitHubClient(new ProductHeaderValue("GitHubBugReporter"))
             {
                 Credentials = new Credentials(authenticationToken)
             };
-
         IIssueService issueService = new OctokitIssueService(client);
 
         Repository repo = config.Repositories.First();
         repo.AuthenticationToken = authenticationToken;
 
         DateTime currentTime = DateTime.Now;
-        repo.LoadIssues();
+        repo.Issues = issueService.GetAll(repo.Owner, repo.Name);
+
         fileWriter.SerializeToFile($"{prefix}{currentTime:yyyy-MM-dd@HH-mm}.json", repo.Issues);
 
         if (commentsPrefix != null)

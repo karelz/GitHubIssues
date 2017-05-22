@@ -15,7 +15,9 @@ namespace GitHubBugReport.Core.Issues.Services
         /// <summary>
         /// Retrieve a specific issue.
         /// </summary>
+        /// <param name="name"></param>
         /// <param name="id">Id of the issue we are looking for.</param>
+        /// <param name="owner"></param>
         /// <returns>The issue if it exists, null otherwise.</returns>
         DataModelIssue Get(string owner, string name, int id);
 
