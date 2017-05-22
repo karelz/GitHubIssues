@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace BugReport.Query
+namespace GitHubBugReport.Core.Query
 {
     public class QueryParser : IDisposable
     {

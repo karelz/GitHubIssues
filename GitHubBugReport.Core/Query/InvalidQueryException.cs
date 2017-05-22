@@ -1,6 +1,6 @@
 using System;
 
-namespace BugReport.Query
+namespace GitHubBugReport.Core.Query
 {
     public class InvalidQueryException : Exception
     {

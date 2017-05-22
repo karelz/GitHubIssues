@@ -1,11 +1,8 @@
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using BugReport.DataModel;
-using BugReport.Util;
 
-namespace BugReport.Query
+namespace GitHubBugReport.Core.Query
 {
     public class ExpressionNot : Expression
     {
@@ -66,7 +63,7 @@ namespace BugReport.Query
             switch (simplifiedExpr)
             {
                 case ExpressionOr or:
-                    return Expression.And(or.Expressions.Select(e => Expression.Not(e))).Simplified;
+                    return Query.Expression.And(or.Expressions.Select(e => Expression.Not(e))).Simplified;
                 case ExpressionAnd and:
                     return Expression.Or(and.Expressions.Select(e => Expression.Not(e))).Simplified;
                 case ExpressionMultiRepo multiRepo:
@@ -269,7 +266,7 @@ namespace BugReport.Query
                     {
                         foreach (IEnumerable<Expression> tailPermutation in GeneratePermutations(orExpressions.Skip(1)))
                         {
-                            yield return expr.ToEnumerable().Concat(tailPermutation);
+                            yield return Enumerable.Concat(expr.ToEnumerable(), tailPermutation);
                         }
                     }
                 }

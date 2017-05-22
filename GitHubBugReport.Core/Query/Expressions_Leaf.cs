@@ -1,10 +1,9 @@
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
-using BugReport.DataModel;
-using BugReport.Util;
+using GitHubBugReport.Core.Issues.Models;
 
-namespace BugReport.Query
+namespace GitHubBugReport.Core.Query
 {
     public class ExpressionLabel : Expression
     {
@@ -78,7 +77,7 @@ namespace BugReport.Query
 
         public override void Validate(IssueCollection collection)
         {
-            if (collection.Labels.Where(label => _labelRegex.IsMatch(label.Name)).None())
+            if (Enumerable.Where<Label>(collection.Labels, label => _labelRegex.IsMatch(label.Name)).None())
             {
                 Console.WriteLine($"WARNING: Label pattern does not match any label: {_labelRegex.ToString()}");
             }

@@ -1,13 +1,11 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using BugReport.DataModel;
-using BugReport.Util;
-using System.Diagnostics;
 using GitHubBugReport.Core.Issues.Models;
 using Octokit;
 
-namespace BugReport.Query
+namespace GitHubBugReport.Core.Query
 {
     public class ExpressionMultiRepo : Expression
     {

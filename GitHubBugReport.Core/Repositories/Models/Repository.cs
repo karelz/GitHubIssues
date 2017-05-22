@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 using GitHubBugReport.Core.Issues.Models;
+using GitHubBugReport.Core.Query;
 using GitHubBugReport.Core.Repositories.Services;
 using Octokit;
+using Expression = System.Linq.Expressions.Expression;
 
 namespace GitHubBugReport.Core.Repositories.Models
 {
@@ -36,9 +37,9 @@ namespace GitHubBugReport.Core.Repositories.Models
             IRepositoryService repositoryService = new OctoKitRepositoryService();
 
             RepoName = repoName.ToLower();
-            Debug.Assert(repositoryService._repositories.Where(repo => (repo.RepoName == RepoName)).None());
+            //Debug.Assert(repositoryService._repositories.Where(repo => (repo.RepoName == RepoName)).None());
             Alias = (alias != null) ? alias.ToLower() : RepoName;
-            Debug.Assert(repositoryService._repositories.Where(repo => (repo.Alias == Alias)).None());
+            //Debug.Assert(repositoryService._repositories.Where(repo => (repo.Alias == Alias)).None());
 
             // TODO: This code is duplicated in OctoKitRepositoryService.FromHtmlUrl
             string[] repoNameParts = RepoName.Split('/');
@@ -52,8 +53,8 @@ namespace GitHubBugReport.Core.Repositories.Models
             Owner = repoNameParts[0];
             Name = repoNameParts[1];
 
-            HtmlUrlPrefix = OctoKitRepositoryService._htmlUrlGitHubPrefix + RepoName + "/";
-            RepositoryService._repositories.Add(this);
+            HtmlUrlPrefix = "https://github.com/" + RepoName + "/";
+            //RepositoryService._repositories.Add(this);
 
             if (filterQuery != null)
             {

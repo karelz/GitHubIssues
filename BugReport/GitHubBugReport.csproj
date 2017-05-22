@@ -59,11 +59,6 @@
     <Compile Include="ActionCommand.cs" />
     <Compile Include="ErrorCode.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="Query\ExpressionMultiRepo.cs" />
-    <Compile Include="Query\Expressions_Logical.cs" />
-    <Compile Include="Query\Expressions_Leaf.cs" />
-    <Compile Include="Query\InvalidQueryException.cs" />
-    <Compile Include="Query\RepoExpression.cs" />
     <Compile Include="Reports\CsvReport\CsvWriter.cs" />
     <Compile Include="Reports\HtmlReport\HtmlQueryCountLink.cs" />
     <Compile Include="Reports\CsvReport\CsvTableReport.cs" />
@@ -73,11 +68,6 @@
     <Compile Include="Util\CommandLine\Option.cs" />
     <Compile Include="Util\CommandLine\Parser.cs" />
     <Compile Include="Util\Extensions.cs" />
-    <Compile Include="Query\Expressions.cs" />
-    <Compile Include="Query\Parser.cs" />
-    <Compile Include="Query\SyntaxParser.cs" />
-    <Compile Include="Query\Token.cs" />
-    <Compile Include="Query\Tokenizer.cs" />
     <Compile Include="Reports\Alert.cs" />
     <Compile Include="Reports\IssueEntry.cs" />
     <Compile Include="Reports\Config.cs" />
@@ -98,6 +88,9 @@
       <Project>{7A6F3C45-079B-4363-80D0-EE7D7F1DD80D}</Project>
       <Name>GitHubBugReport.Core</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Query\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

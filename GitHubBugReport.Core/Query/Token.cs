@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 
-namespace BugReport.Query
+namespace GitHubBugReport.Core.Query
 {
     internal struct Token
     {

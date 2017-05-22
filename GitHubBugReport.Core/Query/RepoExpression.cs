@@ -1,6 +1,6 @@
 using Octokit;
 
-namespace BugReport.Query
+namespace GitHubBugReport.Core.Query
 {
     public struct RepoExpression
     {
