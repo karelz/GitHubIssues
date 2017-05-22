@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using GitHubBugReport.Core.Query;
 using GitHubBugReport.Core.Util;
 
-namespace BugReport.Reports
+namespace GitHubBugReport.Core.Reports.HtmlReport
 {
     public class HtmlTableReport
     {

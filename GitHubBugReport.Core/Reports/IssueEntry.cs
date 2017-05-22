@@ -3,7 +3,7 @@ using System.Linq;
 using GitHubBugReport.Core.Issues.Extensions;
 using GitHubBugReport.Core.Issues.Models;
 
-namespace BugReport.Reports
+namespace GitHubBugReport.Core.Reports
 {
     public class IssueEntry
     {
@@ -29,7 +29,7 @@ namespace BugReport.Reports
             styledLabels = styledLabels ?? new Label[] { };
 
             LabelsText = string.Join(", ", issue.Labels.Select(l =>
-                styledLabels.Contains_ByName(l.Name) ? $"<span class=\"{styleName}\">{l.Name}</span>" : l.Name));
+                DataModelExtensions.Contains_ByName(styledLabels, (string) l.Name) ? $"<span class=\"{styleName}\">{l.Name}</span>" : l.Name));
 
             if (issue.Assignee != null)
             {

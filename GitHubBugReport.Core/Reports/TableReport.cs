@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
+﻿using System.Collections.Generic;
 using System.Linq;
 using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Query;
 
-namespace BugReport.Reports
+namespace GitHubBugReport.Core.Reports
 {
     public class TableReport
     {

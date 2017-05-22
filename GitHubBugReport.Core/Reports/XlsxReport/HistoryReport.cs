@@ -3,10 +3,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.VisualBasic.FileIO;
-using OfficeOpenXml;
 
-namespace BugReport.Reports
+namespace GitHubBugReport.Core.Reports.XlsxReport
 {
     public class HistoryReport
     {

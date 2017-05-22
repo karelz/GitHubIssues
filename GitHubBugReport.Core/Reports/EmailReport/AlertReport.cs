@@ -9,7 +9,7 @@ using GitHubBugReport.Core.Repositories.Models;
 using GitHubBugReport.Core.Repositories.Services;
 using GitHubBugReport.Core.Util;
 
-namespace BugReport.Reports.EmailReports
+namespace GitHubBugReport.Core.Reports.EmailReport
 {
     public class AlertReport
     {

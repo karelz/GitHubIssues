@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace BugReport.Reports
+namespace GitHubBugReport.Core.Reports.CsvReport
 {
     public class CsvWriter : IDisposable
     {

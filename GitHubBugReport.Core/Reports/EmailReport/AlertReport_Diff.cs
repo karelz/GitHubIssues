@@ -2,12 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Web;
 using GitHubBugReport.Core.Issues.Extensions;
 using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Util;
 
-namespace BugReport.Reports.EmailReports
+namespace GitHubBugReport.Core.Reports.EmailReport
 {
     public class AlertReport_Diff
     {

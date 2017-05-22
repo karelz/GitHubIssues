@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using GitHubBugReport.Core.Issues.Models;
+using GitHubBugReport.Core.Reports;
 using GitHubBugReport.Core.Repositories.Models;
 using GitHubBugReport.Core.Util;
 using Newtonsoft.Json;
@@ -88,13 +89,13 @@ namespace GitHubBugReport.Core.DataModel
             }
         }
 
-        // TODO: Find out how these are being used and move them.
+        // TODO: Find out how these are being used and move them. They should exist in a file loader service.
         public static IEnumerable<DataModelIssue> LoadIssues(
             string fileName, 
             Config config,
             IssueKindFlags issueKind = IssueKindFlags.All)
         {
-            return LoadIssues((IEnumerable<string>) fileName.ToEnumerable(), config, issueKind);
+            return LoadIssues(fileName.ToEnumerable(), config, issueKind);
         }
 
         public static IEnumerable<DataModelIssue> LoadIssues(

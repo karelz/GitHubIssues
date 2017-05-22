@@ -2,11 +2,14 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using BugReport.Reports;
-using BugReport.Reports.EmailReports;
 using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Issues.Services;
+using GitHubBugReport.Core.Reports;
+using GitHubBugReport.Core.Reports.CsvReport;
+using GitHubBugReport.Core.Reports.EmailReport;
+using GitHubBugReport.Core.Reports.HtmlReport;
+using GitHubBugReport.Core.Reports.XlsxReport;
 using GitHubBugReport.Core.Storage.Services;
 using GitHubBugReport.Core.Util;
 using GitHubBugReport.Core.Util.CommandLine;

@@ -8,12 +8,11 @@ using GitHubBugReport.Core.Query;
 using GitHubBugReport.Core.Repositories.Models;
 using GitHubBugReport.Core.Util;
 
-namespace BugReport.Reports
+namespace GitHubBugReport.Core.Reports
 {
     public class Config
     {
         private readonly List<ConfigFile> _configFiles;
-
         private readonly List<Alert.User> _users = new List<Alert.User>();
 
         public IEnumerable<Alert> Alerts { get; private set; }

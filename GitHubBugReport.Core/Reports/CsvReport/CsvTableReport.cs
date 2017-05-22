@@ -2,7 +2,7 @@
 using System.Linq;
 using GitHubBugReport.Core.Query;
 
-namespace BugReport.Reports
+namespace GitHubBugReport.Core.Reports.CsvReport
 {
     public class CsvTableReport
     {

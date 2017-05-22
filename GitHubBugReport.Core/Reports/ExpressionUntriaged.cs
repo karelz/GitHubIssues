@@ -6,7 +6,7 @@ using GitHubBugReport.Core.Issues.Extensions;
 using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Query;
 
-namespace BugReport.Reports
+namespace GitHubBugReport.Core.Reports
 {
     public class ExpressionUntriaged : Expression
     {

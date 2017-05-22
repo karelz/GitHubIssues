@@ -59,21 +59,6 @@
     <Compile Include="ActionCommand.cs" />
     <Compile Include="ErrorCode.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="Reports\CsvReport\CsvWriter.cs" />
-    <Compile Include="Reports\HtmlReport\HtmlQueryCountLink.cs" />
-    <Compile Include="Reports\CsvReport\CsvTableReport.cs" />
-    <Compile Include="Reports\TableReport.cs" />
-    <Compile Include="Reports\XlsxReport\HistoryReport.cs" />
-    <Compile Include="Reports\Alert.cs" />
-    <Compile Include="Reports\IssueEntry.cs" />
-    <Compile Include="Reports\Config.cs" />
-    <Compile Include="Reports\ExpressionUntriaged.cs" />
-    <Compile Include="Reports\EmailReport\AlertReport.cs" />
-    <Compile Include="Reports\EmailReport\AlertReport_NeedsMSResponse.cs" />
-    <Compile Include="Reports\EmailReport\AlertReport_Diff.cs" />
-    <Compile Include="Reports\EmailReport\AlertReport_Untriaged.cs" />
-    <Compile Include="Reports\HtmlReport\QueryReport.cs" />
-    <Compile Include="Reports\HtmlReport\HtmlTableReport.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
