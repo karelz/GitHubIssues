@@ -64,9 +64,6 @@
     <Compile Include="Reports\CsvReport\CsvTableReport.cs" />
     <Compile Include="Reports\TableReport.cs" />
     <Compile Include="Reports\XlsxReport\HistoryReport.cs" />
-    <Compile Include="Util\CommandLine\Option.cs" />
-    <Compile Include="Util\CommandLine\Parser.cs" />
-    <Compile Include="Util\Extensions.cs" />
     <Compile Include="Reports\Alert.cs" />
     <Compile Include="Reports\IssueEntry.cs" />
     <Compile Include="Reports\Config.cs" />
@@ -89,7 +86,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="DataModel\" />
+    <Folder Include="Util\CommandLine\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

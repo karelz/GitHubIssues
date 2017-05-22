@@ -1,6 +1,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using GitHubBugReport.Core.DataModel;
+using GitHubBugReport.Core.Issues.Models;
+using GitHubBugReport.Core.Repositories.Models;
+using GitHubBugReport.Core.Util;
 
 namespace GitHubBugReport.Core.Query
 {
@@ -31,6 +35,7 @@ namespace GitHubBugReport.Core.Query
             {
                 return $"!({_expr})";
             }
+
             return $"-{_expr}";
         }
 
@@ -87,10 +92,7 @@ namespace GitHubBugReport.Core.Query
     {
         readonly IEnumerable<Expression> _expressions;
 
-        public IEnumerable<Expression> Expressions
-        {
-            get => _expressions;
-        }
+        public IEnumerable<Expression> Expressions => _expressions;
 
         public ExpressionAnd(IEnumerable<Expression> expressions)
         {
@@ -106,6 +108,7 @@ namespace GitHubBugReport.Core.Query
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -125,10 +128,12 @@ namespace GitHubBugReport.Core.Query
         public override string GetGitHubQueryURL()
         {
             IEnumerable<string> subQueries = _expressions.Select(expr => expr.GetGitHubQueryURL());
+
             if (subQueries.Contains(null))
             {
                 return null;
             }
+
             return string.Join(" ", subQueries);
         }
 
@@ -175,11 +180,13 @@ namespace GitHubBugReport.Core.Query
             IEnumerable<ExpressionMultiRepo> multiRepoExpressions = andExpressions
                 .Where(e => e is ExpressionMultiRepo)
                 .Select(e => (ExpressionMultiRepo)e);
+
             if (multiRepoExpressions.Any())
             {
                 IEnumerable<Repository> repos = multiRepoExpressions
                     .SelectMany(e => e.RepoExpressions.Select(re => re.Repo))
                     .Distinct();
+
                 IEnumerable<RepoExpression> repoExpressions = repos
                     .Select(repo =>
                         new RepoExpression(repo,
@@ -250,6 +257,7 @@ namespace GitHubBugReport.Core.Query
         {
             return GeneratePermutations(orExpressions, orExpressions.Count());
         }
+
         private IEnumerable<IEnumerable<Expression>> GeneratePermutations(
             IEnumerable<ExpressionOr> orExpressions, 
             int orExpressionsCount)

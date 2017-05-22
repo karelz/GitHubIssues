@@ -3,10 +3,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
-using BugReport.Util;
 using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Query;
 using GitHubBugReport.Core.Repositories.Models;
+using GitHubBugReport.Core.Util;
 
 namespace BugReport.Reports
 {

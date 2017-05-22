@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using BugReport.Util;
 
-namespace BugReport.CommandLine
+namespace GitHubBugReport.Core.Util.CommandLine
 {
     public class Option
     {

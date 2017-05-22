@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace BugReport.Util
+namespace GitHubBugReport.Core.Util
 {
     public static class Extensions
     {
         public static bool ContainsIgnoreCase(this IEnumerable<string> strs, string str)
         {
-            return strs.Where(s => s.Equals(str, StringComparison.InvariantCultureIgnoreCase)).Any();
+            return strs.Any(s => s.Equals(str, StringComparison.InvariantCultureIgnoreCase));
         }
 
         public static bool None<T>(this IEnumerable<T> items)

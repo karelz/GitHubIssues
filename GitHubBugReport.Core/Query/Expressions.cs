@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Issues.Models;
 
 namespace GitHubBugReport.Core.Query
@@ -53,6 +54,7 @@ namespace GitHubBugReport.Core.Query
             {
                 _isNormalized = IsNormalized(NormalizedState.MultiRepo);
             }
+
             return _isNormalized.Value;
         }
 

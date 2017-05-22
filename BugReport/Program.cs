@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using BugReport.CommandLine;
 using BugReport.Reports;
 using BugReport.Reports.EmailReports;
-using BugReport.Util;
 using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Issues.Services;
 using GitHubBugReport.Core.Storage.Services;
+using GitHubBugReport.Core.Util;
+using GitHubBugReport.Core.Util.CommandLine;
 using Octokit;
 using Repository = GitHubBugReport.Core.Repositories.Models.Repository;
 

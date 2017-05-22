@@ -72,6 +72,9 @@
     <Compile Include="Repositories\Services\OctoKitRepositoryService.cs" />
     <Compile Include="Storage\Services\FileWriter.cs" />
     <Compile Include="Storage\Services\IFileWriter.cs" />
+    <Compile Include="Util\CommandLine\Option.cs" />
+    <Compile Include="Util\CommandLine\Parser.cs" />
+    <Compile Include="Util\Extensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

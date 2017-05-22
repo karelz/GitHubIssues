@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
+using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Issues.Models;
 
 namespace GitHubBugReport.Core.Query

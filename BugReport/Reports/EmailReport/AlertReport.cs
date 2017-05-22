@@ -4,10 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Net.Mail;
 using System.Text.RegularExpressions;
-using BugReport.Util;
 using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Repositories.Models;
 using GitHubBugReport.Core.Repositories.Services;
+using GitHubBugReport.Core.Util;
 
 namespace BugReport.Reports.EmailReports
 {
