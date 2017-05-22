@@ -11,27 +11,8 @@ using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Repositories.Models;
 using GitHubBugReport.Core.Storage.Services;
 
-public class Program
+public partial class Program
 {
-    enum ErrorCode
-    {
-        Success = 0,
-        InvalidCommand = -1,
-        EmailSendFailure = -50,
-        CatastrophicFailure = -100
-    }
-
-    enum ActionCommand
-    {
-        cache,
-        report,
-        query,
-        alerts,
-        history,
-        untriaged,
-        needsResponse
-    }
-
     static readonly IEnumerable<string> _helpActions = new List<string>() { "?", "help", "h" };
     // Prefixed with option prefix /, -, or --, see code:Parser._optionPrefixes
     static readonly IEnumerable<string> _helpOptions = new List<string>() { "?", "help", "h" };
@@ -53,40 +34,7 @@ public class Program
     static readonly OptionMultipleValues _filterOption = new OptionMultipleValues("filter");
     static readonly OptionWithoutValue _skipEmailOption = new OptionWithoutValue("skipEmail", "noEmail", "skipMail", "noMail");
     static readonly OptionMultipleValues _commentsOption = new OptionMultipleValues("comments");
-
-    static void PrintUsage()
-    {
-        Console.WriteLine(
-@"Usage:
-  cache /config <.xml> /prefix <name> [/comments_prefix <comments>] [/authToken <token>]
-    * Will cache all GitHub issues into file <name>YYYY-MM-DD@HH-MM.json
-    * If /comments is set, will also cache all GitHub comments into file <comments>YYY-MM-DD@HH-MM.json
-  report [/begin <issues1.json> [...]] /end <issues1_end.json> [...] [/out <.html>] [/out_csv <file_prefix>] 
-        [/name <report_name>] [/middle <issues.json> [...]] /config <.xml>
-    * Creates report with alerts/areas as rows and queries as columns from cached .json file
-  query [/begin <issues1.json> [...]] /end <issues1_end.json> [...] [/out_json <out.json>] /out <.html> /config <.xml>
-    * Creates query report (list of issues) from cached .json file
-  alerts /begin <issues1.json> [...] /end <issues1_end.json> [...] /template <.html> /config <.xml> 
-        [/filter <alert_name> [...]] [/skipEmail] [/out <out.html>]
-    * Sends alert emails based on config.xml, optinally filtered to just alert_name
-  history /in <summary.csv> [...] /out <.xlsx>
-    * Creates history report from .csv files (produced by report command above)
-  untriaged /in <issues.json> [...] /template <.html> /config <.xml> 
-        [/filter <alert_name> [...]] [/skipEmail] [/out <out.html>]
-    * Sends alert emails based on config.xml, optinally filtered to just alert_name
-  needsResponse /in <issues.json> [...] /comments <.json> [...] /template <.html> /config <.xml> 
-        [/fitler:<alert_name>] [/skipEmail] [/out <out.html>]
-    * Sends digest emails based on config.xml, optinally filtered to just alert_name");
-    }
-
-    static void ReportError(string error)
-    {
-        Console.Error.WriteLine(error);
-        Console.Error.WriteLine();
-
-        PrintUsage();
-    }
-
+    
     static int Main(string[] args) => (int)Main_Internal(args);
 
     static ErrorCode Main_Internal(string[] args)
@@ -331,6 +279,39 @@ public class Program
 
             return ErrorCode.CatastrophicFailure;
         }
+    }
+
+    static void PrintUsage()
+    {
+        Console.WriteLine(
+            @"Usage:
+  cache /config <.xml> /prefix <name> [/comments_prefix <comments>] [/authToken <token>]
+    * Will cache all GitHub issues into file <name>YYYY-MM-DD@HH-MM.json
+    * If /comments is set, will also cache all GitHub comments into file <comments>YYY-MM-DD@HH-MM.json
+  report [/begin <issues1.json> [...]] /end <issues1_end.json> [...] [/out <.html>] [/out_csv <file_prefix>] 
+        [/name <report_name>] [/middle <issues.json> [...]] /config <.xml>
+    * Creates report with alerts/areas as rows and queries as columns from cached .json file
+  query [/begin <issues1.json> [...]] /end <issues1_end.json> [...] [/out_json <out.json>] /out <.html> /config <.xml>
+    * Creates query report (list of issues) from cached .json file
+  alerts /begin <issues1.json> [...] /end <issues1_end.json> [...] /template <.html> /config <.xml> 
+        [/filter <alert_name> [...]] [/skipEmail] [/out <out.html>]
+    * Sends alert emails based on config.xml, optinally filtered to just alert_name
+  history /in <summary.csv> [...] /out <.xlsx>
+    * Creates history report from .csv files (produced by report command above)
+  untriaged /in <issues.json> [...] /template <.html> /config <.xml> 
+        [/filter <alert_name> [...]] [/skipEmail] [/out <out.html>]
+    * Sends alert emails based on config.xml, optinally filtered to just alert_name
+  needsResponse /in <issues.json> [...] /comments <.json> [...] /template <.html> /config <.xml> 
+        [/fitler:<alert_name>] [/skipEmail] [/out <out.html>]
+    * Sends digest emails based on config.xml, optinally filtered to just alert_name");
+    }
+
+    static void ReportError(string error)
+    {
+        Console.Error.WriteLine(error);
+        Console.Error.WriteLine();
+
+        PrintUsage();
     }
 
     private static ErrorCode GetSendEmailErrorCode(bool isAllEmailSendSuccessful)

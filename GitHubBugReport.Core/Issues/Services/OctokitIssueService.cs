@@ -15,7 +15,7 @@ namespace GitHubBugReport.Core.Issues.Services
         public OctokitIssueService()
         {
             // TODO: Inject into constructor instead.
-            _client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
+            _client = new GitHubClient(new ProductHeaderValue("GitHubBugReporter"));
 
             if (AuthenticationToken != null)
             {
