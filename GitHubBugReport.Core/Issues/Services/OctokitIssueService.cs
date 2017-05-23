@@ -94,16 +94,64 @@ namespace GitHubBugReport.Core.Issues.Services
             return dataModelIssueList;
         }
 
+        private Models.Label[] MapToLabels(IReadOnlyList<Octokit.Label> octokitLabels)
+        {
+            Models.Label[] labels = new Models.Label[octokitLabels.Count];
+
+            for (int i = 0; i < octokitLabels.Count; i++)
+            {
+                labels[i] = new Models.Label(octokitLabels[i].Name);
+            }
+
+            return labels;
+        }
+
         private DataModelIssue MapIssueToDataModel(Issue issue)
         {
             // TODO: Implement this.
-            return new DataModelIssue();
+            return new DataModelIssue
+            {
+                Id = issue.Id, 
+                Number = issue.Number, 
+                Title = issue.Title, 
+                State = issue.State, // TODO: This is leaking.
+                Assignee = new Models.User { Name = issue.Assignee.Name, Login = issue.Assignee.Login, HtmlUrl = issue.Assignee.HtmlUrl},
+                Labels = MapToLabels(issue.Labels), 
+                User = new Models.User { Name = issue.User.Name, Login = issue.User.Login, HtmlUrl = issue.User.HtmlUrl },
+                HtmlUrl = issue.HtmlUrl.ToString(), 
+                CreatedAt = issue.CreatedAt, 
+                UpdatedAt = issue.UpdatedAt, 
+                ClosedAt = issue.ClosedAt, 
+                ClosedBy = new Models.User { Name = issue.ClosedBy.Name, Login = issue.ClosedBy.Login, HtmlUrl = issue.ClosedBy.HtmlUrl },
+                PullRequest = new Models.PullRequest(), // There is nothign in this class right now. 
+                Milestone = new Models.Milestone
+                {
+                    Number = issue.Milestone.Number, 
+                    Title = issue.Milestone.Title, 
+                    Description = issue.Milestone.Description, 
+                    OpenIssues = issue.Milestone.OpenIssues, 
+                    ClosedIssues = issue.Milestone.ClosedIssues, 
+                    State = issue.Milestone.State, 
+                    Creator = new Models.User { Name = issue.Milestone.Creator.Name, Login = issue.Milestone.Creator.Login, HtmlUrl = issue.Milestone.Creator.HtmlUrl }, 
+                    CreatedAt = issue.Milestone.CreatedAt, 
+                    DueOn = issue.Milestone.DueOn, 
+                    ClosedAt = issue.Milestone.ClosedAt
+                }
+            };
         }
 
         private DataModelComment MapCommentToDataModel(IssueComment issueComment)
         {
-            // TOOD: Implement this.
-            return new DataModelComment();
+            return new DataModelComment
+            {
+                Body = issueComment.Body, 
+                CreatedAt = issueComment.CreatedAt, 
+                HtmlUrl = issueComment.HtmlUrl, 
+                Id = issueComment.Id, 
+                UpdatedAt = issueComment.UpdatedAt, 
+                Url = issueComment.Url, 
+                User = issueComment.User
+            };
         }
 
         /// <summary>
@@ -139,11 +187,5 @@ namespace GitHubBugReport.Core.Issues.Services
         //{
         //    foreach(Issue issue)
         //}
-    }
-
-    public class DataModelComment
-    {
-        // TODO: Define members.
-
     }
 }
