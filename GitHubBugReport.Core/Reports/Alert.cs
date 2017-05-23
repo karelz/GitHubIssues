@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using GitHubBugReport.Core.Query;
+using GitHubBugReport.Core.Repositories.Models;
 
 namespace GitHubBugReport.Core.Reports
 {

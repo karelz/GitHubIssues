@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Web;
 using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Util;

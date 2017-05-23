@@ -128,11 +128,14 @@ namespace GitHubBugReport.Core.DataModel
                 ApplyMilestoneAliases(issue.Milestone, config.MilestoneAliasesMap);
             }
             
+            // NOTE: Commenting this for now as we can't do this in the new setup, will have to find out how to rectify later.
+            //       We should probably load the repos and filter them somewher else. It goes over a list but only sets the issues 
+            //       once. What if there is > 1 repo. Or will there only ever be one?
             // Process repo filters after label aliases, the filter query might depend on them
-            foreach (Repository repo in Repository.Repositories)
-            {
-                issues = repo.Filter(issues);
-            }
+            //foreach (Repository repo in Repository.Repositories)
+            //{
+            //    issues = repo.Filter(issues);
+            //}
 
             return issues.ToArray();
         }

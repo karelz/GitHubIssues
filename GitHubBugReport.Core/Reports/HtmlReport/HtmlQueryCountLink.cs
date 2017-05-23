@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using GitHubBugReport.Core.Issues.Extensions;
 using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Query;
 using GitHubBugReport.Core.Repositories.Models;
@@ -29,9 +30,10 @@ namespace GitHubBugReport.Core.Reports.HtmlReport
             // TODO: Inject or pass as parameter when we can.
             IRepositoryService repositoryService = new OctoKitRepositoryService();
 
-            IEnumerable<Repository> repos = useRepositoriesFromIssues 
-                ? repositoryService.GetReposOrDefault(issues) 
-                : Repository.Repositories;
+            IEnumerable<Repository> repos = useRepositoriesFromIssues
+                ? repositoryService.GetReposOrDefault(issues)
+                //: Repository.Repositories; // Commenting this out for now, not sure what the list of repos would be. We should only have one as far as I know. Will have to debug live.
+                : Enumerable.Empty<Repository>();
 
             IEnumerable<CountLink> countLinks = repos.SelectMany(repo => GetCountLinks(query, issues, repo)).ToArray();
 

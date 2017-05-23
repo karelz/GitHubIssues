@@ -3,9 +3,10 @@ using System.Diagnostics;
 using System.Linq;
 using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Issues.Models;
+using GitHubBugReport.Core.Repositories.Models;
 //using GitHubBugReport.Core.Repositories.Models;
 using GitHubBugReport.Core.Util;
-using Octokit;
+//using Octokit;
 
 namespace GitHubBugReport.Core.Query
 {

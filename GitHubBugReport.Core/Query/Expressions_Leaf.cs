@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using GitHubBugReport.Core.DataModel;
 using GitHubBugReport.Core.Issues.Models;
+using GitHubBugReport.Core.Util;
 
 namespace GitHubBugReport.Core.Query
 {
@@ -73,7 +74,7 @@ namespace GitHubBugReport.Core.Query
 
         public override bool Evaluate(DataModelIssue issue)
         {
-            return issue.Labels.Where(label => _labelRegex.IsMatch(label.Name)).Any();
+            return issue.Labels.Any(label => _labelRegex.IsMatch(label.Name));
         }
 
         public override void Validate(IssueCollection collection)
@@ -90,6 +91,7 @@ namespace GitHubBugReport.Core.Query
             {
                 return $"label:\"{_labelPattern}\"";
             }
+
             return "label:" + _labelPattern;
         }
 

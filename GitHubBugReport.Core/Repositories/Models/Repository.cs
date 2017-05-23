@@ -28,7 +28,7 @@ namespace GitHubBugReport.Core.Repositories.Models
         // TODO - Move to config
         private static readonly string s_GitHubProductIdentifier = "GitHubBugReporter";
 
-        public IReadOnlyList<Issue> Issues { get; set; }
+        public IEnumerable<DataModelIssue> Issues { get; set; }
         public ConcurrentBag<IssueComment> IssueComments { get; private set; }
 
         private Repository(string repoName, string alias, string filterQuery)

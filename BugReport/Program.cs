@@ -14,6 +14,7 @@ using GitHubBugReport.Core.Storage.Services;
 using GitHubBugReport.Core.Util;
 using GitHubBugReport.Core.Util.CommandLine;
 using Octokit;
+//using Octokit;
 using Repository = GitHubBugReport.Core.Repositories.Models.Repository;
 
 public partial class Program
@@ -366,7 +367,7 @@ public partial class Program
 
         if (commentsPrefix != null)
         {
-            repo.LoadIssueComments();
+            //repo.LoadIssueComments(); // not needed, issueService.GetAll loads these. We may have an issue with Serialization since they are now loaded when it writes to file.
 
             fileWriter.SerializeToFile(
                 $"{commentsPrefix}{currentTime:yyyy-MM-dd@HH-mm}.json", 

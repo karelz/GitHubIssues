@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Web;
 using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Util;
 
@@ -21,6 +22,7 @@ namespace GitHubBugReport.Core.Reports.EmailReport
             IEnumerable<DataModelIssue> issues,
             IEnumerable<DataModelIssue> comments)
         {
+            // TODO: Extract to email sending utility.
             return AlertReport.SendEmails(
                 config,
                 htmlTemplateFileName,
@@ -48,11 +50,13 @@ namespace GitHubBugReport.Core.Reports.EmailReport
                 Console.WriteLine();
                 return null;
             }
+
             foreach (DataModelIssue issue in matchingIssues)
             {
                 issueComments.Add(issue.Number, new List<DataModelIssue>());
                 issuesMap.Add(issue.Number, issue);
             }
+
             foreach (DataModelIssue comment in comments)
             {
                 int startIndex = comment.HtmlUrl.IndexOf("/issues/") + 8;
@@ -110,6 +114,7 @@ namespace GitHubBugReport.Core.Reports.EmailReport
         private static string FormatIssueTable(IEnumerable<KeyValuePair<DataModelIssue, TimeSpan?>> issues)
         {
             StringBuilder text = new StringBuilder();
+
             text.AppendLine("<table>");
             text.AppendLine("  <tr>");
             text.AppendLine("    <th>Issue #</th>");
@@ -117,6 +122,7 @@ namespace GitHubBugReport.Core.Reports.EmailReport
             text.AppendLine("    <th>Title</th>");
             text.AppendLine("    <th>Assigned To</th>");
             text.AppendLine("  </tr>");
+
             foreach (var pair in issues)
             {
                 IssueEntry entry = new IssueEntry(pair.Key);
@@ -133,6 +139,7 @@ namespace GitHubBugReport.Core.Reports.EmailReport
                 text.AppendLine($"    <td>{entry.AssignedToText}</td>");
                 text.AppendLine("  </tr>");
             }
+
             text.AppendLine("</table>");
 
             return text.ToString();

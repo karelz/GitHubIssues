@@ -8,6 +8,7 @@ using GitHubBugReport.Core.Issues.Models;
 using GitHubBugReport.Core.Repositories.Models;
 using GitHubBugReport.Core.Repositories.Services;
 using GitHubBugReport.Core.Util;
+using GitHubBugReport.Core.Issues.Extensions;
 
 namespace GitHubBugReport.Core.Reports.EmailReport
 {

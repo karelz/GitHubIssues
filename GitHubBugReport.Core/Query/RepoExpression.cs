@@ -1,4 +1,6 @@
-using Octokit;
+//using Octokit;
+
+using GitHubBugReport.Core.Repositories.Models;
 
 namespace GitHubBugReport.Core.Query
 {
