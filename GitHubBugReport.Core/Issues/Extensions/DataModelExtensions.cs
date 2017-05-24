@@ -14,7 +14,7 @@ namespace GitHubBugReport.Core.Issues.Extensions
 
         public static bool Contains_ByIssueNumber(this IEnumerable<DataModelIssue> issues, DataModelIssue issue)
         {
-            return issues.Where(i => issue.EqualsByNumber(i)).Any();
+            return issues.Any(i => issue.EqualsByNumber(i));
         }
 
         public static IEnumerable<DataModelIssue> Intersect_ByIssueNumber(this IEnumerable<DataModelIssue> issues, IEnumerable<DataModelIssue> intersectIssues)
@@ -39,12 +39,12 @@ namespace GitHubBugReport.Core.Issues.Extensions
 
         public static bool Contains_ByName(this IEnumerable<Label> labels, Label label)
         {
-            return Contains_ByName(labels, label.Name);
+            return labels.Contains_ByName(label.Name);
         }
 
         public static IEnumerable<Label> Intersect_ByName(this IEnumerable<Label> labels, IEnumerable<Label> labels2)
         {
-            return labels.Where(label => Contains_ByName(labels2, label.Name));
+            return labels.Where(label => labels2.Contains_ByName(label.Name));
         }
     }
 }

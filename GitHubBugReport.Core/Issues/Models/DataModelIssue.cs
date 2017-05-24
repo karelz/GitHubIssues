@@ -97,13 +97,13 @@ namespace GitHubBugReport.Core.Issues.Models
             sw.WriteLine("Number: {0}", Number);
             sw.WriteLine("Type: {0}", (PullRequest == null) ? "Issue" : "PullRequest");
             sw.WriteLine("URL: {0}", HtmlUrl);
-            sw.WriteLine((string) "State: {0}", (object) State);
+            sw.WriteLine("State: {0}", State);
             sw.WriteLine("Assignee.Name:  {0}", (Assignee == null) ? "<null>" : Assignee.Name);
             sw.WriteLine("        .Login: {0}", (Assignee == null) ? "<null>" : Assignee.Login);
             sw.WriteLine("Labels.Name:");
             foreach (Label label in Labels)
             {
-                sw.WriteLine((string) "    {0}", (object) label.Name);
+                sw.WriteLine("    {0}", label.Name);
             }
             sw.WriteLine("Title: {0}", Title);
             //sw.WriteLine("Milestone.Title: {0}", (issue.Milestone == null) ? "<null>" : issue.Milestone.Title);
