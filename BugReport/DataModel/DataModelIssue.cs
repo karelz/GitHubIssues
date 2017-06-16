@@ -89,7 +89,7 @@ namespace BugReport.DataModel
             {
                 return (assigneeName == null);
             }
-            return Assignee.Name.Equals(assigneeName, StringComparison.InvariantCultureIgnoreCase);
+            return Assignee.Login.Equals(assigneeName, StringComparison.InvariantCultureIgnoreCase);
         }
 
         public override string ToString()

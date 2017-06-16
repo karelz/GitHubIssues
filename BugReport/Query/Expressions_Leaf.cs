@@ -342,7 +342,7 @@ namespace BugReport.Query
 
         public override string GetGitHubQueryURL()
         {
-            return "assginee:" + _assigneeName;
+            return "assignee:" + _assigneeName;
         }
 
         internal override bool IsNormalized(NormalizedState minAllowedState)
