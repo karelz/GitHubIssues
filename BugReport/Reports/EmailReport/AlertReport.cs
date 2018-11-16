@@ -83,7 +83,7 @@ namespace BugReport.Reports.EmailReports
 
             foreach (Alert alert in _config.Alerts.Where(alert => alert.Owners.Any()))
             {
-                Console.WriteLine("Alert: {0}", alert.Name);
+                Console.WriteLine($"Alert: {alert.Name}");
                 if ((_filteredAlertNames != null) && 
                     _filteredAlertNames.Where(name => alert.EqualsByName(name)).None())
                 {
@@ -126,7 +126,7 @@ namespace BugReport.Reports.EmailReports
             }
             catch (Exception ex)
             {
-                Console.WriteLine("ERROR writing alert {0} into file {1}", alert.Name, _outputHtmlFileName);
+                Console.WriteLine($"ERROR writing alert {alert.Name} into file {_outputHtmlFileName}");
                 Console.WriteLine(ex);
                 return false;
             }
@@ -161,7 +161,7 @@ namespace BugReport.Reports.EmailReports
             }
             catch (Exception ex)
             {
-                Console.WriteLine("ERROR sending alert {0}", alert.Name);
+                Console.WriteLine($"ERROR sending alert {alert.Name}");
                 Console.WriteLine(ex);
                 return false;
             }
@@ -175,23 +175,23 @@ namespace BugReport.Reports.EmailReports
             // Logging
             if (string.IsNullOrEmpty(_outputHtmlFileName))
             {
-                Console.WriteLine("    Report: {0}", _outputHtmlFileName);
+                Console.WriteLine($"    Report: {_outputHtmlFileName}");
                 if (!fileWritten)
                 {
                     Console.WriteLine("        FAILED!!!");
                 }
             }
             Console.WriteLine("    Email: {0}", emailSent ? (_skipEmail ? "skipped" : "sent") : "FAILED!!!");
-            Console.WriteLine("        Subject: {0}", reportEmail.Subject);
+            Console.WriteLine($"        Subject: {reportEmail.Subject}");
             Console.WriteLine("        To:");
             foreach (Alert.User user in alert.Owners)
             {
-                Console.WriteLine("            {0} - {1}", user.Name, user.EmailAddress);
+                Console.WriteLine($"            {user.Name} - {user.EmailAddress}");
             }
             Console.WriteLine("        CC:");
             foreach (Alert.User user in alert.CCs)
             {
-                Console.WriteLine("            {0} - {1}", user.Name, user.EmailAddress);
+                Console.WriteLine($"            {user.Name} - {user.EmailAddress}");
             }
             if (string.IsNullOrEmpty(_outputHtmlFileName))
             {
@@ -233,12 +233,12 @@ namespace BugReport.Reports.EmailReports
             Match match = regex.Match(bodyText);
             if (!match.Success)
             {
-                throw new InvalidDataException(string.Format("Missing {0} entry in email template {1}", tag, htmlTemplateFileName));
+                throw new InvalidDataException($"Missing {tag} entry in email template {htmlTemplateFileName}");
             }
             string foundValue = match.Groups[1].Value;
             if (match.NextMatch().Success)
             {
-                throw new InvalidDataException(string.Format("Multiple {0} entries in email template {1}", tag, htmlTemplateFileName));
+                throw new InvalidDataException($"Multiple {tag} entries in email template {htmlTemplateFileName}");
             }
             bodyText = regex.Replace(bodyText, "");
             return foundValue;

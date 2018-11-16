@@ -12,7 +12,7 @@ namespace BugReport.Query
     public class InvalidQueryException : Exception
     {
         public InvalidQueryException(string message, string queryString, int position)
-            : base(String.Format("{0} at position {1}", message, position))
+            : base($"{message} at position {position}")
         {
         }
     }

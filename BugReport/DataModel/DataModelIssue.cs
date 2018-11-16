@@ -95,24 +95,24 @@ namespace BugReport.DataModel
         public override string ToString()
         {
             StringWriter sw = new StringWriter();
-            sw.WriteLine("Number: {0}", Number);
+            sw.WriteLine($"Number: {Number}");
             sw.WriteLine("Type: {0}", (PullRequest == null) ? "Issue" : "PullRequest");
-            sw.WriteLine("URL: {0}", HtmlUrl);
-            sw.WriteLine("State: {0}", State);
+            sw.WriteLine($"URL: {HtmlUrl}");
+            sw.WriteLine($"State: {State}");
             sw.WriteLine("Assignee.Name:  {0}", (Assignee == null) ? "<null>" : Assignee.Name);
             sw.WriteLine("        .Login: {0}", (Assignee == null) ? "<null>" : Assignee.Login);
             sw.WriteLine("Labels.Name:");
             foreach (Label label in Labels)
             {
-                sw.WriteLine("    {0}", label.Name);
+                sw.WriteLine($"    {label.Name}");
             }
-            sw.WriteLine("Title: {0}", Title);
+            sw.WriteLine($"Title: {Title}");
             //sw.WriteLine("Milestone.Title: {0}", (issue.Milestone == null) ? "<null>" : issue.Milestone.Title);
             sw.WriteLine("User.Name:  {0}", (User == null) ? "<null>" : User.Name);
             sw.WriteLine("    .Login: {0}", (User == null) ? "<null>" : User.Login);
-            sw.WriteLine("CreatedAt: {0}", CreatedAt);
-            sw.WriteLine("UpdatedAt: {0}", UpdatedAt);
-            sw.WriteLine("ClosedAt:  {0}", ClosedAt);
+            sw.WriteLine($"CreatedAt: {CreatedAt}");
+            sw.WriteLine($"UpdatedAt: {UpdatedAt}");
+            sw.WriteLine($"ClosedAt:  {ClosedAt}");
             sw.WriteLine("ClosedBy.Name:  {0}", (ClosedBy == null) ? "<null>" : ClosedBy.Name);
             sw.Write("        .Login: {0}", (ClosedBy == null) ? "<null>" : ClosedBy.Login);
 
