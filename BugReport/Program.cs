@@ -227,6 +227,11 @@ class Program
                             config, 
                             IssueKindFlags.Issue | IssueKindFlags.PullRequest);
 
+                        if (AlertReport_Diff.DetectLargeChanges(beginIssues, endIssues, config))
+                        {
+                            return ErrorCode.EmailSendFailure;
+                        }
+
                         return GetSendEmailErrorCode(AlertReport_Diff.SendEmails(
                             config,
                             templateFile,

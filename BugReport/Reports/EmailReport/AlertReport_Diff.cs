@@ -11,6 +11,36 @@ namespace BugReport.Reports.EmailReports
 {
     public class AlertReport_Diff
     {
+        public static bool DetectLargeChanges(
+            IEnumerable<DataModelIssue> beginIssues, 
+            IEnumerable<DataModelIssue> endIssues, 
+            Config config)
+        {
+            IEnumerable<DataModelIssue> goneIssues = beginIssues.Except_ByIssueNumber(endIssues).ToList();
+            IEnumerable<DataModelIssue> newIssues = endIssues.Except_ByIssueNumber(beginIssues).ToList();
+
+            int issuesMinimumCount = 20;
+            double issuesRatioLimit = 0.1;
+
+            foreach (Repository repo in config.Repositories)
+            {
+                int goneIssuesCount = goneIssues.Where(repo).Count();
+                int newIssuesCount = newIssues.Where(repo).Count();
+
+                if (goneIssuesCount > issuesMinimumCount && 
+                    ((double)goneIssuesCount / (double)beginIssues.Count()) > issuesRatioLimit)
+                {
+                    return true;
+                }
+                if (newIssuesCount > issuesMinimumCount &&
+                    ((double)newIssuesCount / (double)endIssues.Count()) > issuesRatioLimit)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public static bool SendEmails(
             Config config,
             string htmlTemplateFileName,
