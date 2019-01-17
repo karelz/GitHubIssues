@@ -31,6 +31,9 @@ namespace BugReport.Reports
         public IEnumerable<Team> Teams { get; private set; }
         public IEnumerable<Organization> Organizations { get; private set; }
 
+        public int IssuesMinimalCount { get; private set; }
+        public double IssuesMaximumRatio { get; private set; }
+
         private class ConfigFile
         {
             public string FileName;
@@ -102,6 +105,10 @@ namespace BugReport.Reports
                 LoadAlertFilters(allAlerts, FilterKind.In).ToList(),
                 LoadAlertFilters(allAlerts, FilterKind.Out).ToList()).ToList();
             Queries = LoadQueryReports(customIsValues).ToList();
+
+            LoadLargeChangeThresholds(out int issuesMinimalCount, out double issuesMaximumRatio);
+            IssuesMinimalCount = issuesMinimalCount;
+            IssuesMaximumRatio = issuesMaximumRatio;
         }
 
         private void LoadUsers()
@@ -619,6 +626,48 @@ namespace BugReport.Reports
                 throw new InvalidDataException($"Cannot find user '{id}'");
             }
             return user;
+        }
+
+        private void LoadLargeChangeThresholds(out int issuesMinimalCount, out double issuesMaximumRatio)
+        {
+            // Defaults
+            issuesMinimalCount = 20;
+            issuesMaximumRatio = 0.1;
+
+            bool isThresholdsParsed = false;
+
+            foreach (ConfigFile configFile in _configFiles)
+            {
+                foreach (XElement thresholdsNode in configFile.Root.Descendants("thresholds"))
+                {
+                    if (isThresholdsParsed)
+                    {
+                        throw new InvalidDataException($"Duplicate `thresholds` element defined.");
+                    }
+                    isThresholdsParsed = true;
+
+                    string issuesMinimalCountValue = thresholdsNode.Attribute("IssuesMinimalCount")?.Value;
+                    if (issuesMinimalCountValue != null)
+                    {
+                        if (!int.TryParse(issuesMinimalCountValue, out issuesMinimalCount) ||
+                            issuesMinimalCount < 0)
+                        {
+                            throw new InvalidDataException($"IssuesMinimalCount value `{issuesMinimalCountValue}` has to be positive number.");
+                        }
+                    }
+
+                    string issuesMaximumRatioValue = thresholdsNode.Attribute("IssuesMaximumRatio")?.Value;
+                    if (issuesMaximumRatioValue != null)
+                    {
+                        if (!double.TryParse(issuesMaximumRatioValue, out issuesMaximumRatio) ||
+                            issuesMaximumRatio < 0 ||
+                            issuesMaximumRatio > 1)
+                        {
+                            throw new InvalidDataException($"IssuesMaximumRatio value `{issuesMaximumRatioValue}` has to be number in the interval <0,1>.");
+                        }
+                    }
+                }
+            }
         }
     }
 }
