@@ -19,21 +19,20 @@ namespace BugReport.Reports.EmailReports
             IEnumerable<DataModelIssue> goneIssues = beginIssues.Except_ByIssueNumber(endIssues).ToList();
             IEnumerable<DataModelIssue> newIssues = endIssues.Except_ByIssueNumber(beginIssues).ToList();
 
-            int issuesMinimumCount = 20;
-            double issuesRatioLimit = 0.1;
-
             foreach (Repository repo in config.Repositories)
             {
                 int goneIssuesCount = goneIssues.Where(repo).Count();
                 int newIssuesCount = newIssues.Where(repo).Count();
 
-                if (goneIssuesCount > issuesMinimumCount && 
-                    ((double)goneIssuesCount / (double)beginIssues.Count()) > issuesRatioLimit)
+                if (goneIssuesCount > config.IssuesMinimalCount &&
+                    beginIssues.Count() > 0 &&
+                    ((double)goneIssuesCount / (double)beginIssues.Count()) > config.IssuesMaximumRatio)
                 {
                     return true;
                 }
-                if (newIssuesCount > issuesMinimumCount &&
-                    ((double)newIssuesCount / (double)endIssues.Count()) > issuesRatioLimit)
+                if (newIssuesCount > config.IssuesMinimalCount &&
+                    endIssues.Count() > 0 &&
+                    ((double)newIssuesCount / (double)endIssues.Count()) > config.IssuesMaximumRatio)
                 {
                     return true;
                 }
