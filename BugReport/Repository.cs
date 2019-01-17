@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using BugReport.DataModel;
 using BugReport.Query;
 using BugReport.Util;
+using System;
 
 public class Repository
 {
@@ -270,6 +271,7 @@ public class Repository
     private static void SerializeToFile(string fileName, object objToSerialize)
     {
         JsonSerializer serializer = new JsonSerializer();
+        serializer.Converters.Add(new StringEnumOfItemStateConverter());
         serializer.Formatting = Formatting.Indented;
 
         using (StreamWriter sw = new StreamWriter(fileName))
@@ -277,7 +279,6 @@ public class Repository
         {
             serializer.Serialize(writer, objToSerialize);
         }
-
     }
 
     public override string ToString()
@@ -287,5 +288,23 @@ public class Repository
             return RepoName;
         }
         return $"{RepoName} filtered by '{FilterQuery}'";
+    }
+
+    internal class StringEnumOfItemStateConverter : JsonConverter
+    {
+        public override bool CanConvert(Type objectType)
+        {
+            return (objectType == typeof(StringEnum<ItemState>));
+        }
+
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            writer.WriteValue(value.ToString());
+        }
+
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            return new StringEnum<ItemState>((string)reader.Value);
+        }
     }
 }
