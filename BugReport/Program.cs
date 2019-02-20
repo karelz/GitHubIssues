@@ -97,6 +97,11 @@ class Program
                 return (int)ErrorCode.Success;
             }
 
+            if ((args.Length == 1) && args[0].StartsWith("@"))
+            {
+                args = System.IO.File.ReadLines(args[0].Substring(1)).ToArray();
+            }
+
             // Parse first 'action' argument
             string actionArg = args[0];
             ActionCommand action = 0;
