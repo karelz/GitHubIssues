@@ -109,7 +109,7 @@ namespace BugReport.DataModel
                 using (JsonReader reader = new JsonTextReader(sr))
                 {
                     issues = issues.Concat(serializer.Deserialize<List<DataModelIssue>>(reader)
-                                                        .Where(i => i.IsIssueKind(issueKind)));
+                                                     .Where(i => i.IsIssueKind(issueKind)));
                 }
             }
             

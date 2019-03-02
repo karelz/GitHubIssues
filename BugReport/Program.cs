@@ -224,13 +224,17 @@ class Program
 
                         Config config = new Config(configFiles);
                         IEnumerable<DataModelIssue> beginIssues = IssueCollection.LoadIssues(
-                            beginFiles, 
-                            config, 
-                            IssueKindFlags.Issue | IssueKindFlags.PullRequest);
+                                beginFiles, 
+                                config, 
+                                IssueKindFlags.Issue | IssueKindFlags.PullRequest)
+                            .DistinctFirst_ByIssueNumber()
+                            .ToArray();
                         IEnumerable<DataModelIssue> endIssues = IssueCollection.LoadIssues(
-                            endFiles, 
-                            config, 
-                            IssueKindFlags.Issue | IssueKindFlags.PullRequest);
+                                endFiles, 
+                                config, 
+                                IssueKindFlags.Issue | IssueKindFlags.PullRequest)
+                            .DistinctLast_ByIssueNumber()
+                            .ToArray();
 
                         if (AlertReport_Diff.DetectLargeChanges(beginIssues, endIssues, config))
                         {
