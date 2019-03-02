@@ -26,10 +26,27 @@ namespace BugReport.DataModel
         {
             return issues.Where(i => (i.Repo == repo));
         }
+        public static DataModelIssue First_ByIssueNumber(this IEnumerable<DataModelIssue> issues, DataModelIssue issue)
+        {
+            return issues.Where(i => issue.EqualsByNumber(i)).First();
+        }
+        public static DataModelIssue Last_ByIssueNumber(this IEnumerable<DataModelIssue> issues, DataModelIssue issue)
+        {
+            return issues.Where(i => issue.EqualsByNumber(i)).Last();
+        }
 
         public static DataModelIssue FirstOrNull_ByIssueNumber(this IEnumerable<DataModelIssue> issues, DataModelIssue issue)
         {
             return issues.Where(i => i.EqualsByNumber(issue)).FirstOrDefault();
+        }
+
+        public static IEnumerable<DataModelIssue> DistinctFirst_ByIssueNumber(this IEnumerable<DataModelIssue> issues)
+        {
+            return issues.Where(i => (i == issues.First_ByIssueNumber(i)));
+        }
+        public static IEnumerable<DataModelIssue> DistinctLast_ByIssueNumber(this IEnumerable<DataModelIssue> issues)
+        {
+            return issues.Where(i => (i == issues.Last_ByIssueNumber(i)));
         }
 
         public static bool Contains_ByName(this IEnumerable<Label> labels, string labelName)
