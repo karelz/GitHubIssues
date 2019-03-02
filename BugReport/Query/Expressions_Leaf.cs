@@ -238,6 +238,10 @@ namespace BugReport.Query
             {
                 return "no:milestone";
             }
+            if (_milestoneName.Contains(' '))
+            {
+                return $"milestone:\"{_milestoneName}\"";
+            }
             return "milestone:" + _milestoneName;
         }
 
