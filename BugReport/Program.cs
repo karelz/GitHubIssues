@@ -27,7 +27,8 @@ class Program
         alerts,
         history,
         untriaged,
-        needsResponse
+        needsResponse,
+        contributions
     }
 
     static readonly IEnumerable<string> _helpActions = new List<string>() { "?", "help", "h" };
@@ -77,7 +78,9 @@ class Program
     * Sends alert emails based on config.xml, optinally filtered to just alert_name
   needsResponse /in <issues.json> [...] /comments <.json> [...] /template <.html> /config <.xml> 
         [/fitler:<alert_name>] [/skipEmail] [/out <out.html>]
-    * Sends digest emails based on config.xml, optinally filtered to just alert_name");
+    * Sends digest emails based on config.xml, optinally filtered to just alert_name
+  contributions /in <issues.json> [...] /config <.xml> [/out <.html>] [/out_csv <.csv>]
+    * Creates report of contributions as defined in .xml");
     }
 
     static void ReportError(string error)
@@ -240,6 +243,38 @@ class Program
                         if (csvFileNamePrefix != null)
                         {
                             CsvTableReport.Write(report, csvFileNamePrefix, reportName);
+                        }
+                        return ErrorCode.Success;
+                    }
+                case ActionCommand.contributions:
+                    {
+                        if (!optionsParser.Parse(
+                            new Option[] { _configOption, _inputOption },
+                            new Option[] { _outputOption, _outputCsvOption }))
+                        {
+                            return ErrorCode.InvalidCommand;
+                        }
+                        IEnumerable<string> configFiles = _configOption.GetValues(optionsParser);
+                        IEnumerable<string> inputFiles = _inputOption.GetValues(optionsParser);
+
+                        string outputFileHtml = _outputOption.GetValue(optionsParser);
+                        string outputFileCsv = _outputCsvOption.GetValue(optionsParser);
+
+                        if ((outputFileHtml == null) && (outputFileCsv == null))
+                        {
+                            optionsParser.ReportError("Required at least one option: '/out' or '/out_csv'.");
+                            return ErrorCode.InvalidCommand;
+                        }
+
+                        ContributionsReport report = new ContributionsReport(configFiles, inputFiles);
+                        if (outputFileHtml != null)
+                        {
+                            HtmlContributionsReport.Write(report, outputFileHtml);
+                        }
+                        // Note we can have both options
+                        if (outputFileCsv != null)
+                        {
+                            CsvContributionsReport.Write(report, outputFileCsv);
                         }
                         return ErrorCode.Success;
                     }
