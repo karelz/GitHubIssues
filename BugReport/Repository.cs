@@ -233,7 +233,8 @@ public class Repository
         Task.WaitAll(tasks.ToArray());
     }
 
-    public void LoadIssues(IEnumerable<int> issueNumbers)
+    // Returns list of issue numbers which failed to load
+    public IEnumerable<int> LoadIssues(IEnumerable<int> issueNumbers)
     {
         GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
         if (AuthenticationToken != null)
@@ -241,18 +242,38 @@ public class Repository
             client.Credentials = new Credentials(AuthenticationToken);
         }
 
+        List<int> issuesNotFound = new List<int>();
         List<Issue> issues = new List<Issue>();
         foreach (int issueNumber in issueNumbers)
         {
             Issue issue = null;
+            bool issueFound = false;
             Task.Run(async () =>
             {
-                issue = await client.Issue.Get(Owner, Name, issueNumber);
+                try
+                {
+                    issue = await client.Issue.Get(Owner, Name, issueNumber);
+                    issueFound = true;
+                }
+                catch (Octokit.NotFoundException)
+                {
+                }
             }).Wait();
-            issues.Add(issue);
+
+            if (issueFound)
+            {
+                issues.Add(issue);
+            }
+            else
+            {
+                Console.WriteLine($"Error downloading issue #{issueNumber}");
+                issuesNotFound.Add(issueNumber);
+            }
         }
 
         Issues = issues;
+
+        return issuesNotFound;
     }
 
     public static void SerializeToFile(string fileName, IReadOnlyCollection<Octokit.Issue> issues)

@@ -21,6 +21,7 @@ class Program
     enum ActionCommand
     {
         cache,
+        cacheRange,
         report,
         query,
         alerts,
@@ -49,14 +50,18 @@ class Program
     static readonly OptionMultipleValues _filterOption = new OptionMultipleValues("filter");
     static readonly OptionWithoutValue _skipEmailOption = new OptionWithoutValue("skipEmail", "noEmail", "skipMail", "noMail");
     static readonly OptionMultipleValues _commentsOption = new OptionMultipleValues("comments");
+    static readonly OptionSingleValue _startIndexOption = new OptionSingleValue("startIndex");
+    static readonly OptionSingleValue _endIndexOption = new OptionSingleValue("endIndex");
 
     static void PrintUsage()
     {
         Console.WriteLine(
 @"Usage:
   cache /config <.xml> /prefix <name> [/comments_prefix <comments>] [/authToken <token>]
-    * Will cache all GitHub issues into file <name>YYYY-MM-DD@HH-MM.json
+    * Will cache all opened GitHub issues into file <name>YYYY-MM-DD@HH-MM.json
     * If /comments is set, will also cache all GitHub comments into file <comments>YYY-MM-DD@HH-MM.json
+  cacheRange /config <.xml> /prefix <name> /startIndex <number1> /endIndex <number2> [/authToken <token>]
+    * Will cache all GitHub issues (opened or closed) in a range <number1>-<number2> into file <name>YYYY-MM-DD@HH-MM.json
   report [/begin <issues1.json> [...]] /end <issues1_end.json> [...] [/out <.html>] [/out_csv <file_prefix>] 
         [/name <report_name>] [/middle <issues.json> [...]] /config <.xml>
     * Creates report with alerts/areas as rows and queries as columns from cached .json file
@@ -144,6 +149,39 @@ class Program
                         string commentsFilePrefix = _commentsPrefixOption.GetValue(optionsParser);
 
                         return CacheGitHubIssues(configFiles, filePrefix, commentsFilePrefix, authenticationToken);
+                    }
+                case ActionCommand.cacheRange:
+                    {
+                        if (!optionsParser.Parse(
+                            new Option[] { _configOption, _prefixOption, _startIndexOption, _endIndexOption },
+                            new Option[] { _authenticationTokenOption, _commentsPrefixOption }))
+                        {
+                            return ErrorCode.InvalidCommand;
+                        }
+                        IEnumerable<string> configFiles = _configOption.GetValues(optionsParser);
+                        string filePrefix = _prefixOption.GetValue(optionsParser);
+                        int startIndex = Int32.Parse(_startIndexOption.GetValue(optionsParser));
+                        int endIndex = Int32.Parse(_endIndexOption.GetValue(optionsParser));
+                        // Optional args
+                        string authenticationToken = _authenticationTokenOption.GetValue(optionsParser);
+
+                        if (startIndex <= 0)
+                        {
+                            optionsParser.ReportError($"Option /startIndex has to be positive number.");
+                            return ErrorCode.InvalidCommand;
+                        }
+                        if (endIndex < startIndex)
+                        {
+                            optionsParser.ReportError($"Option /endIndex has to larger than /startIndex.");
+                            return ErrorCode.InvalidCommand;
+                        }
+
+                        return CacheGitHubIssuesRange(
+                            configFiles,
+                            filePrefix,
+                            startIndex,
+                            endIndex,
+                            authenticationToken);
                     }
                 case ActionCommand.query:
                     {
@@ -383,6 +421,54 @@ class Program
             Repository.SerializeToFile(
                 string.Format("{0}{1:yyyy-MM-dd@HH-mm}.json", commentsPrefix, currentTime), 
                 (IReadOnlyCollection<Octokit.IssueComment>)repo.IssueComments);
+        }
+
+        return ErrorCode.Success;
+    }
+
+    private static ErrorCode CacheGitHubIssuesRange(
+        IEnumerable<string> configFiles,
+        string prefix,
+        int startIndex,
+        int endIndex,
+        string authenticationToken)
+    {
+        Config config = new Config(configFiles);
+        if (config.Repositories.Count() != 1)
+        {
+            if (config.Repositories.Count() == 0)
+            {
+                ReportError("No repository definition found in config file(s).");
+                return ErrorCode.InvalidCommand;
+            }
+            else
+            {
+                ReportError("Multiple repositories found in config file(s).");
+                return ErrorCode.InvalidCommand;
+            }
+        }
+
+        Repository repo = config.Repositories.First();
+        repo.AuthenticationToken = authenticationToken;
+
+        DateTime currentTime = DateTime.Now;
+        List<int> issuesNotFound = repo.LoadIssues(Enumerable.Range(startIndex, endIndex - startIndex + 1))
+            .ToList();
+        issuesNotFound.Sort();
+        Repository.SerializeToFile(
+            string.Format("{0}{1:yyyy-MM-dd@HH-mm}.json", prefix, currentTime),
+            repo.Issues);
+
+        if (issuesNotFound.Any())
+        {
+            using (System.IO.StreamWriter file = new System.IO.StreamWriter(
+                string.Format("{0}{1:yyyy-MM-dd@HH-mm}_IssuesNotFound.txt", prefix, currentTime)))
+            {
+                foreach (int issueNumber in issuesNotFound)
+                {
+                    file.WriteLine(issueNumber);
+                }
+            }
         }
 
         return ErrorCode.Success;
