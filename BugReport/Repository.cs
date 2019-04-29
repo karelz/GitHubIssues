@@ -247,27 +247,41 @@ public class Repository
         foreach (int issueNumber in issueNumbers)
         {
             Issue issue = null;
-            bool issueFound = false;
+            Exception error = null;
             Task.Run(async () =>
             {
                 try
                 {
                     issue = await client.Issue.Get(Owner, Name, issueNumber);
-                    issueFound = true;
                 }
-                catch (Octokit.NotFoundException)
+                catch (Exception ex)
                 {
+                    error = ex;
                 }
             }).Wait();
 
-            if (issueFound)
+            if (error == null)
             {
                 issues.Add(issue);
             }
             else
             {
-                Console.WriteLine($"Error downloading issue #{issueNumber}");
-                issuesNotFound.Add(issueNumber);
+                if (error is NotFoundException)
+                {
+                    Console.WriteLine($"NotFoundException #{issueNumber}");
+                    issuesNotFound.Add(issueNumber);
+                }
+                else if (error is RateLimitExceededException)
+                {
+                    Console.WriteLine($"RateLimitExceededException #{issueNumber}");
+                    issuesNotFound.Add(issueNumber);
+                    break;  // No point to continue donwloading more ...
+                }
+                else
+                {
+                    Console.WriteLine($"Unknown ERROR for issue #{issueNumber} -- {error}");
+                    issuesNotFound.Add(issueNumber);
+                }
             }
         }
 
