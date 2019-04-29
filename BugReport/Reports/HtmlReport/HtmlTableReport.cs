@@ -110,19 +110,17 @@ namespace BugReport.Reports
             }
 
             // "Other (missing above)" row
-            {
-                Expression otherRowQuery = Expression.And(rows.Select(row => Expression.Not(row.Query)).ToArray());
-                TableReport.Row otherRow = new TableReport.Row(
-                    "Other (missing above)",
-                    otherRowQuery,
-                    null,
-                    _report.Columns,
-                    _report.BeginIssues,
-                    _report.MiddleIssues,
-                    _report.EndIssues);
+            Expression otherRowQuery = Expression.And(rows.Select(row => Expression.Not(row.Query)).ToArray());
+            TableReport.Row otherRow = new TableReport.Row(
+                "Other (missing above)",
+                otherRowQuery,
+                null,
+                _report.Columns,
+                _report.BeginIssues,
+                _report.MiddleIssues,
+                _report.EndIssues);
 
-                ReportTableRow(file, "  ", otherRow, shouldHyperLink, useRepositoriesFromIssues: false, makeCountBold: true);
-            }
+            ReportTableRow(file, "  ", otherRow, shouldHyperLink, useRepositoriesFromIssues: false, makeCountBold: true);
 
             // "Total" row
             {
@@ -139,6 +137,18 @@ namespace BugReport.Reports
             }
 
             file.WriteLine("</table>");
+
+            // Heading row for other listing
+            {
+                file.WriteLine("<table border=\"1\">");
+                ReportTableRow(file, "  ",
+                    "&nbsp;",
+                    _report.Columns.Select(col => $"<b title=\"{col.Query.ToString()}\">{col.Name}</b>" ));
+
+                ReportTableRowAsList(file, "  ", otherRow);
+
+                file.WriteLine("</table>");
+            }
         }
 
         private static void ReportTableRow(
@@ -150,7 +160,7 @@ namespace BugReport.Reports
             bool makeCountBold = true)
         {
             ReportTableRow(file,
-                "  ",
+                prefix,
                 $"<b title=\"{row.Query.ToString()}\">{row.Name}</b>" + 
                     (row.Team == null ? "" : $" - <small>{row.Team.Name}</small>"),
                 row.Columns.SelectMany(filteredIssues =>
@@ -165,6 +175,25 @@ namespace BugReport.Reports
                         $"<i>{(filteredIssues.End.Count() - filteredIssues.Begin.Count()).ToString("+#;-#;0")}</i>",
                         $"<i>+{filteredIssues.EndOrMiddleOnly.Count()}</i>",
                         $"<i>-{filteredIssues.BeginOrMiddleOnly.Count()}</i>" };
+                }));
+        }
+
+        private static void ReportTableRowAsList(
+            StreamWriter file,
+            string prefix,
+            TableReport.Row row)
+        {
+            ReportTableRow(file,
+                prefix,
+                $"<b title=\"{row.Query.ToString()}\">{row.Name}</b>" +
+                    (row.Team == null ? "" : $" - <small>{row.Team.Name}</small>"),
+                row.Columns.Select(filteredIssues =>
+                {
+                    int count = filteredIssues.End.Count();
+                    if (count == 0)
+                        return "0";
+                    return $"{count}: " + string.Join(" ", filteredIssues.End.Select(issue => 
+                        $"<a href=\"{issue.HtmlUrl}\">#{issue.Number}</a>"));
                 }));
         }
 
