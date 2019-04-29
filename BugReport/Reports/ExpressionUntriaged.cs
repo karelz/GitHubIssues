@@ -76,7 +76,7 @@ namespace BugReport.Reports
             int issueTypeLabelsCount = issue.Labels.Intersect_ByName(_issueTypeLabels).Count();
             if (issueTypeLabelsCount == 0)
             {
-                triageFlags |= Flags.MissingIssueTypeLabel;
+                //triageFlags |= Flags.MissingIssueTypeLabel;
             }
             else if (issueTypeLabelsCount > 1)
             {
