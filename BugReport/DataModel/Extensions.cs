@@ -10,6 +10,14 @@ namespace BugReport.DataModel
 {
     public static class Extensions
     {
+        public static IEnumerable<DataModelIssue> PullRequests(this IEnumerable<DataModelIssue> issues)
+        {
+            return issues.Where(i => i.IsPullRequest);
+        }
+        public static IEnumerable<DataModelIssue> NonPullRequests(this IEnumerable<DataModelIssue> issues)
+        {
+            return issues.Where(i => !i.IsPullRequest);
+        }
         public static IEnumerable<DataModelIssue> Except_ByIssueNumber(this IEnumerable<DataModelIssue> issues, IEnumerable<DataModelIssue> exceptIssues)
         {
             return issues.Where(i => !exceptIssues.Contains_ByIssueNumber(i));

@@ -159,6 +159,7 @@ namespace BugReport.DataModel
     {
         public string Name;
         public string Login;
+        public string Id;
         public string HtmlUrl;
     }
 

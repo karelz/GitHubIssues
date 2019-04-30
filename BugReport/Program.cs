@@ -274,7 +274,7 @@ class Program
                         // Note we can have both options
                         if (outputFileCsv != null)
                         {
-                            CsvContributionsReport.Write(report, outputFileCsv);
+                            //CsvContributionsReport.Write(report, outputFileCsv);
                         }
                         return ErrorCode.Success;
                     }
