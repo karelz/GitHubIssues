@@ -6,6 +6,7 @@ using System.Linq;
 using BugReport.Util;
 using BugReport.DataModel;
 using BugReport.Query;
+using System.Text;
 
 namespace BugReport.Reports
 {
@@ -67,6 +68,18 @@ namespace BugReport.Reports
                 }),
                 $"<b>{report.DefaultGroupName}</b>",
                 "&nbsp;");
+            ReportTableRow(file,
+                "  ",
+                "&nbsp;",
+                "<b>Issues</b>",
+                "<b>PRs</b>",
+                report.Groups.SelectMany(group => new string[]
+                {
+                    "<b>Issues</b>",
+                    "<b>PRs</b>"
+                }),
+                "<b>Issues</b>",
+                "<b>PRs</b>");
 
             // All intervals
             foreach (ContributionsReport.Interval interval in report.EnumerateIntervals())
@@ -123,6 +136,31 @@ namespace BugReport.Reports
 
         class UserInfo
         {
+            public BugReport.DataModel.User User { get; private set; }
+            public List<DataModelIssue> Issues { get; private set; }
+
+            public string DisplayName { get; private set; }
+            public string Url { get; private set; }
+            public string DisplayName_HtmlLink => (Url == null) ? DisplayName : $"<a href=\"{Url}\">{DisplayName}</a>";
+
+            public UserInfo(BugReport.DataModel.User user)
+            {
+                User = user;
+                Issues = new List<DataModelIssue>();
+
+                if (user.Login == "ghost")
+                {
+                    DisplayName = $"ghost ({User.Id})";
+                    Url = null;
+                }
+                else
+                {
+                    DisplayName = user.Login;
+                    Url = user.HtmlUrl;
+                }
+            }
+
+            /*
             // null for ghosts
             public string Name { get; private set; }
             public string Id { get; private set; }
@@ -144,20 +182,70 @@ namespace BugReport.Reports
                 Id = user.Id;
                 Issues = 0;
             }
+            */
+        }
+
+        private static string StringJoin(string separator, int limit, string limitSeparator, IEnumerable<string> values)
+        {
+            StringBuilder sb = new StringBuilder();
+            int count = values.Count();
+            if (count <= limit)
+            {
+                return string.Join(separator, values);
+            }
+
+            int index = 0;
+            foreach (string value in values)
+            {
+                if (index > 0)
+                {
+                    if (index % limit == 0)
+                    {
+                        sb.Append(limitSeparator);
+                    }
+                    else
+                    {
+                        sb.Append(separator);
+                    }
+                }
+                sb.Append(value);
+                index++;
+            }
+            return sb.ToString();
         }
 
         private static string GetUserBreakdown(IEnumerable<DataModelIssue> issues)
         {
-            /*
             List<UserInfo> users = new List<UserInfo>();
 
             foreach (DataModelIssue issue in issues)
             {
+                bool userFound = false;
+                User user = issue.User;
 
+                foreach (UserInfo userInfo in users)
+                {
+                    if (user.Equals(userInfo.User))
+                    {
+                        userFound = true;
+                        userInfo.Issues.Add(issue);
+                        break;
+                    }
+                }
+                if (!userFound)
+                {
+                    UserInfo userInfo = new UserInfo(user);
+                    userInfo.Issues.Add(issue);
+                    users.Add(userInfo);
+                }
             }
-            */
 
-            return "TODO analyze the issues per user";
+            IEnumerable<UserInfo> sortedUsers = users.OrderByDescending(userInfo => userInfo.Issues.Count);
+
+            return string.Join("<br/>", sortedUsers.Select(userInfo => 
+                $"{userInfo.DisplayName_HtmlLink} - {userInfo.Issues.Count} - <small>" + 
+                StringJoin(" ", 15, "<br/>", userInfo.Issues.Select(issue => $"<a href=\"{issue.HtmlUrl}\">#{issue.Number}</a>").ToList()) + 
+                "</small>"));
         }
 
         private static void ReportTableRow_Users(

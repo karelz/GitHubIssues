@@ -28,7 +28,7 @@ namespace BugReport.Reports
 
             InputFiles = inputFiles;
 
-            IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(inputFiles, _config);
+            Issues = IssueCollection.LoadIssues(inputFiles, _config);
         }
 
         public class User
@@ -113,41 +113,38 @@ namespace BugReport.Reports
             }
 
             public string Name { get; private set; }
-            public DateTimeOffset Start { get; private set; }
+            public DateTimeOffset StartTime { get; private set; }
+            public DateTimeOffset StopTime { get; private set; }
             public UnitKind Unit { get; private set; }
             public IEnumerable<Group> Groups { get; private set; }
             public string DefaultGroupName { get; private set; }
 
-            public Report(string name, DateTimeOffset start, UnitKind unit, IEnumerable<Group> groups, string defaultGroupName)
+            public Report(string name, DateTimeOffset startTime, DateTimeOffset? stopTime, UnitKind unit, IEnumerable<Group> groups, string defaultGroupName)
             {
                 Name = name;
-                Start = start;
+                StartTime = startTime;
+                StopTime = (stopTime == null) ? DateTimeOffset.Now : stopTime.Value;
                 Unit = unit;
                 Groups = groups;
                 DefaultGroupName = defaultGroupName;
             }
 
-            public IEnumerable<Interval> EnumerateIntervals(DateTimeOffset endTime = default)
+            public IEnumerable<Interval> EnumerateIntervals()
             {
-                if (endTime == default(DateTimeOffset))
-                {
-                    endTime = DateTimeOffset.Now;
-                }
-
-                DateTimeOffset time = Start;
-                while (time <= endTime)
+                DateTimeOffset time = StartTime;
+                while (time <= StopTime)
                 {
                     DateTimeOffset oldTime = time;
                     switch (Unit)
                     {
                         case UnitKind.Day:
-                            time.AddDays(1);
+                            time = time.AddDays(1);
                             break;
                         case UnitKind.Week:
-                            time.AddDays(7);
+                            time = time.AddDays(7);
                             break;
                         case UnitKind.Month:
-                            time.AddMonths(1);
+                            time = time.AddMonths(1);
                             break;
                     }
                     yield return new Interval(oldTime, time);
@@ -297,24 +294,39 @@ namespace BugReport.Reports
                     foreach (XElement reportNode in configFile.Root.Descendants("report"))
                     {
                         string reportName = reportNode.Attribute("name").Value;
-                        string startText = reportNode.Attribute("start").Value;
+                        string startTimeText = reportNode.Attribute("start").Value;
+                        string stopTimeText = reportNode.Attribute("stop")?.Value;
                         string unitText = reportNode.Attribute("unit").Value;
                         string defaultGroupName = reportNode.Attribute("defaultGroupName").Value;
 
-                        DateTimeOffset start;
-                        if (!DateTimeOffset.TryParse(startText, out start))
+                        DateTimeOffset startTime;
+                        if (!DateTimeOffset.TryParse(startTimeText, out startTime))
                         {
-                            throw new InvalidDataException($"Report '{reportName}' has invalid 'start' value '{startText}'");
+                            throw new InvalidDataException($"Report '{reportName}' has invalid 'start' value '{startTimeText}'");
+                        }
+                        if (startTime < new DateTimeOffset(2000, 1, 1, 0, 0, 0, new TimeSpan()))
+                        {
+                            throw new InvalidDataException($"Likely invalid date '{startTime}'");
+                        }
+                        DateTimeOffset? stopTime = null;
+                        if (stopTimeText != null)
+                        {
+                            DateTimeOffset stopTimeValue;
+                            if (!DateTimeOffset.TryParse(stopTimeText, out stopTimeValue))
+                            {
+                                throw new InvalidDataException($"Report '{reportName}' has invalid 'start' value '{startTimeText}'");
+                            }
+                            stopTime = stopTimeValue;
                         }
                         Report.UnitKind unit;
-                        if (!Enum.TryParse<Report.UnitKind>(unitText, out unit))
+                        if (!Enum.TryParse<Report.UnitKind>(unitText, ignoreCase: true, out unit))
                         {
                             throw new InvalidDataException($"Report '{reportName}' has invalid 'unit' value '{unitText}'");
                         }
 
                         List<Group> groups = new List<Group>();
 
-                        Report report = new Report(reportName, start, unit, groups,defaultGroupName);
+                        Report report = new Report(reportName, startTime, stopTime, unit, groups,defaultGroupName);
                         reports.Add(report);
 
                         foreach (XElement groupNode in reportNode.Descendants("group"))
