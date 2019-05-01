@@ -70,9 +70,9 @@ namespace BugReport.Reports
         public class Category
         {
             public string Name { get; private set; }
-            public IEnumerable<User> Users { get; private set; }
+            public List<User> Users { get; private set; }
 
-            public Category(string name, IEnumerable<User> users)
+            public Category(string name, List<User> users)
             {
                 Name = name;
                 Users = users;
@@ -209,8 +209,13 @@ namespace BugReport.Reports
                     foreach (XElement categoryNode in configFile.Root.Elements("category"))
                     {
                         string categoryName = categoryNode.Attribute("name").Value;
-                        List<User> categoryUsers = new List<User>();
-                        Category category = new Category(categoryName, categoryUsers);
+
+                        Category category = categories.Where(c => c.Name == categoryName).FirstOrDefault();
+                        if (category == null)
+                        {
+                            List<User> categoryUsers = new List<User>();
+                            category = new Category(categoryName, categoryUsers);
+                        }
                         categories.Add(category);
 
                         foreach (XElement userNode in categoryNode.Elements("user"))
@@ -260,7 +265,7 @@ namespace BugReport.Reports
                             }
                             _users.Add(user);
 
-                            categoryUsers.Add(user);
+                            category.Users.Add(user);
                         }
                     }
                 }
