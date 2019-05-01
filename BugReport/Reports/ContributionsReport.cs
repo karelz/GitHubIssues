@@ -151,12 +151,7 @@ namespace BugReport.Reports
                 }
             }
 
-            /*
-            public bool ContainsDefaultGroupAuthor(DataModelIssue issue)
-            {
-                return Groups.Where(group => group.ContainsAuthor(issue)).None();
-            }
-            */
+            public Interval FullInterval => new Interval(StartTime, StopTime);
         }
 
         public class Interval
@@ -233,6 +228,11 @@ namespace BugReport.Reports
                             if (userName != null && id != null)
                             {
                                 throw new InvalidDataException($"User name and id cannot be both defined '{userName}' / '{id}'");
+                            }
+
+                            if (userName == "")
+                            {   // skip temporary empty entries
+                                continue;
                             }
 
                             DateTimeOffset from = DateTimeOffset.MinValue;
@@ -317,6 +317,10 @@ namespace BugReport.Reports
                                 throw new InvalidDataException($"Report '{reportName}' has invalid 'start' value '{startTimeText}'");
                             }
                             stopTime = stopTimeValue;
+                            if (startTime > stopTime)
+                            {
+                                throw new InvalidDataException($"Report '{reportName}' has 'stop' ({stopTimeText}) before 'start' ({startTimeText}).");
+                            }
                         }
                         Report.UnitKind unit;
                         if (!Enum.TryParse<Report.UnitKind>(unitText, ignoreCase: true, out unit))

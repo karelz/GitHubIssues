@@ -159,30 +159,6 @@ namespace BugReport.Reports
                     Url = user.HtmlUrl;
                 }
             }
-
-            /*
-            // null for ghosts
-            public string Name { get; private set; }
-            public string Id { get; private set; }
-            public int Issues { get; set; }
-
-
-            public string DisplayName => Name ?? $"ghost ({Id})";
-            public string Url => (Name == null) ? null : "https://github.com/" + Name;
-
-            public UserInfo(BugReport.DataModel.User user)
-            {
-                Name = (user.Name == "ghost") ? null : user.Name;
-                Id = user.Id;
-                Issues = 0;
-            }
-            public UserInfo(ContributionsReport.User user)
-            {
-                Name = user.Name;
-                Id = user.Id;
-                Issues = 0;
-            }
-            */
         }
 
         private static string StringJoin(string separator, int limit, string limitSeparator, IEnumerable<string> values)
@@ -240,9 +216,18 @@ namespace BugReport.Reports
                 }
             }
 
-            IEnumerable<UserInfo> sortedUsers = users.OrderByDescending(userInfo => userInfo.Issues.Count);
+            users.Sort((a, b) =>
+            {
+                if (a.Issues.Count > b.Issues.Count)
+                    return -1;
+                if (a.Issues.Count == b.Issues.Count)
+                {
+                    return StringComparer.Ordinal.Compare(a.DisplayName, b.DisplayName);
+                }
+                return 1;
+            });
 
-            return string.Join("<br/>", sortedUsers.Select(userInfo => 
+            return string.Join("<br/>", users.Select(userInfo => 
                 $"{userInfo.DisplayName_HtmlLink} - {userInfo.Issues.Count} - <small>" + 
                 StringJoin(" ", 15, "<br/>", userInfo.Issues.Select(issue => $"<a href=\"{issue.HtmlUrl}\">#{issue.Number}</a>").ToList()) + 
                 "</small>"));
@@ -252,14 +237,17 @@ namespace BugReport.Reports
             StreamWriter file,
             string prefix,
             ContributionsReport.Report report,
-            IEnumerable<DataModelIssue> issues)
+            IEnumerable<DataModelIssue> allIssues)
         {
+            ContributionsReport.Interval reprotInterval = report.FullInterval;
+            IEnumerable<DataModelIssue> issues = allIssues.Where(issue => reprotInterval.Contains(issue.CreatedAt.Value));
+
             IEnumerable<DataModelIssue> defaultGroupIssues = issues
                 .Where(issue => report.Groups.Where(group => group.ContainsAuthor(issue)).None()).ToList();
             ReportTableRow(file,
                 "  ",
                 report.Groups.Select(group => GetUserBreakdown(issues.Where(issue => group.ContainsAuthor(issue)).ToList())),
-                GetUserBreakdown(defaultGroupIssues));
+                    GetUserBreakdown(defaultGroupIssues));
         }
 
         private static void ReportTableRow(StreamWriter file, string prefix, string col1, string col2, string col3, IEnumerable<string> cols, string col4, string col5)
