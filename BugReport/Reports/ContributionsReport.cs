@@ -65,6 +65,20 @@ namespace BugReport.Reports
                 }
                 return Interval.Contains(issue.CreatedAt.Value);
             }
+
+            public override bool Equals(object obj)
+            {
+                return (obj is User other) &&
+                    (Name == other.Name) &&
+                    (Id == other.Id) &&
+                    (Subcategory == other.Subcategory) &&
+                    Interval.Equals(other.Interval);
+            }
+
+            public override int GetHashCode()
+            {
+                return Name.GetHashCode() + Id.GetHashCode() + Subcategory.GetHashCode() + Interval.GetHashCode();
+            }
         }
 
         public class Category
@@ -185,6 +199,16 @@ namespace BugReport.Reports
                     return $"{To.Year}/{To.Month}";
                 }
             }
+
+            public override bool Equals(object obj)
+            {
+                return (obj is Interval other) && From.Equals(other.From) && To.Equals(other.To);
+            }
+
+            public override int GetHashCode()
+            {
+                return From.GetHashCode() + To.GetHashCode();
+            }
         }
 
         public class ContributionsConfig : Config
@@ -259,11 +283,18 @@ namespace BugReport.Reports
 
                             User user = new User(userName, id, category, subcategory, new Interval(from, to));
 
-                            if (IsOverlappingUser(user))
+                            User otherUser = GetOverlappingUser(user);
+                            if (otherUser == null)
                             {
-                                throw new InvalidDataException($"Overlapping user detected '{userName ?? id}'");
+                                _users.Add(user);
                             }
-                            _users.Add(user);
+                            else
+                            {
+                                if (!user.Equals(otherUser))
+                                {
+                                    throw new InvalidDataException($"Overlapping user detected '{userName ?? id}'");
+                                }
+                            }
 
                             category.Users.Add(user);
                         }
@@ -273,16 +304,16 @@ namespace BugReport.Reports
                 return categories;
             }
 
-            private bool IsOverlappingUser(User user)
+            private User GetOverlappingUser(User user)
             {
                 foreach (User other in _users)
                 {
                     if (user.DoesOverlap(other))
                     {
-                        return true;
+                        return other;
                     }
                 }
-                return false;
+                return null;
             }
 
             private Category FindCategory(string name)
