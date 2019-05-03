@@ -159,7 +159,17 @@ namespace BugReport.DataModel
     {
         public string Name;
         public string Login;
+        public string Id;
         public string HtmlUrl;
+
+        public override bool Equals(object obj)
+        {
+            return (obj is User user) && (user.Id == Id);
+        }
+        public override int GetHashCode()
+        {
+            return Id.GetHashCode();
+        }
     }
 
     public class Milestone

@@ -66,6 +66,8 @@
     <Compile Include="Reports\CsvReport\CsvWriter.cs" />
     <Compile Include="Reports\HtmlReport\HtmlQueryCountLink.cs" />
     <Compile Include="Reports\CsvReport\CsvTableReport.cs" />
+    <Compile Include="Reports\ContributionsReport.cs" />
+    <Compile Include="Reports\HtmlReport\HtmlContributionsReport.cs" />
     <Compile Include="Reports\TableReport.cs" />
     <Compile Include="Reports\XlsxReport\HistoryReport.cs" />
     <Compile Include="Repository.cs" />

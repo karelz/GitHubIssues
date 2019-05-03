@@ -12,7 +12,7 @@ namespace BugReport.Reports
 {
     public class Config
     {
-        private List<ConfigFile> _configFiles;
+        protected List<ConfigFile> _configFiles;
 
         private List<Alert.User> _users = new List<Alert.User>();
 
@@ -34,7 +34,7 @@ namespace BugReport.Reports
         public int IssuesMinimalCount { get; private set; }
         public double IssuesMaximumRatio { get; private set; }
 
-        private class ConfigFile
+        protected class ConfigFile
         {
             public string FileName;
             public XElement Root;
