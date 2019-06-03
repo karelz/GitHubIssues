@@ -1,12 +1,17 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 using BugReport.CommandLine;
 using BugReport.DataModel;
 using BugReport.Reports;
 using BugReport.Reports.EmailReports;
 using BugReport.Util;
+using Octokit;
 
 class Program
 {
@@ -28,7 +33,9 @@ class Program
         history,
         untriaged,
         needsResponse,
-        contributions
+        contributions,
+        subscribe,
+        revertSubscribe
     }
 
     static readonly IEnumerable<string> _helpActions = new List<string>() { "?", "help", "h" };
@@ -80,7 +87,11 @@ class Program
         [/fitler:<alert_name>] [/skipEmail] [/out <out.html>]
     * Sends digest emails based on config.xml, optinally filtered to just alert_name
   contributions /in <issues.json> [...] /config <.xml> [/out <.html>] [/out_csv <.csv>]
-    * Creates report of contributions as defined in .xml");
+    * Creates report of contributions as defined in .xml
+  subscribe /config <.xml> /in <issues.json> [...] /out <revertSubscriptions.json>
+    * Subscribes you to all issue in cache, outputting a file to revert the subscriptions
+  revertSubscribe /config <.xml> /in <revertSubscriptions.json>
+    * Reverts subscriptions previously performed by this tool.");
     }
 
     static void ReportError(string error)
@@ -399,6 +410,33 @@ class Program
                             issues,
                             comments));
                     }
+                case ActionCommand.subscribe:
+                    {
+                        if (!optionsParser.Parse(new Option[] { _configOption, _inputOption, _outputOption }, new Option[] { _authenticationTokenOption }))
+                        {
+                            return ErrorCode.InvalidCommand;
+                        }
+
+                        IEnumerable<string> configFilePaths = _configOption.GetValues(optionsParser);
+                        IEnumerable<string> issueFilePaths = _inputOption.GetValues(optionsParser);
+                        string outputFilePath = _outputOption.GetValue(optionsParser);
+                        string authenticationToken = _authenticationTokenOption.GetValue(optionsParser);
+
+                        return SubscribeIssues(configFilePaths, issueFilePaths, outputFilePath, authenticationToken);
+                    }
+                case ActionCommand.revertSubscribe:
+                    {
+                        if (!optionsParser.Parse(new Option[] { _configOption, _inputOption }, new Option[] { _authenticationTokenOption }))
+                        {
+                            return ErrorCode.InvalidCommand;
+                        }
+
+                        IEnumerable<string> configFilePaths = _configOption.GetValues(optionsParser);
+                        string subscriptionsFilePath = _inputOption.GetValues(optionsParser).Single();
+                        string authenticationToken = _authenticationTokenOption.GetValue(optionsParser);
+
+                        return RevertIssueSubscriptions(configFilePaths, subscriptionsFilePath, authenticationToken);
+                    }
                 default:
                     Debug.Assert(false);
                     return ErrorCode.CatastrophicFailure;
@@ -413,6 +451,71 @@ class Program
             Console.Error.WriteLine(ex);
             return ErrorCode.CatastrophicFailure;
         }
+    }
+
+    private static ErrorCode SubscribeIssues(IEnumerable<string> configFilePaths, IEnumerable<string> issueFilePaths, string outputFilePath, string authenticationToken)
+    {
+        var config = new Config(configFilePaths);
+        IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(issueFilePaths, config, IssueKindFlags.Issue | IssueKindFlags.PullRequest);
+
+        Repository repo = config.Repositories.First();
+        repo.AuthenticationToken = authenticationToken;
+
+        // get all the user's subscriptions.
+
+        repo.LoadSubscribedIssues();
+
+        // find issues to subscribe to.
+
+        var issuesToSubscribe = issues
+            .Select(x => x.Id)
+            .Except(repo.Issues.Select(x => x.Id))
+            .ToList();
+
+        using (var sw = new StreamWriter(outputFilePath))
+        {
+            foreach (int issueId in issuesToSubscribe)
+            {
+                sw.WriteLine(issueId.ToString(CultureInfo.InvariantCulture));
+            }
+        }
+
+        // and subscribe.
+
+        repo.SetIssueSubscriptions(issuesToSubscribe, true);
+
+        return ErrorCode.Success;
+    }
+
+    private static ErrorCode RevertIssueSubscriptions(IEnumerable<string> configFilePaths, string subscriptionFilePath, string authenticationToken)
+    {
+        var config = new Config(configFilePaths);
+
+        Repository repo = config.Repositories.First();
+        repo.AuthenticationToken = authenticationToken;
+
+        // load issue subscriptions previously attempted.
+
+        var issueIds = new List<int>();
+
+        using (var sr = new StreamReader(subscriptionFilePath))
+        {
+            string s;
+            while ((s = sr.ReadLine()) != null)
+            {
+                issueIds.Add(int.Parse(s, CultureInfo.InvariantCulture));
+            }
+        }
+
+        // unsubscribe.
+
+        repo.LoadSubscribedIssues();
+
+        IEnumerable<int> issuesToUnsubscribe = repo.Issues.Select(x => x.Id).Intersect(issueIds);
+
+        repo.SetIssueSubscriptions(issuesToUnsubscribe, false);
+
+        return ErrorCode.Success;
     }
 
     private static ErrorCode GetSendEmailErrorCode(bool isAllEmailSendSuccessful)

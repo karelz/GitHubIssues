@@ -10,6 +10,7 @@ using BugReport.DataModel;
 using BugReport.Query;
 using BugReport.Util;
 using System;
+using System.Threading;
 
 public class Repository
 {
@@ -183,20 +184,43 @@ public class Repository
         }
     }
 
+    public GitHubClient CreateGitHubClient()
+    {
+        var client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
+        if (AuthenticationToken != null)
+        {
+            client.Credentials = new Credentials(AuthenticationToken);
+        }
+        return client;
+    }
+
     /// <summary>
     /// Gets all of the issues in the repository, closed and open
     /// </summary>
     public void LoadIssues()
     {
-        GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
-        if (AuthenticationToken != null)
-        {
-            client.Credentials = new Credentials(AuthenticationToken);
-        }
+        GitHubClient client = CreateGitHubClient();
+
         RepositoryIssueRequest issueRequest = new RepositoryIssueRequest
         {
             State = ItemStateFilter.Open,
             Filter = IssueFilter.All
+        };
+
+        Task.Run(async () =>
+        {
+            Issues = await client.Issue.GetAllForRepository(Owner, Name, issueRequest);
+        }).Wait();
+    }
+
+    public void LoadSubscribedIssues()
+    {
+        GitHubClient client = CreateGitHubClient();
+
+        RepositoryIssueRequest issueRequest = new RepositoryIssueRequest
+        {
+            State = ItemStateFilter.All,
+            Filter = IssueFilter.Subscribed
         };
 
         Task.Run(async () =>
@@ -210,11 +234,7 @@ public class Repository
     /// </summary>
     public void LoadIssueComments()
     {
-        GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
-        if (AuthenticationToken != null)
-        {
-            client.Credentials = new Credentials(AuthenticationToken);
-        }
+        GitHubClient client = CreateGitHubClient();
 
         IssueComments = new ConcurrentBag<IssueComment>();
         List<Task> tasks = new List<Task>();
@@ -236,11 +256,7 @@ public class Repository
     // Returns list of issue numbers which failed to load
     public IEnumerable<int> LoadIssues(IEnumerable<int> issueNumbers)
     {
-        GitHubClient client = new GitHubClient(new ProductHeaderValue(s_GitHubProductIdentifier));
-        if (AuthenticationToken != null)
-        {
-            client.Credentials = new Credentials(AuthenticationToken);
-        }
+        GitHubClient client = CreateGitHubClient();
 
         List<int> issuesNotFound = new List<int>();
         List<Issue> issues = new List<Issue>();
@@ -288,6 +304,42 @@ public class Repository
         Issues = issues;
 
         return issuesNotFound;
+    }
+
+    public void SetIssueSubscriptions(IEnumerable<int> issueIds, bool subscribe)
+    {
+        GitHubClient client = CreateGitHubClient();
+        var tasks = new List<Task>();
+
+        int completedOps = 0;
+
+        foreach (int id in issueIds)
+        {
+            tasks.Add(Task.Run(async () =>
+            {
+                try
+                {
+                    await client.Activity.Notifications.SetThreadSubscription(id, new NewThreadSubscription
+                    {
+                        Subscribed = subscribe
+                    }).ConfigureAwait(false);
+                }
+                finally
+                {
+                    int x = Interlocked.Increment(ref completedOps);
+
+                    if ((x % 10) == 0)
+                    {
+                        double pcnt = completedOps / (double)Math.Max(tasks.Count, 1);
+                        Console.WriteLine($"Subscription update: {completedOps:N0}/{tasks.Count:N0} ({pcnt:P})");
+                    }
+                }
+            }));
+        }
+
+        Task.WaitAll(tasks.ToArray());
+
+        Console.WriteLine($"Subscription update: {completedOps:N0}/{tasks.Count:N0} (100 %)");
     }
 
     public static void SerializeToFile(string fileName, IReadOnlyCollection<Octokit.Issue> issues)
