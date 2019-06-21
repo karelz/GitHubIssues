@@ -312,6 +312,7 @@ public class Repository
         var tasks = new List<Task>();
 
         int completedOps = 0;
+        bool doneAdding = false;
 
         foreach (int id in issueIds)
         {
@@ -328,15 +329,16 @@ public class Repository
                 {
                     int x = Interlocked.Increment(ref completedOps);
 
-                    if ((x % 10) == 0)
+                    if ((x % 10) == 0 && Volatile.Read(ref doneAdding) == true)
                     {
                         double pcnt = completedOps / (double)Math.Max(tasks.Count, 1);
-                        Console.WriteLine($"Subscription update: {completedOps:N0}/{tasks.Count:N0} ({pcnt:P})");
+                        Console.WriteLine($"Subscribed to {completedOps:N0} issues out of {tasks.Count:N0} ({pcnt:P})");
                     }
                 }
             }));
         }
 
+        Volatile.Write(ref doneAdding, true);
         Task.WaitAll(tasks.ToArray());
 
         Console.WriteLine($"Subscription update: {completedOps:N0}/{tasks.Count:N0} (100 %)");

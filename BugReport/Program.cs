@@ -84,13 +84,13 @@ class Program
         [/filter <alert_name> [...]] [/skipEmail] [/out <out.html>]
     * Sends alert emails based on config.xml, optinally filtered to just alert_name
   needsResponse /in <issues.json> [...] /comments <.json> [...] /template <.html> /config <.xml> 
-        [/fitler:<alert_name>] [/skipEmail] [/out <out.html>]
+        [/filter:<alert_name>] [/skipEmail] [/out <out.html>]
     * Sends digest emails based on config.xml, optinally filtered to just alert_name
   contributions /in <issues.json> [...] /config <.xml> [/out <.html>] [/out_csv <.csv>]
     * Creates report of contributions as defined in .xml
-  subscribe /config <.xml> /in <issues.json> [...] /out <revertSubscriptions.json>
+  subscribe /config <.xml> /in <issues.json> [...] /out <revertSubscriptions.csv>
     * Subscribes you to all issue in cache, outputting a file to revert the subscriptions
-  revertSubscribe /config <.xml> /in <revertSubscriptions.json>
+  revertSubscribe /config <.xml> /in <revertSubscriptions.csv>
     * Reverts subscriptions previously performed by this tool.");
     }
 
@@ -458,7 +458,7 @@ class Program
         var config = new Config(configFilePaths);
         IEnumerable<DataModelIssue> issues = IssueCollection.LoadIssues(issueFilePaths, config, IssueKindFlags.Issue | IssueKindFlags.PullRequest);
 
-        Repository repo = config.Repositories.First();
+        Repository repo = config.Repositories.Single();
         repo.AuthenticationToken = authenticationToken;
 
         // get all the user's subscriptions.
@@ -491,7 +491,7 @@ class Program
     {
         var config = new Config(configFilePaths);
 
-        Repository repo = config.Repositories.First();
+        Repository repo = config.Repositories.Single();
         repo.AuthenticationToken = authenticationToken;
 
         // load issue subscriptions previously attempted.
